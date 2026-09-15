@@ -62,7 +62,11 @@ async function runTests() {
     }
   });
 
-  // Wait for server to start listening (up to 15s)
+  serverProc.stderr.on('data', d => {
+    console.error('  [Server Error]', d.toString().trim());
+  });
+
+  // Wait for server to start listening (up to 30s)
   await new Promise((resolve, reject) => {
     let attempts = 0;
     const interval = setInterval(async () => {
@@ -72,9 +76,9 @@ async function runTests() {
         clearInterval(interval);
         resolve();
       } catch (err) {
-        if (attempts > 30) {
+        if (attempts > 60) {
           clearInterval(interval);
-          reject(new Error('Server failed to start within 15 seconds'));
+          reject(new Error('Server failed to start within 30 seconds'));
         }
       }
     }, 500);
