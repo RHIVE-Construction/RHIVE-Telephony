@@ -1,0 +1,42 @@
+{
+  "project": "RHIVE 60-Second Master Single (Anchor & Breathe 30/70 Scientific Edition)",
+  "version": "10.0.0",
+  "target_model": "Google DeepMind Lyria 3.5",
+  "sonic_identity": {
+    "genre": "Acoustic Neo-Soul / Sunshine Folk-Soul",
+    "tempo_bpm": 98,
+    "key_signature": "G Major",
+    "duration_sec": 59.98,
+    "loop_mode": "seamless_infinite_crossfade_60ms",
+    "ratio": "30% Vocal Anchor / 70% Silky Instrumental Groove Bed",
+    "vibe": "Warm, wholesome, friendly, relaxed, premium, family-approved (Jack Johnson / Jason Mraz sunshine acoustic soul vibe)",
+    "instrumentation": "Warm Fender Rhodes electric piano with gentle tremolo, bright acoustic guitar strums, deep round warm bass in relaxed pocket, gentle organic acoustic drums with soft rimshot and brushed hats, subtle cheerful bells",
+    "vocals": "Warm, approachable, smiling male vocal with acoustic soul warmth (respectful, wholesome, zero sultry slow-jam bedroom elements)"
+  },
+  "cognitive_telephony_architecture": [
+    {
+      "timecode": "0:00 - 0:15",
+      "section": "[[A0]] The Front-Loaded Anchor",
+      "psychological_objective": "Front-loads the highest-converting values before the ~18s average hold time concludes. Establishes R-Hive pronunciation and radical cost transparency.",
+      "lyrics": "Welcome home to R-Hive, where your roof is done right,\nEvery single number brought out into the light.\nMaterials and labor, overhead and profit shown,\nReal certified installs, master warranties you own.\nHold on for just a moment, we're so glad you called today!"
+    },
+    {
+      "timecode": "0:15 - 0:40",
+      "section": "[[B1]] Silky Instrumental Groove Bed (25 Seconds)",
+      "psychological_objective": "Total cognitive decompression. Eliminates auditory fatigue and false-pickup startle reflexes. The caller's brain absorbs the value while relaxing to warm Rhodes and acoustic guitar.",
+      "lyrics": "(Instruments only: Lush Fender Rhodes electric piano, acoustic guitar licks, and relaxed walking bassline groove. Zero singing.)"
+    },
+    {
+      "timecode": "0:40 - 0:52",
+      "section": "[[C2]] The Mid-Hold Superpower Refresh",
+      "psychological_objective": "For callers on longer holds (>30s), delivers a crisp 12-second technical authority anchor on code ventilation and GAF commercial membranes.",
+      "lyrics": "From soffit to the ridge vent, we let your attic breathe,\nZero corners cut, with proper code underneath.\nFrom architectural shingles to commercial GAF membrane,\nFactory-backed protection through the wind and pouring rain.\nThe Project Desk is ready—thanks for holding on the line!"
+    },
+    {
+      "timecode": "0:52 - 1:00",
+      "section": "[[D3]] Seamless Instrumental Turnaround (8 Seconds)",
+      "psychological_objective": "Smooth musical resolution that loops seamlessly back into the 0:00 downbeat with a 60ms equal-power crossfade.",
+      "lyrics": "(Instruments only: Smooth Rhodes piano cadence resolving into a seamless loop back to 0:00.)"
+    }
+  ]
+}
