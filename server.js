@@ -520,7 +520,7 @@ const CANONICAL_FLOWS = [
     category: 'Quotes, Repairs & Commercial',
     ivrOption: 'Direct Switchboard: Quotes, Repairs & Commercial Evaluations',
     ivrKey: '1',
-    description: 'Residential and commercial roofing quotes for full replacements, repairs, maintenance, and commercial flat roofs (TPO/PVC). Standard replacements execute a streamlined MeasureCall ping-pong sequence: (1) Solar panel check (mandatory remote question); (2) Removals (swamp cooler/satellite dish); (3) Shingle layers; (4) Eave intake ventilation (1990s code); (5) Gutter areas (location/direction only); (6) Heat trace problem areas (location only). Decking condition is never interrogated (unknown until tear-off). Owens Corning Duration is baseline. Project design specialist orders high-res aerial GIS measurements—no on-site visit needed unless: (1) active leak tarping ($150 fee credited); (2) roof >15yo repair request; (3) commercial flat roof; (4) insurance claim; or (5) customer requests on-site diagnostic walk. Verification SMS dispatched with direct channel to Michael Robinson (801-449-1451).',
+    description: 'Residential and commercial roofing quotes for full replacements, repairs, maintenance, and commercial flat roofs (TPO/PVC). Standard replacements execute a streamlined MeasureCall ping-pong sequence: (1) Solar panel check (mandatory remote question); (2) Skylights, swamp cooler, satellite dish removals; (3) Shingle layers; (4) Eave intake ventilation (1990s code); (5) Gutter areas (location/direction only); (6) Heat trace problem areas (location only). Decking condition is never interrogated (unknown until tear-off). Owens Corning Duration is baseline. Project design specialist orders high-res aerial GIS measurements—no on-site visit needed unless: (1) active leak tarping ($150 fee credited); (2) roof >15yo repair request; (3) commercial flat roof; (4) insurance claim; or (5) customer requests on-site diagnostic walk. Verification SMS dispatched with direct channel to Michael Robinson (801-449-1451).',
     operatorTestScript: 'Hi Honey, I need a quote for our roof in Sandy. We have shingles curling on our 20-year-old roof and want to get a price for a full replacement.',
     callerPrompt: 'Hi Honey, I need a quote for our roof in Sandy. We have shingles curling on our 20-year-old roof and want to get a price for a full replacement.',
     targetOutcome: 'Certified Quote Requested & Project Specialist SMS Dispatched (Enters Closing Protocol)',
@@ -2371,7 +2371,9 @@ async function archiveCallToPhoneFolder({ callSid, callerPhone, conversationTurn
           'Ventilation: ' + (sessionData.eaveIntake || 'Standard') + '\n' +
           'Gutters: ' + (sessionData.gutterAreas || 'None') + '\n' +
           'Ice Dams / Heat Trace: ' + (sessionData.heatTraceAreas || 'None') + '\n' +
-          'Removals: ' + (sessionData.removals || 'None') + '\n' +
+          'Skylights: ' + (sessionData.skylights_count || 'None') + '\n' +
+          'Swamp Cooler Removal: ' + (sessionData.swamp_cooler_removal || 'None') + '\n' +
+          'Satellite Dish Removal: ' + (sessionData.satellite_removal || 'None') + '\n' +
           'Material Choice: ' + (sessionData.materialPreference || 'Owens Corning Duration') + '\n' +
           'Selection: Option ' + (sessionData.selection || '1') + ' (' + (sessionData.selectionLabel || 'Roof Estimate') + ')\n' +
           'Ambient Atmosphere: ' + (sessionData.ambientMode || 'Office') + '\n' +
@@ -2381,7 +2383,7 @@ async function archiveCallToPhoneFolder({ callSid, callerPhone, conversationTurn
           '2. Customer DISC Personality (Dominance / Influence / Steadiness / Conscientiousness) & Recommended Communication Strategy for Michael\n' +
           '3. Project Scope & Quoting Tier (Certified Aerial Quote vs Ballpark Estimate vs Free Inspection vs Repair vs Active Leak)\n' +
           '4. Property & Decking Risk Analysis (Parcel ID, Year Built, Decade, Slat Board Decking Risk at $78.13/sheet)\n' +
-          '5. MeasureCall Inventory (Solar detach party, Layers, Ventilation, Gutters, Ice Dams, Removals, Preferred Material)\n' +
+          '5. MeasureCall Inventory (Solar detach party, Layers, Ventilation, Gutters, Ice Dams, Skylights, Swamp Cooler, Satellite Dish, Preferred Material)\n' +
           '6. Action Items for Michael and Kara';
       }
 
@@ -3040,113 +3042,173 @@ async function fetchAvailableCalendarWindows(targetDate, callerCityOrAddress = '
 // ============================================================================
 function buildConsolidatedLeadDossier(data) {
   const isInspection = !!(data.inspectionSlot || data.isInspection);
-  const title = isInspection ? '📅 NEW INSPECTION & ROOF DOSSIER:' : '📋 NEW CERTIFIED QUOTE REQUEST:';
+  const title = isInspection ? '📅 NEW INSPECTION & MEASURECALL DOSSIER:' : '📋 NEW CERTIFIED QUOTE REQUEST:';
   const lines = [title];
 
-  // 1. Identity
+  const isPresent = (val) => {
+    if (val === null || val === undefined) return false;
+    if (typeof val === 'boolean') return val;
+    if (typeof val === 'number') return !isNaN(val);
+    if (typeof val === 'string') {
+      const trimmed = val.trim().toLowerCase();
+      return !['none', 'none reported', 'none specified', 'not specified', 'standard', 'n/a', 'unknown', '', 'false', 'undefined', 'null'].includes(trimmed);
+    }
+    return !!val;
+  };
+
+  // ============================================================================
+  // 1. CALL SUMMARY & RATING (TOP OF DOSSIER)
+  // ============================================================================
+  const leadRating = data.leadRating || (isInspection ? '5/5 (High-Intent Certified Inspection)' : '4/5 (Qualified Certified Quote Request)');
+  lines.push(`⭐ Lead Quality Rating: ${leadRating}`);
+
+  const callOutcome = data.callOutcome || (isInspection ? 'Certified On-Site Inspection Window Booked' : 'Certified Aerial Quote Channel Established');
+  lines.push(`📋 Call Objective & Outcome: ${callOutcome}`);
+
+  if (data.callSummary || data.executiveCallSummary) {
+    lines.push(`📝 Executive Call Summary: ${data.callSummary || data.executiveCallSummary}`);
+  }
+
+  const callTimeStr = data.callTimestamp || new Date().toLocaleString('en-US', { timeZone: 'America/Denver' });
+  const durationStr = data.callDuration ? ` | Duration: ${data.callDuration}` : '';
+  lines.push(`⏰ Call Timestamp: ${callTimeStr}${durationStr}`);
+
+  // ============================================================================
+  // 2. EVERY FIELD COLLECTED (34-VARIABLE INTAKE MATRIX)
+  // ============================================================================
   const name = data.callerName || data.customerName;
   const phone = data.customerPhone || data.callerPhone;
   if (name && name !== 'Unknown Caller' && name !== 'Homeowner' && name !== 'there') {
-    lines.push(`👤 ${name}` + (phone ? ` (${phone})` : ''));
-  } else if (phone) {
-    lines.push(`👤 Customer (${phone})`);
+    lines.push(`👤 Customer Name: ${name}`);
+  }
+  if (phone) {
+    lines.push(`📞 Customer Phone: ${phone}`);
   }
 
   const validEmail = cleanAndNormalizeEmail(data.customerEmail);
   if (validEmail && validEmail !== 'not provided' && !validEmail.includes('fallback') && validEmail.includes('@')) {
-    lines.push(`📧 ${validEmail.toLowerCase()}`);
+    lines.push(`📧 Customer Email: ${validEmail.toLowerCase()}`);
   }
 
-  // 2. Property & Classification
+  const propType = data.propertyType || (data.projectScope?.toLowerCase().includes('commercial') ? 'Commercial' : 'Residential');
+  lines.push(`🏢 Property Type: ${propType}`);
+
   if (data.propertyAddress && data.propertyAddress !== 'Address on file' && data.propertyAddress !== 'your property') {
-    const isConfirmed = !!(data.addressConfirmed || data.isAddressConfirmed);
-    lines.push(`📍 ${data.propertyAddress}${isConfirmed ? ' (Verified & Confirmed)' : ' (Verified)'}`);
+    lines.push(`📍 Property Address: ${data.propertyAddress}`);
+    const isConfirmed = data.addressConfirmed !== undefined ? data.addressConfirmed : true;
+    lines.push(`✅ Address Confirmed: ${isConfirmed ? 'true' : 'false'}`);
   }
 
   if (data.propertyName && data.propertyName !== 'Property on file' && !data.propertyName.includes('undefined')) {
     lines.push(`🏷️ Property Name: ${data.propertyName}`);
   }
 
-  const propType = data.propertyType || (data.projectScope?.toLowerCase().includes('commercial') ? 'Commercial' : 'Residential');
-  lines.push(`🏢 Property Type: ${propType}`);
-
-  // 3. County Parcel Roll
-  const parcelParts = [];
   if (data.parcelId && data.parcelId !== 'N/A' && data.parcelId !== 'Resolving') {
-    parcelParts.push(`Parcel: ${data.parcelId}`);
+    lines.push(`🏛️ County Parcel ID: ${data.parcelId}`);
   }
   if (data.yearBuilt && data.yearBuilt !== 'N/A' && data.yearBuilt !== 'Unknown') {
-    parcelParts.push(`Built: ${data.yearBuilt}` + (data.decadeBuilt && data.decadeBuilt !== 'N/A' ? ` (${data.decadeBuilt})` : ''));
+    lines.push(`📅 Year Built: ${data.yearBuilt}`);
+  }
+  if (data.decadeBuilt && data.decadeBuilt !== 'N/A') {
+    lines.push(`⏳ Decade Built: ${data.decadeBuilt}`);
   }
   if (data.bldgSqft) {
-    parcelParts.push(`${data.bldgSqft} sqft`);
-  }
-  if (parcelParts.length > 0) {
-    lines.push(`🏛️ ${parcelParts.join(' | ')}`);
+    lines.push(`📏 Interior Building Sqft: ${data.bldgSqft} sqft`);
   }
 
-  // Pre-1972 Deck Risk (ONLY if pre-1972)
   const isPre1972 = data.isPre1972 || (data.yearBuilt && parseInt(data.yearBuilt, 10) < 1972);
   if (isPre1972) {
-    lines.push(`⚠️ DECK RISK: Built ${data.yearBuilt || '<1972'}. Spaced 1x6/1x8 slat board decking under shake/shingles ($78.13/sheet re-deck).`);
+    lines.push(`⚠️ Pre-1972 Slat Deck Risk: true (Spaced 1x6/1x8 slat decking, $78.13/sheet re-deck)`);
   }
 
-  // 4. Inspection Window & Access (if inspection)
-  if (isInspection) {
-    if (data.inspectionSlot) {
-      lines.push(`⏰ Inspection Window: ${data.inspectionSlot}`);
-    }
-    if (data.projectScope) {
-      lines.push(`🏠 Inspection Scope: ${data.projectScope}`);
-    }
-    if (data.accessNotes && !data.accessNotes.toLowerCase().includes('not specified')) {
-      lines.push(`🔑 Access: ${data.accessNotes}`);
-    }
+  if (data.isPre1990sCode) {
+    lines.push(`💨 Pre-1990s Soffit Code: true`);
   }
 
-  // 5. MeasureCall Roof Specs (ONLY INCLUDE IF ANSWERED / UPDATED / NOT DEFAULT!)
-  const isPresent = (val) => val && typeof val === 'string' && !['none', 'none reported', 'none specified', 'not specified', 'standard', 'n/a', 'unknown', ''].includes(val.trim().toLowerCase());
+  if (data.roofSquares && isPresent(data.roofSquares)) {
+    lines.push(`📐 Roof Squares: ${data.roofSquares}`);
+  }
+  if (data.facetCount && isPresent(data.facetCount)) {
+    lines.push(`🔢 Total Facet Count: ${data.facetCount}`);
+  }
+  if (data.pitchMatrix && isPresent(data.pitchMatrix)) {
+    lines.push(`📐 Pitch Matrix: ${data.pitchMatrix}`);
+  }
+
+  if (data.projectScope && isPresent(data.projectScope)) {
+    lines.push(`🏠 Project Scope: ${data.projectScope}`);
+  }
+  if (data.inspectionSlot && isPresent(data.inspectionSlot)) {
+    lines.push(`⏰ Inspection Window: ${data.inspectionSlot}`);
+  }
+  if (data.accessNotes && isPresent(data.accessNotes) && !data.accessNotes.toLowerCase().includes('not specified')) {
+    lines.push(`🔑 Property Access Notes: ${data.accessNotes}`);
+  }
 
   if (data.solarStatus && isPresent(data.solarStatus)) {
-    const detach = (data.solarDetachParty && isPresent(data.solarDetachParty)) ? ` (Detach: ${data.solarDetachParty})` : '';
-    lines.push(`☀️ Solar: ${data.solarStatus}${detach}`);
+    lines.push(`☀️ Solar Panel Status: ${data.solarStatus}`);
   }
-
-  if (data.shingleLayers && isPresent(data.shingleLayers)) {
-    lines.push(`🧱 Layers: ${data.shingleLayers}`);
+  if (data.solarDetachParty && isPresent(data.solarDetachParty)) {
+    lines.push(`🔧 Solar Detach Party: ${data.solarDetachParty}`);
   }
-
-  if (data.eaveIntake && isPresent(data.eaveIntake)) {
-    lines.push(`💨 Ventilation: ${data.eaveIntake}`);
+  if (data.skylights_count && isPresent(data.skylights_count)) {
+    lines.push(`🪟 Skylights Count: ${data.skylights_count}`);
   }
-
-  if (data.gutterAreas && isPresent(data.gutterAreas)) {
-    lines.push(`🌧️ Gutters: ${data.gutterAreas}`);
+  if (data.swamp_cooler_removal && isPresent(data.swamp_cooler_removal)) {
+    lines.push(`❄️ Swamp Cooler Removal: ${data.swamp_cooler_removal}`);
   }
-
-  if (data.heatTraceAreas && isPresent(data.heatTraceAreas)) {
-    lines.push(`❄️ Ice Dams: ${data.heatTraceAreas}`);
+  if (data.satellite_removal && isPresent(data.satellite_removal)) {
+    lines.push(`📡 Satellite Dish Removal: ${data.satellite_removal}`);
   }
-
-  if (data.removals && isPresent(data.removals)) {
+  if (data.removals && isPresent(data.removals) && !data.skylights_count && !data.swamp_cooler_removal && !data.satellite_removal) {
     lines.push(`🗑️ Removals: ${data.removals}`);
   }
-
+  if (data.shingleLayers && isPresent(data.shingleLayers)) {
+    lines.push(`🧱 Shingle Layers: ${data.shingleLayers}`);
+  }
+  if (data.eaveIntake && isPresent(data.eaveIntake)) {
+    lines.push(`💨 Eave Intake Ventilation: ${data.eaveIntake}`);
+  }
+  if (data.gutterAreas && isPresent(data.gutterAreas)) {
+    lines.push(`🌧️ Gutter Scope & Runs: ${data.gutterAreas}`);
+  }
+  if (data.heatTraceAreas && isPresent(data.heatTraceAreas)) {
+    lines.push(`❄️ Winter Ice Dams & Valleys: ${data.heatTraceAreas}`);
+  }
   if (data.materialPreference && isPresent(data.materialPreference)) {
-    lines.push(`🏠 Material: ${data.materialPreference}`);
+    lines.push(`🏠 Primary Material Selection: ${data.materialPreference}`);
   }
 
-  // 6. Psychometrics & Strategy
   if (data.discProfile && isPresent(data.discProfile)) {
-    lines.push(`🎯 DISC: ${data.discProfile}`);
+    lines.push(`🎯 DISC Personality Quadrant: ${data.discProfile}`);
   }
-
   if (data.customerPriority && isPresent(data.customerPriority)) {
-    lines.push(`⭐ Priority: ${data.customerPriority}`);
+    lines.push(`⭐ Customer Primary Priority: ${data.customerPriority}`);
+  }
+  if (data.quoteTier && isPresent(data.quoteTier)) {
+    lines.push(`📊 Quoting Tier: ${data.quoteTier}`);
+  }
+  if (data.emergencyFee && isPresent(data.emergencyFee)) {
+    lines.push(`💵 Emergency Mobilization Fee: ${data.emergencyFee}`);
   }
 
-  if (!isInspection && data.quoteTier && isPresent(data.quoteTier)) {
-    lines.push(`📊 Quoting Tier: ${data.quoteTier}`);
+  // ============================================================================
+  // 3. CONVERSATIONAL TRANSCRIPT (GOOGLE DRIVE)
+  // ============================================================================
+  const transcriptLink = data.transcriptDriveUrl || data.transcriptUrl || data.driveTranscriptUrl || data.driveDossierUrl || (data.phoneFolderUrl) || null;
+  if (transcriptLink && isPresent(transcriptLink)) {
+    lines.push(`\n💬 CONVERSATIONAL TRANSCRIPT (GOOGLE DRIVE):\n📄 Transcript Link: ${transcriptLink}`);
+  } else if (data.customerPhone) {
+    const safePhone = (data.customerPhone || '').replace(/[^0-9+]/g, '');
+    lines.push(`\n💬 CONVERSATIONAL TRANSCRIPT (GOOGLE DRIVE):\n📄 Transcript Link: https://drive.google.com/drive/folders/${TWILIO_DRIVE_FOLDER_ID} (${safePhone})`);
+  }
+
+  // ============================================================================
+  // 4. CALL AUDIO RECORDING LINK
+  // ============================================================================
+  const audioLink = data.callRecordingUrl || data.recordingUrl || null;
+  if (audioLink && isPresent(audioLink)) {
+    lines.push(`\n🎙️ CALL AUDIO RECORDING:\n🔗 Audio Recording Link: ${audioLink}`);
   }
 
   return lines.join('\n');
@@ -3545,7 +3607,7 @@ When the caller wants a full roof replacement (not a repair or commercial roof):
    - Phonetic Spellout Verification (Human-Style Host Verification):
      "Awesome. To verify your name and email, I'll spell them out as I heard them to make sure your project design specialist sets up your Certified quote request accurately—are you ready?"
      (Spell username letter-by-letter, then pronounce 'at' [domain] 'dot com', e.g. "D-A-V-I-D @ 'at' example dot com", did I get that right?).
-   - IMMEDIATELY call "send_quote_verification_sms" with callerName, customerPhone, propertyAddress, customerEmail, solarStatus, solarDetachParty, shingleLayers, eaveIntake, gutterAreas, heatTraceAreas, materialPreference, removals, discProfile, and customerPriority!
+   - IMMEDIATELY call "send_quote_verification_sms" with callerName, customerPhone, propertyAddress, customerEmail, solarStatus, solarDetachParty, shingleLayers, eaveIntake, gutterAreas, heatTraceAreas, materialPreference, skylights_count, swamp_cooler_removal, satellite_removal, discProfile, and customerPriority!
    - Honey says on the phone (<20 words):
      "I just dispatched a quick text from your project design specialist with their direct cell (801-449-1451). Did that pop up?"
    - Caller confirms. Honey explains your project design specialist will send the Certified quote request within 24-48 business hours! Advance to Closing Protocol. (CRM: Quote Bucket).
@@ -3700,12 +3762,28 @@ Never mention any CRM. All call records are saved automatically to Google Drive 
               properties: {
                 callerName: { type: 'STRING', description: 'Full name of the caller.' },
                 propertyAddress: { type: 'STRING', description: 'Verified property address.' },
+                propertyName: { type: 'STRING', description: 'Shorthand property name (e.g. the 9917 South property).' },
+                addressConfirmed: { type: 'BOOLEAN', description: 'Whether address was verbally confirmed by caller.' },
                 inspectionSlot: { type: 'STRING', description: 'Selected arrival window (e.g. Morning 9 AM - 12 PM).' },
                 customerPhone: { type: 'STRING', description: 'Direct cell phone number for confirmation SMS.' },
                 customerEmail: { type: 'STRING', description: 'Caller email address for the Google Calendar invite and inspection confirmation.' },
-                projectScope: { type: 'STRING', description: 'Scope (e.g. Roof repair, Full replacement, Storm damage).' },
+                propertyType: { type: 'STRING', description: 'Property classification (Residential or Commercial).' },
+                projectScope: { type: 'STRING', description: 'Scope (e.g. Full replacement, Roof repair, Commercial flat roof, Emergency tarping).' },
                 roofAge: { type: 'STRING', description: 'Approximate age of the current roof.' },
-                accessNotes: { type: 'STRING', description: 'Gate codes, pets, or property access instructions.' }
+                accessNotes: { type: 'STRING', description: 'Gate codes, pets, or property access instructions.' },
+                emergencyFee: { type: 'STRING', description: 'Emergency mobilization fee if applicable (e.g. $150+ credited).' },
+                solarStatus: { type: 'STRING', description: 'Solar panel presence.' },
+                solarDetachParty: { type: 'STRING', description: 'Who handles solar detach/reset: "installer" or "rhive".' },
+                skylights_count: { type: 'STRING', description: 'Number or presence of skylights (e.g. 2 skylights, none).' },
+                swamp_cooler_removal: { type: 'STRING', description: 'Whether swamp cooler is to be removed and capped.' },
+                satellite_removal: { type: 'STRING', description: 'Whether satellite dish is to be removed and disposed.' },
+                shingleLayers: { type: 'STRING', description: 'Existing roof layers (e.g. 1 layer, 2 layers).' },
+                eaveIntake: { type: 'STRING', description: 'Eave/soffit intake ventilation status.' },
+                gutterAreas: { type: 'STRING', description: 'Areas needing gutters.' },
+                heatTraceAreas: { type: 'STRING', description: 'Problem areas with heavy icicles or packed snow.' },
+                materialPreference: { type: 'STRING', description: 'Preferred roofing material.' },
+                discProfile: { type: 'STRING', description: 'Caller DISC profile quadrant: D, I, S, or C.' },
+                customerPriority: { type: 'STRING', description: 'Customer primary value priority.' }
               },
               required: ['callerName', 'inspectionSlot']
             }
@@ -3718,19 +3796,27 @@ Never mention any CRM. All call records are saved automatically to Google Drive 
               properties: {
                 callerName: { type: 'STRING', description: 'Name of the caller.' },
                 propertyAddress: { type: 'STRING', description: 'Verified property address.' },
+                propertyName: { type: 'STRING', description: 'Shorthand property name (e.g. the 9917 South property).' },
+                addressConfirmed: { type: 'BOOLEAN', description: 'Whether address was verbally confirmed by caller.' },
                 customerPhone: { type: 'STRING', description: 'Mobile phone number to send the text to.' },
                 customerEmail: { type: 'STRING', description: 'Customer email address for proposal delivery.' },
+                propertyType: { type: 'STRING', description: 'Property classification (Residential or Commercial).' },
+                projectScope: { type: 'STRING', description: 'Scope (e.g. Full replacement, Roof repair, Commercial flat roof).' },
                 solarStatus: { type: 'STRING', description: 'Solar panels present, and whether original installer or RHIVE resets.' },
                 solarDetachParty: { type: 'STRING', description: 'Who handles solar detach/reset: "installer" (if under warranty) or "rhive" (certified crew detach & reset).' },
+                skylights_count: { type: 'STRING', description: 'Number or presence of skylights (e.g. 2 skylights, none).' },
+                swamp_cooler_removal: { type: 'STRING', description: 'Whether old swamp cooler should be removed and capped (e.g. Yes - remove and cap, None).' },
+                satellite_removal: { type: 'STRING', description: 'Whether old satellite dish should be removed and disposed (e.g. Yes - remove, None).' },
+                removals: { type: 'STRING', description: 'Legacy catch-all for skylight/cooler/satellite removals.' },
                 shingleLayers: { type: 'STRING', description: 'Existing roof layers (e.g. 1 layer, 2 layers, 3+ layers).' },
                 eaveIntake: { type: 'STRING', description: 'Eave/soffit intake ventilation status.' },
                 gutterAreas: { type: 'STRING', description: 'Areas needing gutters (e.g. front, back patio, all around).' },
                 heatTraceAreas: { type: 'STRING', description: 'Problem areas with heavy icicles or packed snow.' },
                 materialPreference: { type: 'STRING', description: 'Preferred roofing material (e.g. Duration, Duration FLEX, Metal, TPO).' },
-                removals: { type: 'STRING', description: 'Swamp coolers or satellite dishes to be removed.' },
                 discProfile: { type: 'STRING', description: 'Caller DISC profile quadrant: D (Driver), I (Expressive), S (Relational), C (Analytical).' },
                 customerPriority: { type: 'STRING', description: 'Customer primary value priority (e.g. fastest timeline, curb appeal, lifetime warranty, detailed engineering breakdown).' },
-                quoteTier: { type: 'STRING', description: 'Lead quoting tier: "estimate" (instant ballpark) vs "certified_quote" (Michael precision aerial proposal).' }
+                quoteTier: { type: 'STRING', description: 'Lead quoting tier: "estimate" (instant ballpark) vs "certified_quote" (Michael precision aerial proposal).' },
+                emergencyFee: { type: 'STRING', description: 'Emergency mobilization fee if applicable.' }
               },
               required: ['callerName']
             }
@@ -3950,6 +4036,7 @@ class CallSession {
       ambientMode: this.ambientMode,
       verifiedAddress: (customParams.propertyAddress && customParams.propertyAddress !== 'None' && customParams.propertyAddress !== 'Property on file') ? customParams.propertyAddress : null,
       propertyName: null,
+      addressConfirmed: false,
       customerName: (customParams.callerName && customParams.callerName !== 'Customer' && customParams.callerName !== 'Caller') ? customParams.callerName : null,
       callerName: (customParams.callerName && customParams.callerName !== 'Customer' && customParams.callerName !== 'Caller') ? customParams.callerName : null,
       companyName: customParams.companyName || null,
@@ -3961,6 +4048,26 @@ class CallSession {
       senderTitle: customParams.senderTitle || null,
       askedForPerson: customParams.askedForPerson || null,
       inspectionSlot: null,
+      projectScope: null,
+      solarStatus: null,
+      solarDetachParty: null,
+      skylights_count: null,
+      swamp_cooler_removal: null,
+      satellite_removal: null,
+      shingleLayers: null,
+      eaveIntake: null,
+      gutterAreas: null,
+      heatTraceAreas: null,
+      materialPreference: null,
+      discProfile: null,
+      customerPriority: null,
+      quoteTier: null,
+      roofSquares: null,
+      facetCount: null,
+      pitchMatrix: null,
+      isPre1990sCode: null,
+      isPre1972: null,
+      emergencyFee: null,
       toolsExecuted: []
     };
 
@@ -4297,31 +4404,69 @@ class CallSession {
         }
 
         const effectiveCallerName = this.sessionData.callerName || this.sessionData.customerName || (passedName && passedName !== 'Unknown Caller' ? passedName : 'Homeowner');
+        const propertyAddress = args?.propertyAddress || this.sessionData.verifiedAddress || 'Address on file';
+        const propertyName = args?.propertyName || this.sessionData.propertyName || null;
+        const addressConfirmed = args?.addressConfirmed !== undefined ? args.addressConfirmed : (this.sessionData.addressConfirmed || true);
+
+        if (args?.propertyType) this.sessionData.propertyType = args.propertyType;
+        if (args?.projectScope) this.sessionData.projectScope = args.projectScope;
+        if (args?.solarStatus) this.sessionData.solarStatus = args.solarStatus;
+        if (args?.solarDetachParty) this.sessionData.solarDetachParty = args.solarDetachParty;
+        if (args?.skylights_count) this.sessionData.skylights_count = args.skylights_count;
+        if (args?.swamp_cooler_removal) this.sessionData.swamp_cooler_removal = args.swamp_cooler_removal;
+        if (args?.satellite_removal) this.sessionData.satellite_removal = args.satellite_removal;
+        if (args?.shingleLayers) this.sessionData.shingleLayers = args.shingleLayers;
+        if (args?.eaveIntake) this.sessionData.eaveIntake = args.eaveIntake;
+        if (args?.gutterAreas) this.sessionData.gutterAreas = args.gutterAreas;
+        if (args?.heatTraceAreas) this.sessionData.heatTraceAreas = args.heatTraceAreas;
+        if (args?.materialPreference) this.sessionData.materialPreference = args.materialPreference;
+        if (args?.discProfile) this.sessionData.discProfile = args.discProfile;
+        if (args?.customerPriority) this.sessionData.customerPriority = args.customerPriority;
+        if (args?.quoteTier) this.sessionData.quoteTier = args.quoteTier;
+        if (args?.emergencyFee) this.sessionData.emergencyFee = args.emergencyFee;
+        if (args?.roofSquares) this.sessionData.roofSquares = args.roofSquares;
+        if (args?.facetCount) this.sessionData.facetCount = args.facetCount;
+        if (args?.pitchMatrix) this.sessionData.pitchMatrix = args.pitchMatrix;
+        if (args?.accessNotes) this.sessionData.accessNotes = args.accessNotes;
 
         const bookingResult = await executeInspectionBooking({
           callerName: effectiveCallerName,
           customerPhone: targetPhone,
           customerEmail: customerEmail,
-          propertyAddress: args?.propertyAddress || this.sessionData.verifiedAddress || 'Address on file',
+          propertyAddress,
+          propertyName,
+          addressConfirmed,
           propertyType: args?.propertyType || this.sessionData.propertyType || (args?.projectScope?.toLowerCase().includes('commercial') ? 'Commercial' : 'Residential'),
           inspectionSlot: args?.inspectionSlot || 'Tomorrow Morning (9 AM - 12 PM)',
-          projectScope: args?.projectScope || 'Roof Inspection',
+          projectScope: args?.projectScope || this.sessionData.projectScope || 'Roof Inspection',
           roofAge: args?.roofAge || this.sessionData.roofAge || 'Not specified',
           accessNotes: args?.accessNotes || this.sessionData.accessNotes,
           parcelId: this.sessionData.parcelId,
           yearBuilt: this.sessionData.yearBuilt,
           decadeBuilt: this.sessionData.decadeBuilt,
           bldgSqft: this.sessionData.bldgSqft,
+          isPre1972: this.sessionData.isPre1972,
+          isPre1990sCode: this.sessionData.isPre1990sCode,
+          roofSquares: args?.roofSquares || this.sessionData.roofSquares,
+          facetCount: args?.facetCount || this.sessionData.facetCount,
+          pitchMatrix: args?.pitchMatrix || this.sessionData.pitchMatrix,
           solarStatus: args?.solarStatus || this.sessionData.solarStatus,
           solarDetachParty: args?.solarDetachParty || this.sessionData.solarDetachParty,
+          skylights_count: args?.skylights_count || this.sessionData.skylights_count,
+          swamp_cooler_removal: args?.swamp_cooler_removal || this.sessionData.swamp_cooler_removal,
+          satellite_removal: args?.satellite_removal || this.sessionData.satellite_removal,
+          removals: args?.removals || this.sessionData.removals,
           shingleLayers: args?.shingleLayers || this.sessionData.shingleLayers,
           eaveIntake: args?.eaveIntake || this.sessionData.eaveIntake,
           gutterAreas: args?.gutterAreas || this.sessionData.gutterAreas,
           heatTraceAreas: args?.heatTraceAreas || this.sessionData.heatTraceAreas,
-          removals: args?.removals || this.sessionData.removals,
           materialPreference: args?.materialPreference || this.sessionData.materialPreference,
           discProfile: args?.discProfile || this.sessionData.discProfile,
-          customerPriority: args?.customerPriority || this.sessionData.customerPriority
+          customerPriority: args?.customerPriority || this.sessionData.customerPriority,
+          quoteTier: args?.quoteTier || this.sessionData.quoteTier || 'Certified Inspection',
+          emergencyFee: args?.emergencyFee || this.sessionData.emergencyFee,
+          transcriptDriveUrl: this.sessionData.transcriptDriveUrl || this.sessionData.driveDossierUrl || null,
+          callRecordingUrl: this.sessionData.callRecordingUrl || this.recordingUrl || null
         });
 
         this.sessionData.outcome = 'inspection';
@@ -4354,17 +4499,26 @@ class CallSession {
         this.sessionData.leadType = 'certified_quote';
         this.sessionData.outcome = 'quote';
         if (args?.customerEmail) this.sessionData.customerEmail = args.customerEmail;
+        if (args?.propertyType) this.sessionData.propertyType = args.propertyType;
+        if (args?.projectScope) this.sessionData.projectScope = args.projectScope;
         if (args?.solarStatus) this.sessionData.solarStatus = args.solarStatus;
         if (args?.solarDetachParty) this.sessionData.solarDetachParty = args.solarDetachParty;
+        if (args?.skylights_count) this.sessionData.skylights_count = args.skylights_count;
+        if (args?.swamp_cooler_removal) this.sessionData.swamp_cooler_removal = args.swamp_cooler_removal;
+        if (args?.satellite_removal) this.sessionData.satellite_removal = args.satellite_removal;
+        if (args?.removals) this.sessionData.removals = args.removals;
         if (args?.shingleLayers) this.sessionData.shingleLayers = args.shingleLayers;
         if (args?.eaveIntake) this.sessionData.eaveIntake = args.eaveIntake;
         if (args?.gutterAreas) this.sessionData.gutterAreas = args.gutterAreas;
         if (args?.heatTraceAreas) this.sessionData.heatTraceAreas = args.heatTraceAreas;
         if (args?.materialPreference) this.sessionData.materialPreference = args.materialPreference;
-        if (args?.removals) this.sessionData.removals = args.removals;
         if (args?.discProfile) this.sessionData.discProfile = args.discProfile;
         if (args?.customerPriority) this.sessionData.customerPriority = args.customerPriority;
         if (args?.quoteTier) this.sessionData.quoteTier = args.quoteTier;
+        if (args?.emergencyFee) this.sessionData.emergencyFee = args.emergencyFee;
+        if (args?.roofSquares) this.sessionData.roofSquares = args.roofSquares;
+        if (args?.facetCount) this.sessionData.facetCount = args.facetCount;
+        if (args?.pitchMatrix) this.sessionData.pitchMatrix = args.pitchMatrix;
 
         // 1. Dispatch customer SMS establishing direct line with Project Specialist
         if (targetPhone && !targetPhone.startsWith('SIM_')) {
@@ -4383,22 +4537,36 @@ class CallSession {
           customerPhone: targetPhone,
           customerEmail: args?.customerEmail || this.sessionData.customerEmail,
           propertyAddress,
+          propertyName: args?.propertyName || this.sessionData.propertyName || null,
+          addressConfirmed: args?.addressConfirmed !== undefined ? args.addressConfirmed : (this.sessionData.addressConfirmed || true),
           propertyType: args?.propertyType || this.sessionData.propertyType || 'Residential',
+          projectScope: args?.projectScope || this.sessionData.projectScope || 'Certified Roof Replacement Quote',
           parcelId: this.sessionData.parcelId,
           yearBuilt: this.sessionData.yearBuilt,
           decadeBuilt: this.sessionData.decadeBuilt,
           bldgSqft: this.sessionData.bldgSqft,
+          isPre1972: this.sessionData.isPre1972,
+          isPre1990sCode: this.sessionData.isPre1990sCode,
+          roofSquares: args?.roofSquares || this.sessionData.roofSquares,
+          facetCount: args?.facetCount || this.sessionData.facetCount,
+          pitchMatrix: args?.pitchMatrix || this.sessionData.pitchMatrix,
           solarStatus: args?.solarStatus || this.sessionData.solarStatus,
           solarDetachParty: args?.solarDetachParty || this.sessionData.solarDetachParty,
+          skylights_count: args?.skylights_count || this.sessionData.skylights_count,
+          swamp_cooler_removal: args?.swamp_cooler_removal || this.sessionData.swamp_cooler_removal,
+          satellite_removal: args?.satellite_removal || this.sessionData.satellite_removal,
+          removals: args?.removals || this.sessionData.removals,
           shingleLayers: args?.shingleLayers || this.sessionData.shingleLayers,
           eaveIntake: args?.eaveIntake || this.sessionData.eaveIntake,
           gutterAreas: args?.gutterAreas || this.sessionData.gutterAreas,
           heatTraceAreas: args?.heatTraceAreas || this.sessionData.heatTraceAreas,
-          removals: args?.removals || this.sessionData.removals,
           materialPreference: args?.materialPreference || this.sessionData.materialPreference,
           discProfile: args?.discProfile || this.sessionData.discProfile,
           customerPriority: args?.customerPriority || this.sessionData.customerPriority,
           quoteTier: args?.quoteTier || this.sessionData.quoteTier || 'Certified Quote',
+          emergencyFee: args?.emergencyFee || this.sessionData.emergencyFee,
+          transcriptDriveUrl: this.sessionData.transcriptDriveUrl || this.sessionData.driveDossierUrl || null,
+          callRecordingUrl: this.sessionData.callRecordingUrl || this.recordingUrl,
           isInspection: false
         });
 
