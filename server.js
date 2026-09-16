@@ -1117,6 +1117,60 @@ if (fs.existsSync(DRIVE_KEY_FILE)) {
   }
 }
 
+/**
+ * Founder Personal Test Number & Self-Cleaning Test Environment
+ * Number: +18019284434 (Michael Robinson)
+ * Executes standard live flows and triggers, but automatically purges calendar events after 1 hour.
+ */
+const MICHAEL_PERSONAL_PHONE = '+18019284434';
+
+function isMichaelPersonalTest(phone) {
+  if (!phone) return false;
+  const p = String(phone).replace(/[^0-9]/g, '');
+  return p.endsWith('8019284434');
+}
+
+/**
+ * Scheduled Ephemeral Cleanup for Founder Test Events (1-Hour Purge)
+ * Automatically deletes test calendar events created during calls from 8019284434.
+ */
+function scheduleCalendarEventPurge(calendarId, eventId, delayMs = 3600000) {
+  if (!eventId) return;
+  console.log(`[Calendar Auto-Purge Scheduled] Event ${eventId} on ${calendarId} scheduled for auto-deletion in ${delayMs / 60000} minutes.`);
+  setTimeout(async () => {
+    try {
+      if (calendarClient) {
+        await calendarClient.events.delete({
+          calendarId: calendarId || INSPECTION_CALENDAR_ID,
+          eventId: eventId,
+          sendUpdates: 'none'
+        });
+        console.log(`[Calendar Auto-Purge Executed] Successfully purged founder test event: ${eventId}`);
+      }
+    } catch(err) {
+      console.warn(`[Calendar Auto-Purge Note] Could not delete test event ${eventId}:`, err.message);
+    }
+  }, delayMs);
+}
+
+/**
+ * Unified Test / Simulation Detection Guard
+ * Identifies simulated callers (SIM_, TEST_, 555 numbers) to strictly prevent
+ * mutating real Google Calendars, sending real customer SMS, or alerting live office lines.
+ * Note: Calls from Michael (+18019284434) are NOT suppressed; they run live with 1-hr auto-purge.
+ */
+function isSimulationOrTest(phone) {
+  if (!phone) return false;
+  if (isMichaelPersonalTest(phone)) return false;
+  const p = String(phone).trim();
+  return p.startsWith('SIM_') || 
+         p.startsWith('TEST_') || 
+         p.includes('55501') || 
+         p.includes('55598') ||
+         p.startsWith('+1801555') ||
+         p.startsWith('+1800555');
+}
+
 // ============================================================================
 // AMBIENT ACOUSTIC ENGINE (OFFICE & CONSTRUCTION SOUNDSCAPES)
 // ============================================================================
@@ -1346,6 +1400,10 @@ const JUSTCALL_HUNNI_INTAKE = '+13149376637';
  * feed without buzzing Michael and Kara's personal cell phones.
  */
 async function sendExecutiveSummarySms(body) {
+  if (body && (body.includes('SIM_') || body.includes('+1801555') || body.includes('+1800555') || body.includes('SIMULATION') || body.includes('Tom Hunter') || body.includes('Elena Vance') || body.includes('Sarah Miller'))) {
+    console.log('[Simulation Safety Guard] Suppressed Executive Summary SMS for simulated call.');
+    return { status: 'simulated_suppressed' };
+  }
   try {
     const res = await sendJustCallSms({
       fromNumber: JUSTCALL_HUNNI_INTAKE,
@@ -1431,6 +1489,11 @@ async function sendCarrierSms(to, body) {
  * and logs to Firestore sms_logs. Eliminates duplicate Twilio carrier SMS to callers.
  */
 async function sendMultiChannelSms({ to, body, preferredSender = 'kara' }) {
+  if (isSimulationOrTest(to)) {
+    console.log(`[Simulation Safety Guard] Suppressed SMS to simulated number: ${to}`);
+    return { success: true, simulated: true, status: 'simulated_suppressed' };
+  }
+
   let fromNumber = JUSTCALL_MAIN_NUMBER;
   const s = String(preferredSender || '').toLowerCase();
   if (s.includes('kara') || s.includes('accounting') || s.includes('ordering') || s.includes('operations')) {
@@ -1959,9 +2022,12 @@ async function executeCallbackBooking(params) {
   }
 
   const slotSpoken = chosenSlot.spoken;
-  const excitingTitle = isKara
+  let excitingTitle = isKara
     ? `🤝 RHIVE Priority Call | ${callerName}${companyName ? ' (' + companyName + ')' : ''}`
     : generateExcitingEventTitle(reason, callerName, project, targetSpecialist, false);
+  if (isMichaelPersonalTest(customerPhone)) {
+    excitingTitle = '[MICHAEL TEST - 1HR CLEANUP] ' + excitingTitle;
+  }
 
   const attendees = [
     { email: 'kara@rhiveconstruction.com', responseStatus: 'accepted' },
@@ -1995,34 +2061,47 @@ async function executeCallbackBooking(params) {
 
   let booked = false;
   let bookedCalendarId = specialistEmail;
-  const specialistCalClient = getSpecialistCalendarClient(specialistEmail);
+  const isSimulatedCall = isSimulationOrTest(customerPhone);
 
-  if (specialistCalClient) {
-    try {
-      const directRes = await specialistCalClient.events.insert({
-        calendarId: 'primary',
-        requestBody: calEvent,
-        sendUpdates: 'all'
-      });
-      booked = true;
-      console.log(`[Google Calendar DWD] Priority call "${excitingTitle}" booked directly on ${specialistEmail} primary calendar: ${directRes.data.id} (${chosenSlot.spoken})`);
-    } catch(directErr) {
-      console.warn(`[Google Calendar DWD Direct Insert Note] Could not insert to ${specialistEmail} primary:`, directErr.message);
+  if (isSimulatedCall) {
+    console.log(`[Google Calendar DWD Simulation Guard] Priority call "${excitingTitle}" is simulated (${customerPhone}). Bypassing calendar insert.`);
+    booked = true;
+  } else {
+    const specialistCalClient = getSpecialistCalendarClient(specialistEmail);
+
+    if (specialistCalClient) {
+      try {
+        const directRes = await specialistCalClient.events.insert({
+          calendarId: 'primary',
+          requestBody: calEvent,
+          sendUpdates: 'all'
+        });
+        booked = true;
+        console.log(`[Google Calendar DWD] Priority call "${excitingTitle}" booked directly on ${specialistEmail} primary calendar: ${directRes.data.id} (${chosenSlot.spoken})`);
+        if (isMichaelPersonalTest(customerPhone)) {
+          scheduleCalendarEventPurge('primary', directRes.data.id, 3600000);
+        }
+      } catch(directErr) {
+        console.warn(`[Google Calendar DWD Direct Insert Note] Could not insert to ${specialistEmail} primary:`, directErr.message);
+      }
     }
-  }
 
-  if (!booked && calendarClient) {
-    try {
-      const insertRes = await calendarClient.events.insert({
-        calendarId: INSPECTION_CALENDAR_ID,
-        requestBody: calEvent,
-        sendUpdates: 'all'
-      });
-      booked = true;
-      bookedCalendarId = INSPECTION_CALENDAR_ID;
-      console.log(`[Google Calendar DWD] Priority call "${excitingTitle}" booked on INSPECTION_CALENDAR_ID: ${insertRes.data.id}`);
-    } catch(insErr) {
-      console.error('[Google Calendar Insert Error]', insErr.message);
+    if (!booked && calendarClient) {
+      try {
+        const insertRes = await calendarClient.events.insert({
+          calendarId: INSPECTION_CALENDAR_ID,
+          requestBody: calEvent,
+          sendUpdates: 'all'
+        });
+        booked = true;
+        bookedCalendarId = INSPECTION_CALENDAR_ID;
+        console.log(`[Google Calendar DWD] Priority call "${excitingTitle}" booked on INSPECTION_CALENDAR_ID: ${insertRes.data.id}`);
+        if (isMichaelPersonalTest(customerPhone)) {
+          scheduleCalendarEventPurge(INSPECTION_CALENDAR_ID, insertRes.data.id, 3600000);
+        }
+      } catch(insErr) {
+        console.error('[Google Calendar Insert Error]', insErr.message);
+      }
     }
   }
 
@@ -2050,6 +2129,10 @@ async function executeCallbackBooking(params) {
 }
 
 async function postGoogleChat(text, title = '📞 RHIVE Live Voice Call', buttonUrl = null) {
+  if (text && (text.includes('SIM_') || text.includes('+1801555') || text.includes('+1800555') || text.includes('SIMULATION') || text.includes('Tom Hunter') || text.includes('Elena Vance') || text.includes('Sarah Miller'))) {
+    console.log('[Simulation Safety Guard] Suppressed live Google Chat webhook dispatch for simulated call.');
+    return { success: true, simulated: true };
+  }
   // 1. Option B: Incoming Webhook (if configured)
   if (GOOGLE_CHAT_WEBHOOK) {
     try {
@@ -2463,7 +2546,7 @@ async function archiveCallToPhoneFolder({ callSid, callerPhone, conversationTurn
 
       sendExecutiveSummarySms(callDisconnectSummary).catch(e => console.warn('[Disconnect SMS Note]', e.message));
 
-      if (calendarClient) {
+      if (calendarClient && !isSimulationOrTest(callerPhone)) {
         try {
           const todayDate = new Date().toISOString().split('T')[0];
           const calEvent = {
@@ -3264,7 +3347,10 @@ async function executeInspectionBooking(params) {
 
     // 1. Insert Event into 'RHIVE Project Inspections' Google Calendar
     const validCustomerEmail = cleanAndNormalizeEmail(params.customerEmail);
-    const excitingInspectionTitle = generateExcitingEventTitle(projectScope, callerName, propertyAddress, 'Michael Robinson', true);
+    let excitingInspectionTitle = generateExcitingEventTitle(projectScope, callerName, propertyAddress, 'Michael Robinson', true);
+    if (isMichaelPersonalTest(targetPhone)) {
+      excitingInspectionTitle = '[MICHAEL TEST - 1HR CLEANUP] ' + excitingInspectionTitle;
+    }
     const parcelId = params.parcelId || null;
     const yearBuilt = params.yearBuilt || null;
     const decadeBuilt = params.decadeBuilt || null;
@@ -3274,7 +3360,11 @@ async function executeInspectionBooking(params) {
       ? '⚠️ PRE-1972 SLAT BOARD DECKING RISK: Home built in ' + yearBuilt + '. Spaced 1x6/1x8 slat boards likely under shake/shingles. Violates modern IRC R905 nailing code on tear-off ($78.13/sheet re-decking budget recommended).'
       : 'Standard continuous solid sheathing (OSB/Plywood) expected.';
 
-    if (calendarClient) {
+    const isSimulatedCall = isSimulationOrTest(targetPhone);
+
+    if (isSimulatedCall) {
+      console.log(`[Google Calendar DWD Simulation Guard] Simulated call detected (${targetPhone}). Bypassing Google Calendar insert & email dispatches.`);
+    } else if (calendarClient) {
       try {
         const calEvent = {
           summary: excitingInspectionTitle,
@@ -3322,6 +3412,11 @@ async function executeInspectionBooking(params) {
           sendUpdates: 'all'
         });
         console.log('[Google Calendar DWD] Inserted 2-hr inspection event into RHIVE Project Inspections:', insertRes.data.id);
+
+        if (isMichaelPersonalTest(targetPhone)) {
+          console.log(`[Founder Ephemeral Test Mode] Scheduling auto-purge for inspection event ${insertRes.data.id} in 60 minutes.`);
+          scheduleCalendarEventPurge(INSPECTION_CALENDAR_ID, insertRes.data.id, 3600000);
+        }
       } catch(insErr) {
         console.warn('[Google Calendar Insert Error]', insErr.message);
       }
@@ -3343,9 +3438,13 @@ async function executeInspectionBooking(params) {
     });
 
     // Dispatch Lead Summary to Main Office JustCall Line (+14354176637) from Hunni Intake
-    sendExecutiveSummarySms(consolidatedMichael).catch(e => console.warn('[Inspection Executive SMS Error]', e.message));
+    if (!isSimulatedCall) {
+      sendExecutiveSummarySms(consolidatedMichael).catch(e => console.warn('[Inspection Executive SMS Error]', e.message));
+    } else {
+      console.log('[Simulation Safety Guard] Suppressed Executive Summary SMS to Main Office Line.');
+    }
 
-    if (targetPhone && !targetPhone.startsWith('SIM_')) {
+    if (targetPhone && !isSimulatedCall) {
       const emailNotice = validCustomerEmail ? ' A calendar invite has been sent to your email.' : '';
       const cleanCustomerName = (callerName && callerName !== 'Homeowner' && callerName !== 'there' && callerName !== 'Unknown Caller') ? ' ' + callerName : '';
       const smsCustomer = 'RHIVE Free Inspection Confirmed: Hi' + cleanCustomerName + ', your certified roof inspection is locked in for ' + inspectionSlot + ' at ' + propertyAddress + '.' + emailNotice + ' Michael or our project specialist will text your cell 15 minutes before arrival tomorrow. Questions? Call or text 801-449-1451.';
@@ -3357,10 +3456,14 @@ async function executeInspectionBooking(params) {
     }
 
     // 3. Post Single Consolidated Summary to Google Chat webhook & Leads Space
-    postGoogleChat(
-      consolidatedMichael,
-      '📅 RHIVE Inspection Scheduled'
-    );
+    if (!isSimulatedCall) {
+      postGoogleChat(
+        consolidatedMichael,
+        '📅 RHIVE Inspection Scheduled'
+      );
+    } else {
+      console.log('[Simulation Safety Guard] Suppressed Google Chat dispatch for simulation.');
+    }
 
     return {
       success: true,
@@ -4134,6 +4237,29 @@ class CallSession {
       console.warn(`[CallSession ${callSid}] Dynamic rules load note:`, ruleErr.message);
     }
 
+    // Founder & System Architect Direct Recognition (+18019284434)
+    if (isMichaelPersonalTest(callerPhone)) {
+      dynamicInstruction += `\n\n` +
+        `==============================================================================\n` +
+        `FOUNDER / ARCHITECT ADMIN OVERRIDE & LIVE SCENARIO PROTOCOL (+18019284434):\n` +
+        `==============================================================================\n` +
+        `The caller is Michael Robinson (Owner & System Architect of RHIVE Construction calling from personal cell 801-928-4434).\n` +
+        `1. DEFAULT LIVE ROLEPLAY:\n` +
+        `   - By default, treat Michael as a normal caller/homeowner roleplaying the live scenario.\n` +
+        `   - Run the exact canonical questions, verify addresses, and execute booking/quote tools normally.\n` +
+        `   - All test calendar events created will automatically self-clean after 1 hour.\n` +
+        `2. PRIVATE ADMIN OVERRIDE DETECTION:\n` +
+        `   - If Michael says "admin override", "pause roleplay", "hold on Honey", or asks meta/architectural questions (e.g. "what flow are we on?", "why did you ask that?", "what prompt rules are active?", "audit status"):\n` +
+        `   - INSTANTLY step out of character into Executive System Architect Mode.\n` +
+        `   - Acknowledge him: "Hey Michael! Pausing live roleplay. We are currently in [Active Flow Name] at [Current Step]. Captured variables: [brief summary]. What would you like to inspect or adjust?"\n` +
+        `   - Freely discuss system rules, prompt structure, or flow state in clear, professional detail.\n` +
+        `3. POPPING RIGHT BACK INTO LIVE SCENARIO ROLEPLAY:\n` +
+        `   - As soon as Michael says "resume", "back to roleplay", "continue", or resumes speaking in character as the homeowner/caller:\n` +
+        `   - Instantly pop right back into the live scenario roleplay at the exact conversational turn.\n` +
+        `   - Say: "Resuming live scenario! [Pick right back up with the scenario question]."\n` +
+        `==============================================================================\n`;
+    }
+
     try {
       // Connect to Google Gemini 3.1 Flash Live Multimodal API
       const session = await ai.live.connect({
@@ -4574,7 +4700,7 @@ class CallSession {
         sendExecutiveSummarySms(consolidatedQuote);
 
         // 3. Dispatch Email notification to Michael, Kara & Office via Google Calendar DWD
-        if (calendarClient) {
+        if (calendarClient && !isSimulationOrTest(targetPhone)) {
           try {
             const todayDate = new Date().toISOString().split('T')[0];
             const quoteCalEvent = {
