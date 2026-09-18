@@ -3,7 +3,7 @@
 **Swarm Revision:** Revision 60 Production Release  
 **Target Environment:** Google Cloud Run (`rhive-voice-live-bridge`)  
 **Live Telephony Endpoint:** `+1 (839) 867-6637` (+1 839-86-ROOFS)  
-**Assigned Swarm Role:** Honey (AI Executive Concierge) & Emergency Dispatch / Insurance Restoration Swarm  
+**Assigned Swarm Role:** Honey (AI Roofing Specialist) & Emergency Dispatch / Insurance Restoration Swarm  
 
 ---
 
