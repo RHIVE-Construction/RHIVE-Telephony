@@ -47,6 +47,16 @@ async function runTests() {
   assert(settingsHtml.includes('Gemini 3.1 Flash Live'), 'UI features Gemini 3.1 Flash Live for full-duplex speech-to-speech voice');
   assert(settingsHtml.includes('Gemini 3.5 Transcribe Live'), 'UI features Gemini 3.5 Transcribe Live for bidirectional STT streaming');
 
+  // Static Test 1B: Rev 66 Executive Dashboard (Pure White Background + Zero Checkboxes)
+  const dashboardPath = path.join(__dirname, '..', 'public', 'dashboard.html');
+  assert(fs.existsSync(dashboardPath), 'Rev 66 Executive Dashboard HTML exists in public/dashboard.html');
+  const dashboardHtml = fs.readFileSync(dashboardPath, 'utf8');
+  const dashCheckbox = /<input[^>]*type=["']checkbox["']/i.test(dashboardHtml);
+  assert(!dashCheckbox, 'Executive Dashboard strictly adheres to NO CHECKBOX rule (Pure Quantum Switches)');
+  assert(dashboardHtml.includes('--bg-main: #FFFFFF;'), 'Executive Dashboard features pure white background (#FFFFFF)');
+  assert(dashboardHtml.includes('--rhive-pink: #ec028b;'), 'Executive Dashboard includes RHIVE Pink brand color (#ec028b)');
+  assert(dashboardHtml.includes('--rhive-blue: #08137C;'), 'Executive Dashboard includes RHIVE Blue brand color (#08137C)');
+
   console.log(`\nSpawning local server on port ${TEST_PORT}...`);
   const serverPath = path.join(__dirname, '..', 'server.js');
   serverProc = spawn('node', [serverPath], {
@@ -88,10 +98,16 @@ async function runTests() {
   try {
     const res = await axios.get(`http://localhost:${TEST_PORT}/health`);
     assert(res.status === 200 && res.data.status === 'ok', 'GET /health returns 200 OK');
+    assert(res.data.revision === 'Rev 66', 'Health reports revision: Rev 66');
+    assert(res.data.dashboardAvailable === true, 'Health reports Executive Dashboard is available');
     assert(res.data.models && res.data.models.voiceEngine === 'gemini-3.1-flash-live-preview', 'Health reports Voice Engine: gemini-3.1-flash-live-preview');
     assert(res.data.models && res.data.models.agenticWriting === 'gemini-3.8-flash', 'Health reports Agentic Writing & DISC: gemini-3.8-flash');
     assert(res.data.models && res.data.models.reasoningInspector === 'gemini-3.5-flash-lite', 'Health reports Sub-300ms Reasoning Inspector: gemini-3.5-flash-lite');
     assert(res.data.models && res.data.models.liveTranscription === 'gemini-3.5-transcribe-live', 'Health reports Bidirectional Streaming STT: gemini-3.5-transcribe-live');
+
+    // Verify GET / serves the all-white dashboard
+    const dashRes = await axios.get(`http://localhost:${TEST_PORT}/`);
+    assert(dashRes.status === 200 && dashRes.data.includes('Executive Telephony Dashboard'), 'GET / serves Rev 66 All-White Executive Dashboard');
   } catch(e) {
     assert(false, 'GET /health error: ' + e.message);
   }
