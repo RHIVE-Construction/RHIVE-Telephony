@@ -3820,8 +3820,8 @@ CASE 5: WARM SCREENED TRANSFER & DYNAMIC INTENT CAPTURE:
 - SOLICITOR & COLD VENDOR QUARANTINE GATE (ZERO TOLERANCE):
   * If the caller is an unsolicited vendor, salesperson, SEO consultant, software rep, staffing recruiter, lead seller, materials supplier pitching products, or marketing agency:
   * NEVER TRANSFER THEM!
-  * Politely enforce company policy: "At R-hive Construction, all vendor solicitations and partner proposals must be submitted in writing to our administrative team at info@rhiveconstruction.com for executive review. Thank you, have a great day!"
-  * Immediately call the "hangup_call" tool.
+  * Politely enforce company policy: "Please submit all vendor solicitations in writing to info@rhiveconstruction.com for executive review. Thank you, have a great day, goodbye!"
+  * Call the "hangup_call" tool with reason: "solicitor_quarantine" and goodbyePhrase: "Please submit all vendor solicitations in writing to info@rhiveconstruction.com for executive review. Thank you, have a great day, goodbye!"
 
 - VERIFIED TRADE PARTNER / BILLING / SUBCONTRACTOR INTAKE:
   * Target = 'kara' (Accounts Receivable, Billing & Operations).
@@ -4324,23 +4324,53 @@ class CallSession {
   }
 
   /**
-   * Schedules a clean disconnect of the Twilio WebSocket and terminates the call on the carrier PSTN leg.
-   * Guarantees audio playback completes before dropping the connection.
+   * Arms a graceful hangup.
+   * Does NOT prematurely disconnect while Gemini is generating or speaking audio.
+   * Disconnect countdown is triggered by onTurnCompleteForHangup() once speech finishes.
    */
-  scheduleCarrierDisconnect(delayMs = 2500) {
-    if (this.disconnectTimer) return;
-    console.log(`[CallSession ${this.callSid}] ⏱️ Scheduling carrier disconnect in ${delayMs}ms...`);
-    this.disconnectTimer = setTimeout(async () => {
-      try {
-        if (this.twilioWs && this.twilioWs.readyState === WebSocket.OPEN) {
-          console.log(`[CallSession ${this.callSid}] 🔌 Closing Twilio WebSocket (Audio playback completed).`);
-          this.twilioWs.close(1000, 'Call completed gracefully');
-        }
-        await terminateTwilioCall(this.callSid);
-      } catch(err) {
-        console.warn(`[CallSession ${this.callSid} Disconnect Warning]`, err.message);
+  armGracefulHangup(reason = 'customer_goodbye', maxSafetyTimeoutMs = 20000) {
+    if (this.pendingHangup) return;
+    this.pendingHangup = true;
+    this.hangupReason = reason;
+    console.log(`[CallSession ${this.callSid}] 🛡️ Graceful hangup armed (Reason: ${reason}). Waiting for speech synthesis to complete...`);
+
+    // Safety ceiling: If turnComplete never fires within 20s, force disconnect
+    if (!this.safetyHangupTimer) {
+      this.safetyHangupTimer = setTimeout(() => {
+        console.log(`[CallSession ${this.callSid}] ⏱️ Safety hangup ceiling reached (${maxSafetyTimeoutMs}ms). Disconnecting carrier...`);
+        this.executeCarrierDisconnect();
+      }, maxSafetyTimeoutMs);
+    }
+  }
+
+  /**
+   * Triggered when Gemini emits turnComplete: true on a pending hangup.
+   * Waits drainMs (e.g. 1500ms) for remaining audio frames in Twilio's buffer to play out to caller's ear.
+   */
+  onTurnCompleteForHangup(drainMs = 1500) {
+    if (!this.pendingHangup || this.disconnectTimer) return;
+    console.log(`[CallSession ${this.callSid}] 🏁 turnComplete received on pending hangup. Draining audio buffer for ${drainMs}ms before carrier disconnect...`);
+    if (this.safetyHangupTimer) {
+      clearTimeout(this.safetyHangupTimer);
+      this.safetyHangupTimer = null;
+    }
+    this.disconnectTimer = setTimeout(() => {
+      this.executeCarrierDisconnect();
+    }, drainMs);
+  }
+
+  async executeCarrierDisconnect() {
+    if (this.isCarrierDisconnected) return;
+    this.isCarrierDisconnected = true;
+    try {
+      if (this.twilioWs && this.twilioWs.readyState === WebSocket.OPEN) {
+        console.log(`[CallSession ${this.callSid}] 🔌 Closing Twilio WebSocket (Full speech playback completed).`);
+        this.twilioWs.close(1000, 'Call completed gracefully');
       }
-    }, delayMs);
+      await terminateTwilioCall(this.callSid);
+    } catch(err) {
+      console.warn(`[CallSession ${this.callSid} Carrier Disconnect Note]`, err.message);
+    }
   }
 
   async initialize(streamSid, callSid, callerPhone) {
@@ -4637,12 +4667,11 @@ class CallSession {
           this.conversationTurns.push({ role: 'assistant', text });
         }
 
-        // Automatic Model Goodbye Detection: If Honey delivers farewell/goodbye speech, ensure call terminates cleanly
+        // Automatic Model Goodbye Detection: If Honey delivers farewell/goodbye speech, arm graceful hangup
         if (/(?:goodbye|have a (?:great|wonderful|good) day|have a good one|buh[- ]bye|take care)\b/i.test(text)) {
           if (!this.pendingHangup) {
-            console.log(`[CallSession ${this.callSid}] 🎯 Audible goodbye detected in Honey speech: "${text.trim()}". Triggering automatic graceful disconnect.`);
-            this.pendingHangup = true;
-            this.scheduleCarrierDisconnect(3000);
+            console.log(`[CallSession ${this.callSid}] 🎯 Audible goodbye detected in Honey speech: "${text.trim()}". Arming graceful hangup.`);
+            this.armGracefulHangup('spoken_goodbye_detected');
           }
         }
       }
@@ -4672,10 +4701,7 @@ class CallSession {
 
       // 5. Turn Complete Disconnect Coordination
       if (msg.serverContent?.turnComplete && this.pendingHangup) {
-        console.log(`[CallSession ${this.callSid}] 🏁 Turn complete on pending hangup. Audio generation finished.`);
-        if (!this.disconnectTimer) {
-          this.scheduleCarrierDisconnect(1800);
-        }
+        this.onTurnCompleteForHangup(1500);
       }
     } catch(msgErr) {
       console.error('[CallSession ' + this.callSid + '] Error handling Gemini message:', msgErr.message);
@@ -5591,12 +5617,12 @@ class CallSession {
           }).catch(e => console.warn('[Auto-dispatch Quote Error in hangup_call]', e.message));
         }
 
-        // Schedule carrier disconnect allowing audio stream frames in Twilio buffer to reach caller ear
-        this.scheduleCarrierDisconnect(3500);
+        // Arm graceful hangup without cutting off speech: waits for turnComplete + 1500ms audio buffer drain
+        this.armGracefulHangup(reason);
 
         return {
           callTerminated: true,
-          status: 'Call ended gracefully.',
+          status: 'Call ending gracefully. Complete any final spoken farewell now.',
           farewell: goodbyePhrase
         };
       }
@@ -6312,8 +6338,20 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Vapi-Style Telephony Swarm Control Panel Webpage (Elon Musk FAANG-Tier Engineering)
-app.get(['/', '/settings', '/dashboard'], (req, res) => {
+// RHIVE Telephony Swarm: All-White Executive Dashboard + Settings Cockpit
+app.get(['/', '/dashboard'], (req, res) => {
+  const dashboardFile = path.join(__dirname, 'public', 'dashboard.html');
+  if (fs.existsSync(dashboardFile)) {
+    return res.sendFile(dashboardFile);
+  }
+  const settingsFile = path.join(__dirname, 'public', 'settings.html');
+  if (fs.existsSync(settingsFile)) {
+    return res.sendFile(settingsFile);
+  }
+  res.redirect('/health');
+});
+
+app.get(['/settings', '/cockpit'], (req, res) => {
   const settingsFile = path.join(__dirname, 'public', 'settings.html');
   if (fs.existsSync(settingsFile)) {
     return res.sendFile(settingsFile);
@@ -6335,8 +6373,8 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'RHIVE Multi-Model Telephony Swarm & Speech-to-Speech Bridge',
-    version: '1.5.0',
-    revision: 'Rev 60',
+    version: '1.6.0',
+    revision: 'Rev 66',
     model: 'gemini-3.1-flash-live-preview',
     models: {
       voiceEngine: 'gemini-3.1-flash-live-preview',
@@ -6353,6 +6391,7 @@ app.get('/health', (req, res) => {
     ambientConstructionLoaded: !!constructionAmbientBuffer,
     transferRingExists: fs.existsSync(path.join(__dirname, 'audio', 'transfer_ring.wav')),
     controlPanelAvailable: fs.existsSync(path.join(__dirname, 'public', 'settings.html')),
+    dashboardAvailable: fs.existsSync(path.join(__dirname, 'public', 'dashboard.html')),
     timestamp: new Date().toISOString()
   });
 });
