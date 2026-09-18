@@ -3,7 +3,7 @@
 **Swarm Revision:** Revision 60 Production Release  
 **Target Environment:** Google Cloud Run (`rhive-voice-live-bridge`)  
 **Live Telephony Endpoint:** `+1 (839) 867-6637` (+1 839-86-ROOFS)  
-**Assigned Swarm Roles:** Honey (AI Executive Concierge), Kara Robinson (VP Operations), Michael Robinson (General Contractor)  
+**Assigned Swarm Roles:** Honey (AI Roofing Specialist), Kara Robinson (VP Operations), Michael Robinson (General Contractor)  
 
 ---
 

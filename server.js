@@ -377,7 +377,7 @@ async function createTuningProposal({ turnTranscript, humanFeedback, userEmail =
 
   try {
     const prompt = `You are the Master Prompt Engineer and Telephony Swarm Architect for RHIVE Construction roofing specialists along the Wasatch Front in Utah.
-A human operator (Michael or Kara Robinson) reviewed a live conversation turn by Honey (AI Executive Concierge) and provided feedback on how Honey should improve.
+A human operator (Michael or Kara Robinson) reviewed a live conversation turn by Honey (AI Roofing Specialist) and provided feedback on how Honey should improve.
 
 CONVERSATION TURN / CONTEXT:
 "${turnTranscript || 'N/A'}"
@@ -814,7 +814,7 @@ ACTIVE PRODUCTION RULES:
 ${rulesSummary || 'Standard RHIVE guidelines: Owens Corning Duration, $150 emergency fee per tarp location credited, Wasatch Front polygon, 1-question per turn, warm vocal smile.'}
 
 SIMULATION TASK:
-1. Generate a realistic 2-to-3 turn ping-pong dialogue between Honey (AI Concierge) and Caller.
+1. Generate a realistic 2-to-3 turn ping-pong dialogue between Honey (AI Roofing Specialist) and Caller.
 2. Ensure every single turn by Honey is strictly under 20 words.
 3. Evaluate Honey's compliance with RHIVE business rules and target outcome.
 4. Calculate complianceScore (0-100%) and turnEconomyScore (100% if all turns <20 words).
@@ -904,7 +904,7 @@ async function explainConversationTurn({ turnText, conversationHistory = [], cal
   const rulesSummary = activeRules.map(r => '[' + r.category + '] ' + r.instruction).join('\n');
 
   const prompt = `You are the Lead Telephony Auditor for RHIVE Construction roofing specialists along the Wasatch Front in Utah.
-Analyze this response spoken by Honey (AI Executive Voice Concierge) to a caller:
+Analyze this response spoken by Honey (AI Roofing Specialist) to a caller:
 
 HONEY'S SPOKEN RESPONSE:
 "${turnText || 'N/A'}"
@@ -959,7 +959,7 @@ async function replayConversationTurn({ turnIndex, conversationHistory = [], mod
   const activeRules = await getActiveTelephonyRules();
   const rulesSummary = activeRules.map(r => '• ' + r.instruction).join('\n');
 
-  const prompt = `You are Honey, the Elite AI Executive Concierge for RHIVE Construction roofing specialists in Salt Lake City and the Wasatch Front.
+  const prompt = `You are Honey, the Elite AI Roofing Specialist for RHIVE Construction roofing specialists in Salt Lake City and the Wasatch Front.
 A human operator (Michael or Kara Robinson) has adjusted a prompt directive for this specific turn of the conversation.
 
 ACTIVE SYSTEM DIRECTIVES:
@@ -3484,24 +3484,24 @@ async function executeInspectionBooking(params) {
 // ============================================================================
 const DYNAMIC_GREETINGS = {
   direct_switchboard: [
-    "Thanks for calling R-hive Construction roofing specialists! I'm Honey, our AI project concierge, how may I assist your call?",
-    "Thanks for calling R-hive Construction roofing specialists! I'm Honey with R-hive Construction, how may I assist your call?"
+    "Hello, this is Honey! R-hive Construction's AI Roofing Specialist, how may I assist your call today!?",
+    "Hello, this is Honey! R-hive Construction's AI Roofing Specialist, how may I assist your call today!?"
   ],
   '1': [
-    "Thanks for calling R-hive Construction roofing specialists! I'm Honey, our AI project concierge, how may I assist your call?"
+    "Hello, this is Honey! R-hive Construction's AI Roofing Specialist, how may I assist your call today!?"
   ],
   '2': [
-    "R-HIVE Construction roofing specialists! This is Honey on rapid emergency dispatch! Where is your active leak located so we can get tarping scheduled right away?",
-    "R-HIVE Construction roofing specialists rapid dispatch, this is Honey! Where is the active leak located so we can get a crew scheduled immediately?"
+    "R-hive Construction Roofing Specialists! This is Honey on rapid emergency dispatch! Where is your active leak located so we can get tarping scheduled right away?",
+    "R-hive Construction Roofing Specialists rapid dispatch, this is Honey! Where is the active leak located so we can get a crew scheduled immediately?"
   ],
   '3': [
-    "R-HIVE Construction roofing specialists Commercial Division! This is Honey. How can I assist with your commercial property today?"
+    "R-hive Construction Roofing Specialists Commercial Division! This is Honey. How can I assist with your commercial property today?"
   ],
   '4': [
-    "R-HIVE Construction roofing specialists Insurance and Storm Restoration! This is Honey. How can I assist with your insurance claim today?"
+    "R-hive Construction Roofing Specialists Insurance and Storm Restoration! This is Honey. How can I assist with your insurance claim today?"
   ],
   '5': [
-    "R-HIVE Construction Operations and Billing! This is Honey. How can I assist with your invoice or direct your call today?"
+    "R-hive Construction Operations and Billing! This is Honey. How can I assist with your invoice or direct your call today?"
   ],
   transfer_fallback_kara: [
     "Thanks for holding! It looks like Kara is currently tied up. Would you like me to schedule a 15-minute call? Leave me a message I can send to Kara? Or would you like me to have Kara message you now through text and get back to you as soon as possible?"
@@ -3519,19 +3519,21 @@ const DYNAMIC_GREETINGS = {
 // ============================================================================
 const AGENT_PROFILES = {
   intake: {
-    name: 'Honey Intake Concierge',
-    version: '1.1.2',
+    name: 'Honey Intake Specialist',
+    version: '1.1.3',
     voice: 'Leda',
-    systemInstruction: `You are Honey, the Unified Executive Secretary & Project Concierge at RHIVE Construction roofing specialists along the Wasatch Front in Utah.
+    systemInstruction: `You are Honey, the AI Roofing Specialist and Executive Project Specialist at RHIVE Construction along the Wasatch Front in Utah.
 You answer all inbound calls directly from the very first ring. There is NO automated robot menu or IVR before you. You speak with natural, polished, high-warmth executive presence—warm, confident, empathetic, smiling through the phone.
 
 CRITICAL TONE & BRANDING RULES:
 1. BRAND IDENTITY & PHONETICS:
-   - SINGULAR BRAND IDENTITY:
-     * Always use "R-hive" (singular) when referring to the company (e.g. "Thanks for calling R-hive Construction roofing specialists!"). Pronounce strictly as "Are-hive".
-     * Always maintain singular brand identity. Never pluralize the company name.
-     * Standard greeting: "Thanks for calling R-hive Construction roofing specialists! I'm Honey, our AI project concierge, how may I assist your call?"
-   - WRITTEN BRANDING: In all written text, messages, cards, and customer views, the company name is strictly all-caps "RHIVE" or "R-HIVE Construction".
+   - SPOKEN BRAND IDENTITY (VOICE AGENTS):
+     * When speaking our company name over the phone for proper TTS phonetics, it is strictly "R-hive Construction Roofing Specialists" (pronounced "R-hive", using strictly the letter "R", never "Are").
+     * Always maintain singular brand identity ("R-hive Construction"). Never pluralize the company name.
+     * Standard opening greeting: "Hello, this is Honey! R-hive Construction's AI Roofing Specialist, how may I assist your call today!?"
+     * Never use "concierge". Your official title is "AI Roofing Specialist" or "Executive Project Specialist".
+   - WRITTEN BRANDING (CUSTOMER & MARKETING COPY):
+     * When transcription is not involved and it is writing that is read by the customer (e.g. text messages, confirmation cards, proposals, marketing copy), the company name is strictly the official "RHIVE Construction Roofing Specialists" (or "RHIVE Construction").
 2. CARRIER AUDIO SETTLE TIMING & DELAY ARCHITECTURE:
    - CARRIER CONNECTION SETTLE: Inbound telephony carrier audio requires an exact 150ms settle buffer (<break time="150ms"/>) before speech synthesis starts to eliminate audio clipping on mobile networks.
    - PACKET FRAMING: Outbound audio is framed strictly into 20ms RTP chunks (160 bytes @ 8kHz mu-law) to ensure zero jitter buffer distortion.
@@ -3830,9 +3832,9 @@ STEP 2: EXPLAIN WHAT TO EXPECT NEXT:
 - "Your project specialist will text your cell about 15 minutes before arrival that day with their exact ETA."
 STEP 3: CHECK FOR ADDITIONAL QUESTIONS:
 - "Do you have any other questions I can assist with today?"
-STEP 4: WARM GOODBYE & CALL TERMINATION:
-- When caller says "no", "nope", "that's all", "I'm good", "bye", "goodbye", or "buh-bye":
-  Say: "Feel free to message your project design specialist or give me a call back and I'm happy to assist anytime! Have a wonderful day!"
+STEP 4: WARM NATURAL SPEECH TERMINATION & HANGUP:
+- When caller says "no", "nope", "that's all", "I'm good", "bye", "goodbye", "buh-bye", "thanks", "thank you":
+  Say: "Have a great day! Goodbye!"
   IMMEDIATELY call the "hangup_call" tool!
 
 CRITICAL ARCHITECTURE:
@@ -6329,7 +6331,7 @@ app.get(['/audio/rhive_hold_groove.mp3', '/audio/rhive_hold_groove.wav'], (req, 
   res.status(404).send('Hold music not found');
 });
 
-// Inbound Gateway: Direct Single-Agent Executive Concierge (Honey - Leda Voice)
+// Inbound Gateway: Direct Single-Agent AI Roofing Specialist (Honey - Leda Voice)
 app.all(['/twiml', '/voice', '/ivr'], (req, res) => {
   const host = req.headers['x-forwarded-host'] || req.headers.host;
   const wsProtocol = req.headers['x-forwarded-proto'] === 'https' ? 'wss' : 'ws';
@@ -6342,7 +6344,7 @@ app.all(['/twiml', '/voice', '/ivr'], (req, res) => {
   // Alternate ambient background noise on each call, or accept query param
   const ambientMode = req.query.ambient || (globalCallCounter++ % 2 === 0 ? 'office' : 'construction');
 
-  console.log('[Inbound Call] Call ' + callSid + ' from ' + caller + '. Connecting directly to Honey Executive Concierge (Ambient Mode: ' + ambientMode + ').');
+  console.log('[Inbound Call] Call ' + callSid + ' from ' + caller + '. Connecting directly to Honey AI Roofing Specialist (Ambient Mode: ' + ambientMode + ').');
 
   const wsUrl = wsProtocol + '://' + host + '/media-stream';
 

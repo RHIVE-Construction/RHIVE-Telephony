@@ -1,6 +1,6 @@
-# R-HIVE Construction Roofing Specialists: Master Customer Telephony Flowchart & Script Matrix (Revision 60)
+# R-HIVE Construction Roofing Specialists: Master Customer Telephony Flowchart & Script Matrix (Revision 63)
 **System Target Line:** +1 (839) 867-6637 (`839-86-ROOFS`) | **Engine:** Google Gemini 3.1 Flash Live Multimodal Speech-to-Speech  
-**Acoustic Profile:** Leda (Honey Executive Concierge) | **Acoustic Ambience:** Pure Studio Close-Mic (-16.5 dBFS RMS)  
+**Acoustic Profile:** Leda (Honey AI Roofing Specialist) | **Acoustic Ambience:** Pure Studio Close-Mic (-16.5 dBFS RMS)  
 **Architecture:** Zero-IVR Ring 1 Direct Answer (No DTMF / Robotic Menus)  
 
 ---
@@ -9,7 +9,7 @@
 
 ```mermaid
 flowchart TD
-    Dial["Caller Dials +1 (839) 867-6637"] --> Ring1["Honey Ring-1 Direct Answer (Zero IVR Menus / Pure Voice)<br/>150ms Carrier Settle + Warm Vocal Smile<br/>'Thanks for calling R-hive Construction roofing specialists! I'm Honey...'"]
+    Dial["Caller Dials +1 (839) 867-6637"] --> Ring1["Honey Ring-1 Direct Answer (Zero IVR Menus / Pure Voice)<br/>150ms Carrier Settle + Warm Vocal Smile<br/>'Hello, this is Honey! R-hive Construction's AI Roofing Specialist...'"]
 
     %% Direct Address & Intent Flow
     Ring1 --> AddrCapture1["Customer States Reason & Property Address"]
@@ -94,7 +94,7 @@ flowchart TD
 ### Turn 1: Honey's Canonical Opening Greeting (Ring 1 Direct Answer)
 * **Trigger:** Customer dials `+1 (839) 867-6637`. Zero robotic menus, zero DTMF options.
 * **Honey Speech (<20 Words):**
-  > *"Thanks for calling R-hive Construction roofing specialists! I'm Honey, our AI project concierge, how may I assist your call?"*
+  > *"Hello, this is Honey! R-hive Construction's AI Roofing Specialist, how may I assist your call today!?"*
 
 ---
 
@@ -124,11 +124,41 @@ flowchart TD
 
 ---
 
-### Turn 8: 4-Step Closing Protocol & Clean Hangup
-1. **Express Gratitude:** *"Thank you so much for calling R-hive Construction roofing specialists!"*
-2. **Channel Verification:** *"I have your project details confirmed. Your project design specialist will have your Certified quote ready within 24-48 business hours."*
-3. **Secondary Assistance:** *"Is there anything else I can check on your roof today?"*
-4. **Clean Disconnect:** Caller: *"Nope, that's all!"* $\rightarrow$ Honey: *"You're so welcome! Have a wonderful day!"* $\rightarrow$ Honey invokes `hangup_call`.
+### Turn 8: 4-Step Closing Protocol, Natural Speech Sign-Off & Audio Buffer Flush
+1. **Recap Accomplishment:** *"To recap, we have your certified roof quote locked in for the 9917 South property."*
+2. **Explain Next Steps:** *"Your project specialist will review the satellite measurements and text your cell within 24 business hours."*
+3. **Check Additional Assistance:** *"Do you have any other questions I can assist with today?"*
+4. **Caller Clearance:** Caller: *"Nope, that's all! Thank you!"*
+5. **Natural Voice Termination Doublet:**
+   Honey:
+   > *"Have a great day! Goodbye!"*
+   *(or: "Thank you for calling R-hive Construction Roofing Specialists! Have a great day! Goodbye!")*
+6. **Execution & Audio Buffer Flush:**
+   - Honey invokes `hangup_call`.
+   - **Carrier Buffer Cushion:** A strict 1200ms audio buffer flush cushion runs before `ws.close(1000)` executes, guaranteeing that the carrier RTP buffer drains completely through the caller's mobile handset with zero syllable clipping on "-bye!".
+
+---
+
+### 🔬 Natural AI Voice Call Termination Research (Conversational Analysis & FAANG Voice Standards)
+
+Industry empirical research (Schegloff & Sacks telephone conversational analysis, OpenAI Realtime, Retell, and Google DeepMind speech synthesis standards) outlines why voice agents frequently fail at natural call termination and how Honey solves it:
+
+1. **The Pre-Closing Doublet Requirement:**
+   - In human conversation analysis, telephone calls cannot be abruptly severed upon task completion without generating cognitive dissonance.
+   - Humans require a **pre-closing exchange** (Step 3: checking for unaddressed topics) followed by a **terminal exchange** (Step 5: mutual farewell).
+   - If an AI merely says *"Have a great day!"* without an explicit terminal sign-off token (*"Goodbye!"*), human callers pause in confusion, expecting another turn or asking *"Are you still there?"*. 
+   - Conversely, saying only *"Goodbye"* without a well-wish sounds cold, dismissive, or robotic.
+   - **Solution:** Honey uses the compound terminal sequence: **Warm Wish + Terminal Closure Marker** (*"Have a great day! Goodbye!"*), which conclusively signals to human acoustic psychology that the conversation is complete.
+
+2. **Terminal Falling Pitch Contour (Prosodic Completion):**
+   - Natural speech models must terminate with a pronounced falling fundamental frequency ($F_0$) contour on the final syllable of *"Goodbye!"*. 
+   - A rising pitch ($F_0 \uparrow$) signals an open question or continuation, causing callers to stay on the line. 
+   - Honey's punctuation engineering (`!`) prompts Gemini Live's acoustic decoder to synthesize a clean, falling, conclusive cadence.
+
+3. **Carrier Transit Latency & RTP Jitter Buffer Drain:**
+   - Telephony calls run over RTP UDP streams transiting carrier SBCs (Session Border Controllers), cellular base stations, and handset jitter buffers (accumulating 200ms–500ms of transit latency).
+   - If a backend server issues a Twilio `<Hangup/>` or tears down the WebSocket immediately after the last audio frame is generated, the network socket closes while the final syllables are still in transit, chopping off the trailing audio (`"Goodb—[click]"`).
+   - **Solution:** Honey enforces a mandatory **1200ms carrier audio flush timer** (`setTimeout(..., 1200)`) in `hangup_call`. The audio stream plays through to silence before the carrier connection terminates gracefully.
 
 ---
 
