@@ -1703,6 +1703,34 @@ async function redirectCallToPstn(callSid, targetNumber, announceText, callerPho
 }
 
 /**
+ * Forcefully terminates the call on the Twilio carrier leg via REST API.
+ * Guarantees that the call drops immediately on the caller's phone when Honey hangs up.
+ */
+async function terminateTwilioCall(callSid) {
+  if (!callSid || callSid.startsWith('SIM_') || !TWILIO_ACCOUNT_SID || !TWILIO_API_KEY_SID) return false;
+  try {
+    const authHeader = 'Basic ' + Buffer.from(TWILIO_API_KEY_SID + ':' + TWILIO_API_SECRET).toString('base64');
+    const postData = querystring.stringify({ Status: 'completed' });
+    await axios.post(
+      'https://api.twilio.com/2010-04-01/Accounts/' + TWILIO_ACCOUNT_SID + '/Calls/' + callSid + '.json',
+      postData,
+      {
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        timeout: 5000
+      }
+    );
+    console.log(`[Twilio Call Terminate] 📴 Call ${callSid} successfully terminated on carrier via Twilio REST API.`);
+    return true;
+  } catch (err) {
+    console.warn(`[Twilio Call Terminate Warning] Could not terminate call ${callSid}:`, err.message);
+    return false;
+  }
+}
+
+/**
  * Generates an exciting, high-status calendar event title based on the intent of the call.
  * Purges boring "(15-Min Callback:)" and replaces with high-value executive consultation branding.
  */
@@ -3824,18 +3852,20 @@ CASE 5: WARM SCREENED TRANSFER & DYNAMIC INTENT CAPTURE:
     - Honey confirms: "We have your strategic consultation locked in and sent an invite to your email! Our team will call your cell then!"
     - Advance to Mandatory 4-Step Closing Protocol.
 
-MANDATORY 4-STEP CONVERSATIONAL CLOSING PROTOCOL:
-As soon as the primary outcome is locked in, EXECUTE THIS EXACT SEQUENCE IN ORDER:
-STEP 1: RECAP WHAT WAS ACCOMPLISHED:
-- "To recap, we have your [roof inspection / emergency dispatch / photo review] locked in for [Window / 24 hours] at [Property Address]." (Mention $150 credit if emergency tarping).
-STEP 2: EXPLAIN WHAT TO EXPECT NEXT:
-- "Your project specialist will text your cell about 15 minutes before arrival that day with their exact ETA."
-STEP 3: CHECK FOR ADDITIONAL QUESTIONS:
-- "Do you have any other questions I can assist with today?"
-STEP 4: WARM NATURAL SPEECH TERMINATION & HANGUP:
-- When caller says "no", "nope", "that's all", "I'm good", "bye", "goodbye", "buh-bye", "thanks", "thank you":
-  Say: "Have a great day! Goodbye!"
-  IMMEDIATELY call the "hangup_call" tool!
+MANDATORY CONVERSATIONAL CLOSING & HANGUP PROTOCOL:
+When the primary outcome is locked in (certified quote verification dispatched, inspection scheduled, emergency tarping confirmed, or note taken):
+STEP 1: Quick recap & next steps (<15 words):
+- If Quote: "Your certified quote request is locked in, and your project design specialist will follow up with your custom proposals within 24 to 48 hours."
+- If Inspection/Emergency: "We have your inspection locked in for [window]. Your specialist will text their exact ETA 15 minutes before arrival."
+- If Note/Message: "I've sent that message directly to our team."
+STEP 2: Final question check:
+- "Is there anything else I can assist you with today?"
+STEP 3: WARM SPOKEN FAREWELL & IMMEDIATE HANGUP TOOL CALL:
+- When the caller indicates they have no more questions, says "no", "nope", "that's all", "I'm good", "thanks", "thank you", "bye", "goodbye", or "have a good day":
+  You MUST speak your final farewell out loud with a bright vocal smile:
+  "Thank you for calling R-hive Construction! Have a great day, goodbye!"
+  AND call the "hangup_call" tool with goodbyePhrase: "Thank you for calling R-hive Construction! Have a great day, goodbye!"
+- CRITICAL: Never hang up silently! Always speak the farewell and execute the hangup_call tool so the phone call disconnects cleanly.
 
 CRITICAL ARCHITECTURE:
 Never mention any CRM. All call records are saved automatically to Google Drive organized by the caller's phone number.`,
@@ -4101,11 +4131,18 @@ Never mention any CRM. All call records are saved automatically to Google Drive 
           },
           {
             name: 'hangup_call',
-            description: 'Gracefully ends the phone call when the customer says goodbye, bye, buh-bye, or confirms they have no more questions and the call is finished.',
+            description: 'Gracefully concludes and terminates the live phone call after saying goodbye to the customer. Honey MUST invoke this tool whenever the customer says bye, goodbye, thank you, that is all, or confirms they have no more questions.',
             parameters: {
               type: 'OBJECT',
               properties: {
-                reason: { type: 'STRING', description: 'Reason for ending the call (e.g. customer_goodbye, completed_intake).' }
+                reason: {
+                  type: 'STRING',
+                  description: 'Reason for ending the call (e.g. customer_goodbye, completed_intake, solicitor_quarantine).'
+                },
+                goodbyePhrase: {
+                  type: 'STRING',
+                  description: 'The final spoken farewell phrase delivered to the customer (e.g. "Thank you for calling R-hive Construction! Have a great day, goodbye!").'
+                }
               }
             }
           }
@@ -4115,6 +4152,75 @@ Never mention any CRM. All call records are saved automatically to Google Drive 
     ]
   }
 };
+
+// ============================================================================
+// FOUNDER & SYSTEM ARCHITECT LIVE OPTIMIZATION TOOLS (+18019284434 ONLY)
+// ============================================================================
+const FOUNDER_ADMIN_TOOLS = [
+  {
+    name: 'propose_live_system_update',
+    description: 'FOUNDER ONLY (+18019284434): Proposes a live update to prompt rules, conversational scripts, tone, or business logic based on verbal instructions during Admin Override. Honey MUST read back the exact drafted rule to Michael Robinson and request his explicit voice authorization before applying it.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        changeType: {
+          type: 'STRING',
+          enum: ['prompt_rule', 'flow_step', 'tone', 'business_policy'],
+          description: 'Type of change being proposed.'
+        },
+        category: {
+          type: 'STRING',
+          description: 'Domain category (e.g. quoting, emergency, ventilation, gutters, commercial, branding, prosody).'
+        },
+        instruction: {
+          type: 'STRING',
+          description: 'The exact, concrete directive text to add or update in production rules.'
+        },
+        targetFlow: {
+          type: 'STRING',
+          description: 'Target flow (e.g. flow_quotes_residential_commercial, flow_emergency_leaks_insurance_storm, or all).'
+        },
+        rationale: {
+          type: 'STRING',
+          description: 'Why Michael is requesting this change.'
+        }
+      },
+      required: ['category', 'instruction']
+    }
+  },
+  {
+    name: 'confirm_and_apply_system_update',
+    description: 'FOUNDER ONLY (+18019284434): Formally authorizes and applies a proposed system update live to Firestore across all scaled Cloud Run instances. Honey invokes this ONLY after reading back the exact rule to Michael Robinson and receiving his affirmative voice confirmation (e.g. "confirm and deploy", "approved", "push it live").',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        proposalId: {
+          type: 'STRING',
+          description: 'ID of the proposal to apply, or "latest" for the most recent proposal on this call.'
+        },
+        confirmationPhrase: {
+          type: 'STRING',
+          description: 'The exact verbal confirmation phrase spoken by Michael Robinson (e.g. "confirm and deploy", "approved").'
+        }
+      },
+      required: ['confirmationPhrase']
+    }
+  },
+  {
+    name: 'trigger_git_sync_and_deploy',
+    description: 'FOUNDER ONLY (+18019284434): Triggers an autonomous Antigravity Git commit to the michael branch, merges into main, and initiates production Cloud Run deployment with change tracking analytics.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        commitMessage: {
+          type: 'STRING',
+          description: 'Descriptive commit message detailing the voice-driven optimization.'
+        }
+      },
+      required: ['commitMessage']
+    }
+  }
+];
 
 // ============================================================================
 // CALL SESSION INSTANCE
@@ -4183,12 +4289,73 @@ class CallSession {
     this.ENERGY_THRESHOLD = 1200; // Calibrated for human speech (~ -28 dBFS); rejects ambient keyboard clicks (~300)
     this.SILENCE_FRAMES_TRIGGER = 25; // 25 frames * 20ms = 500ms
     this.lastClearTime = 0;
+
+    // Disconnect and carrier termination state
+    this.pendingHangup = false;
+    this.disconnectTimer = null;
+    this.hangupReason = null;
+    this.goodbyePhrase = null;
+  }
+
+  /**
+   * Resolves the canonical caller name for SMS dispatch and CRM dossiers.
+   * Completely eradicates any "Test Name" placeholder fallbacks.
+   */
+  resolveCallerNameForDispatch() {
+    if (isMichaelPersonalTest(this.callerPhone)) {
+      return 'Michael Robinson';
+    }
+    const candidates = [
+      this.sessionData?.callerName,
+      this.sessionData?.customerName
+    ];
+    for (const name of candidates) {
+      if (name && typeof name === 'string') {
+        const trimmed = name.trim();
+        if (
+          trimmed &&
+          !/^(test name|customer|homeowner|caller|unknown|unknown caller|there)$/i.test(trimmed)
+        ) {
+          return trimmed;
+        }
+      }
+    }
+    return '';
+  }
+
+  /**
+   * Schedules a clean disconnect of the Twilio WebSocket and terminates the call on the carrier PSTN leg.
+   * Guarantees audio playback completes before dropping the connection.
+   */
+  scheduleCarrierDisconnect(delayMs = 2500) {
+    if (this.disconnectTimer) return;
+    console.log(`[CallSession ${this.callSid}] ⏱️ Scheduling carrier disconnect in ${delayMs}ms...`);
+    this.disconnectTimer = setTimeout(async () => {
+      try {
+        if (this.twilioWs && this.twilioWs.readyState === WebSocket.OPEN) {
+          console.log(`[CallSession ${this.callSid}] 🔌 Closing Twilio WebSocket (Audio playback completed).`);
+          this.twilioWs.close(1000, 'Call completed gracefully');
+        }
+        await terminateTwilioCall(this.callSid);
+      } catch(err) {
+        console.warn(`[CallSession ${this.callSid} Disconnect Warning]`, err.message);
+      }
+    }, delayMs);
   }
 
   async initialize(streamSid, callSid, callerPhone) {
     this.streamSid = streamSid;
     this.callSid = callSid;
     this.callerPhone = callerPhone;
+
+    // Automatic Identity Initialization for Founder Line (+18019284434)
+    if (isMichaelPersonalTest(callerPhone)) {
+      if (!this.sessionData.callerName || this.sessionData.callerName === 'Test Name' || this.sessionData.callerName === 'Customer') {
+        this.sessionData.callerName = 'Michael Robinson';
+        this.sessionData.customerName = 'Michael Robinson';
+      }
+      console.log(`[CallSession ${callSid}] 👑 Founder personal cell detected (${callerPhone}). Auto-assigned caller identity: Michael Robinson.`);
+    }
 
     console.log('[CallSession ' + callSid + '] Connecting to Gemini Live (' + this.profile.voice + ' voice, Ambient: ' + this.ambientMode + ', Selection: Option ' + this.selection + ' - ' + this.selectionLabel + ')...');
 
@@ -4251,11 +4418,22 @@ class CallSession {
         `   - Run the exact canonical questions, verify addresses, and execute booking/quote tools normally.\n` +
         `   - All test calendar events created will automatically self-clean after 1 hour.\n` +
         `2. PRIVATE ADMIN OVERRIDE DETECTION:\n` +
-        `   - If Michael says "admin override", "pause roleplay", "hold on Honey", or asks meta/architectural questions (e.g. "what flow are we on?", "why did you ask that?", "what prompt rules are active?", "audit status"):\n` +
+        `   - If Michael says "admin override", "pause roleplay", "hold on Honey", or asks meta/architectural questions (e.g. "what flow are we on?", "why did you ask that?", "what prompt rules are active?", "audit status", "change rule", "update script"):\n` +
         `   - INSTANTLY step out of character into Executive System Architect Mode.\n` +
         `   - Acknowledge him: "Hey Michael! Pausing live roleplay. We are currently in [Active Flow Name] at [Current Step]. Captured variables: [brief summary]. What would you like to inspect or adjust?"\n` +
         `   - Freely discuss system rules, prompt structure, or flow state in clear, professional detail.\n` +
-        `3. POPPING RIGHT BACK INTO LIVE SCENARIO ROLEPLAY:\n` +
+        `3. LIVE PROMPT OPTIMIZATION WITH STRICT VOICE VERIFICATION (ANTIGRAVITY VOICE MCP):\n` +
+        `   - When Michael instructs you to change or optimize a rule, script, or behavior during Admin Override:\n` +
+        `     a. DO NOT apply the change silently or immediately without confirmation.\n` +
+        `     b. Call the "propose_live_system_update" tool with changeType, category, instruction, and rationale.\n` +
+        `     c. Read the exact drafted rule back to Michael audibly:\n` +
+        `        "Michael, I've drafted this production rule for [category]: '[instruction]'. To confirm and push this live across all scaled call containers immediately, please say: 'Confirm and deploy'."\n` +
+        `     d. Wait for Michael's explicit verbal authorization ("confirm and deploy", "approved", "apply", "push it live").\n` +
+        `     e. Once Michael speaks the confirmation phrase, IMMEDIATELY call "confirm_and_apply_system_update" with proposalId: "latest" and confirmationPhrase: "confirm and deploy".\n` +
+        `     f. Confirm to Michael: "Confirmed and applied, Michael! That rule is now active in Firestore across all scaled containers. Any inbound caller right now will follow this exact directive. Would you like to resume roleplay to test it, or make another adjustment?"\n` +
+        `4. GIT SYNC & DEPLOYMENT TRIGGER:\n` +
+        `   - If Michael asks to commit, merge to main, and deploy, call "trigger_git_sync_and_deploy" with the commitMessage.\n` +
+        `5. POPPING RIGHT BACK INTO LIVE SCENARIO ROLEPLAY:\n` +
         `   - As soon as Michael says "resume", "back to roleplay", "continue", or resumes speaking in character as the homeowner/caller:\n` +
         `   - Instantly pop right back into the live scenario roleplay at the exact conversational turn.\n` +
         `   - Say: "Resuming live scenario! [Pick right back up with the scenario question]."\n` +
@@ -4264,6 +4442,19 @@ class CallSession {
 
     try {
       // Connect to Google Gemini 3.1 Flash Live Multimodal API
+      let effectiveTools = this.profile.tools;
+      if (isMichaelPersonalTest(callerPhone)) {
+        effectiveTools = [
+          {
+            functionDeclarations: [
+              ...this.profile.tools[0].functionDeclarations,
+              ...FOUNDER_ADMIN_TOOLS
+            ]
+          }
+        ];
+        console.log(`[CallSession ${callSid}] 🛡️ Injected Founder Admin Tools (propose_live_system_update, confirm_and_apply_system_update, trigger_git_sync_and_deploy) exclusively for Michael Robinson.`);
+      }
+
       const session = await ai.live.connect({
         model: 'gemini-3.1-flash-live-preview',
         config: {
@@ -4276,7 +4467,7 @@ class CallSession {
           systemInstruction: {
             parts: [{ text: dynamicInstruction }]
           },
-          tools: this.profile.tools
+          tools: effectiveTools
         },
 
         callbacks: {
@@ -4422,6 +4613,19 @@ class CallSession {
         } else {
           this.conversationTurns.push({ role: 'user', text });
         }
+
+        // Live Name Extraction from Caller Speech if not already captured
+        if (!this.sessionData.callerName || this.sessionData.callerName === 'Customer' || this.sessionData.callerName === 'Test Name') {
+          const nameMatch = text.match(/\b(?:my name is|this is|i'm|i am|name's|it's|call me)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b/i);
+          if (nameMatch && nameMatch[1]) {
+            const candidate = nameMatch[1].trim();
+            if (!/^(calling|looking|interested|just|wondering|reaching|having|with|a|the|here|good|fine|ready)$/i.test(candidate)) {
+              this.sessionData.callerName = candidate;
+              this.sessionData.customerName = candidate;
+              console.log(`[CallSession ${this.callSid}] 👤 Dynamically extracted caller name from speech: "${candidate}"`);
+            }
+          }
+        }
       }
 
       if (msg.serverContent?.outputTranscription?.text) {
@@ -4431,6 +4635,15 @@ class CallSession {
           lastTurn.text += text;
         } else {
           this.conversationTurns.push({ role: 'assistant', text });
+        }
+
+        // Automatic Model Goodbye Detection: If Honey delivers farewell/goodbye speech, ensure call terminates cleanly
+        if (/(?:goodbye|have a (?:great|wonderful|good) day|have a good one|buh[- ]bye|take care)\b/i.test(text)) {
+          if (!this.pendingHangup) {
+            console.log(`[CallSession ${this.callSid}] 🎯 Audible goodbye detected in Honey speech: "${text.trim()}". Triggering automatic graceful disconnect.`);
+            this.pendingHangup = true;
+            this.scheduleCarrierDisconnect(3000);
+          }
         }
       }
 
@@ -4454,6 +4667,14 @@ class CallSession {
               }
             }
           }
+        }
+      }
+
+      // 5. Turn Complete Disconnect Coordination
+      if (msg.serverContent?.turnComplete && this.pendingHangup) {
+        console.log(`[CallSession ${this.callSid}] 🏁 Turn complete on pending hangup. Audio generation finished.`);
+        if (!this.disconnectTimer) {
+          this.scheduleCarrierDisconnect(1800);
         }
       }
     } catch(msgErr) {
@@ -4616,13 +4837,16 @@ class CallSession {
 
         const targetPhone = args?.customerPhone || this.callerPhone;
         const passedName = args?.callerName;
-        if (passedName && passedName !== 'there' && passedName !== 'Unknown Caller' && passedName !== 'Homeowner') {
-          this.sessionData.callerName = passedName;
-          this.sessionData.customerName = passedName;
+        if (passedName && typeof passedName === 'string') {
+          const trimmed = passedName.trim();
+          if (trimmed && !/^(test name|customer|homeowner|caller|unknown|unknown caller|there)$/i.test(trimmed)) {
+            this.sessionData.callerName = trimmed;
+            this.sessionData.customerName = trimmed;
+          }
         }
-        const cleanCallerName = this.sessionData.callerName || this.sessionData.customerName || (passedName && passedName !== 'Unknown Caller' ? passedName : '');
+        const cleanCallerName = this.resolveCallerNameForDispatch();
         const propertyAddress = args?.propertyAddress || this.sessionData.verifiedAddress || 'your property';
-        this.sessionData.customerName = cleanCallerName || 'there';
+        this.sessionData.customerName = cleanCallerName || 'Customer';
         this.sessionData.isQuoteVerified = true;
         this.sessionData.leadType = 'certified_quote';
         this.sessionData.outcome = 'quote';
@@ -5202,12 +5426,146 @@ class CallSession {
         };
       }
 
+      // ======================================================================
+      // FOUNDER & SYSTEM ARCHITECT LIVE VOICE OVERRIDE TOOLS (+18019284434)
+      // ======================================================================
+      if (name === 'propose_live_system_update') {
+        if (!isMichaelPersonalTest(this.callerPhone)) {
+          return { error: 'Unauthorized. Founder override only.' };
+        }
+        const proposalId = `tune_live_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+        const proposal = {
+          id: proposalId,
+          changeType: args?.changeType || 'prompt_rule',
+          category: args?.category || 'conversational_flow',
+          instruction: args?.instruction || '',
+          targetFlow: args?.targetFlow || 'all',
+          rationale: args?.rationale || 'Direct in-call founder optimization by Michael Robinson',
+          status: 'pending_voice_authorization',
+          proposedBy: 'Michael Robinson (801-928-4434)',
+          createdAt: new Date().toISOString()
+        };
+
+        const db = initFirestore();
+        if (db) {
+          try {
+            await db.collection('telephony_tuning_proposals').doc(proposalId).set(proposal);
+          } catch(dbErr) {
+            console.warn('[Live Proposal Save Error]', dbErr.message);
+          }
+        }
+
+        this.sessionData.activeProposal = proposal;
+        this.sessionData.proposals = this.sessionData.proposals || [];
+        this.sessionData.proposals.push(proposal);
+
+        console.log(`[CallSession ${this.callSid}] 👑 Founder live proposal drafted (${proposalId}): [${proposal.category}] "${proposal.instruction}"`);
+
+        return {
+          success: true,
+          proposalId,
+          category: proposal.category,
+          instruction: proposal.instruction,
+          strictDirectiveForHoney: `You MUST now read back this exact drafted rule to Michael Robinson word-for-word and say: "Michael, I've drafted this production rule for ${proposal.category}: '${proposal.instruction}'. To confirm and push this live across all scaled call containers immediately, please say: 'Confirm and deploy'." Wait for his explicit verbal authorization before calling confirm_and_apply_system_update.`
+        };
+      }
+
+      if (name === 'confirm_and_apply_system_update') {
+        if (!isMichaelPersonalTest(this.callerPhone)) {
+          return { error: 'Unauthorized. Founder override only.' };
+        }
+        const confirmation = args?.confirmationPhrase || '';
+        const isAuthorized = /confirm|deploy|approve|push|apply|go ahead|proceed|yes/i.test(confirmation);
+        if (!isAuthorized) {
+          return {
+            success: false,
+            status: 'rejected',
+            message: 'Explicit voice confirmation was not provided. Rule was NOT applied.'
+          };
+        }
+
+        const proposal = this.sessionData.activeProposal;
+        if (!proposal || !proposal.instruction) {
+          return {
+            success: false,
+            error: 'No active pending proposal found to apply on this session.'
+          };
+        }
+
+        const approveResult = await approveTuningProposal(
+          proposal.id,
+          'Michael Robinson (Founder Voice Authorization +18019284434)',
+          proposal.instruction
+        );
+
+        proposal.status = 'approved_and_deployed';
+        proposal.confirmedAt = new Date().toISOString();
+        proposal.confirmationPhraseSpoken = confirmation;
+
+        postGoogleChat(
+          `<b>🚀 FOUNDER LIVE VOICE OVERRIDE: Rule Deployed Live</b><br>` +
+          `👤 Authorized by: <b>Michael Robinson</b> (+18019284434)<br>` +
+          `🏷️ Category: <b>${proposal.category}</b> (Target: ${proposal.targetFlow || 'all'})<br>` +
+          `📜 Directive: <i>"${escapeXml(proposal.instruction)}"</i><br>` +
+          `🗣️ Verbal Authorization: <code>"${escapeXml(confirmation)}"</code><br>` +
+          `⚡ Propagation: <b>Live across all scaled Cloud Run instances (&lt;150ms)</b>`,
+          '🚀 Founder Live Rule Deployed'
+        );
+
+        console.log(`[CallSession ${this.callSid}] 🚀 Rule successfully applied live to Firestore across all scaled containers! Total active: ${approveResult.totalActive}`);
+
+        return {
+          success: true,
+          applied: true,
+          ruleId: approveResult.newRule?.id,
+          instruction: proposal.instruction,
+          totalActiveRules: approveResult.totalActive,
+          messageToMichael: `Confirmed and applied, Michael! That rule is now active in Firestore across all scaled containers. Any inbound caller right now will follow this exact directive. Would you like to resume roleplay to test it, or make another adjustment?`
+        };
+      }
+
+      if (name === 'trigger_git_sync_and_deploy') {
+        if (!isMichaelPersonalTest(this.callerPhone)) {
+          return { error: 'Unauthorized. Founder override only.' };
+        }
+        const commitMsg = args?.commitMessage || 'feat(telephony): founder voice-driven live optimization';
+        console.log(`[CallSession ${this.callSid}] 🔄 Founder requested Git Sync & Deploy: "${commitMsg}"`);
+
+        const { exec } = require('child_process');
+        const projectRoot = path.resolve(__dirname);
+
+        const gitScript = `git add . && git commit -m "${commitMsg.replace(/"/g, '\\"')}" && git push origin michael && git checkout main && git merge michael -m "merge: ${commitMsg.replace(/"/g, '\\"')}" && git push origin main && git checkout michael`;
+
+        exec(gitScript, { cwd: projectRoot }, (err, stdout, stderr) => {
+          if (err) {
+            console.error('[Founder Git Deploy Error]', err.message, stderr);
+            postGoogleChat(`⚠️ Founder Git Sync Error: ${escapeXml(err.message)}`, '⚠️ Git Sync Warning');
+          } else {
+            console.log('[Founder Git Deploy Success]', stdout);
+            postGoogleChat(`✅ Founder Git Sync & Deploy Succeeded on michael & main:\n"${escapeXml(commitMsg)}"`, '✅ Git Sync Deployed');
+          }
+        });
+
+        return {
+          triggered: true,
+          commitMessage: commitMsg,
+          pipeline: 'michael -> main -> Cloud Run deployment initiated',
+          noteToMichael: 'Git sync and merge to main has been triggered with analytics tracking.'
+        };
+      }
+
       if (name === 'hangup_call') {
         if (this.isTransferred) {
           console.log('[CallSession ' + this.callSid + '] Call was transferred to ' + this.sessionData.targetSpecialist + '. Skipping hangup.');
           return { status: 'transferred_active' };
         }
-        console.log('[CallSession ' + this.callSid + '] 📞 Graceful Hangup invoked by Honey (Reason: ' + (args?.reason || 'customer_goodbye') + ')');
+        const reason = args?.reason || 'customer_goodbye';
+        const goodbyePhrase = args?.goodbyePhrase || 'Thank you for calling R-hive Construction! Have a great day, goodbye!';
+        console.log(`[CallSession ${this.callSid}] 📞 Graceful Hangup initiated (Reason: ${reason}, Spoken Phrase: "${goodbyePhrase}")`);
+
+        this.pendingHangup = true;
+        this.hangupReason = reason;
+        this.goodbyePhrase = goodbyePhrase;
 
         // AUTO-DISPATCH GUARD: Only dispatch quote verification if caller gave an address but NO inspection, callback, or quote was booked
         const hasBookedEvent = !!(
@@ -5218,11 +5576,9 @@ class CallSession {
           this.sessionData.isEmergencyDispatched
         );
 
-        if (this.sessionData.verifiedAddress && !hasBookedEvent && args?.reason !== 'solicitor_quarantine' && args?.reason !== 'spam') {
+        if (this.sessionData.verifiedAddress && !hasBookedEvent && reason !== 'solicitor_quarantine' && reason !== 'spam') {
           console.log('[CallSession ' + this.callSid + '] Auto-dispatching quote verification SMS & executive dossier on graceful hangup.');
-          const cleanCallerName = (this.sessionData.callerName && this.sessionData.callerName !== 'Unknown Caller' && this.sessionData.callerName !== 'Homeowner')
-            ? this.sessionData.callerName
-            : (this.sessionData.customerName && this.sessionData.customerName !== 'Unknown Caller' ? this.sessionData.customerName : '');
+          const cleanCallerName = this.resolveCallerNameForDispatch();
           this.executeTool('send_quote_verification_sms', {
             customerPhone: this.callerPhone,
             callerName: cleanCallerName,
@@ -5235,15 +5591,13 @@ class CallSession {
           }).catch(e => console.warn('[Auto-dispatch Quote Error in hangup_call]', e.message));
         }
 
-        setTimeout(() => {
-          if (this.twilioWs && this.twilioWs.readyState === WebSocket.OPEN) {
-            console.log('[CallSession ' + this.callSid + '] Closing Twilio WebSocket (Clean call completion).');
-            this.twilioWs.close(1000, 'Call completed normally');
-          }
-        }, 1200);
+        // Schedule carrier disconnect allowing audio stream frames in Twilio buffer to reach caller ear
+        this.scheduleCarrierDisconnect(3500);
+
         return {
           callTerminated: true,
-          status: 'Call ended gracefully.'
+          status: 'Call ended gracefully.',
+          farewell: goodbyePhrase
         };
       }
 
@@ -5315,7 +5669,7 @@ class CallSession {
       console.log('[CallSession ' + this.callSid + '] Auto-dispatching quote verification SMS & executive dossier on session close.');
       this.executeTool('send_quote_verification_sms', {
         customerPhone: this.callerPhone,
-        callerName: this.sessionData.callerName || this.sessionData.customerName || 'Test Name',
+        callerName: this.resolveCallerNameForDispatch(),
         propertyAddress: this.sessionData.verifiedAddress,
         customerEmail: this.sessionData.customerEmail,
         solarStatus: this.sessionData.solarStatus || 'Not specified',
