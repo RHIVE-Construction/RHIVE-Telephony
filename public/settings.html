@@ -982,49 +982,38 @@
 <body>
 
   <!-- EXECUTIVE GOOGLE AUTH GATE -->
-  <div id="auth-gate" style="position: fixed; inset: 0; background: rgba(4, 6, 12, 0.96); backdrop-filter: blur(24px); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px;">
-    <div style="background: #0d111a; border: 1px solid rgba(236, 2, 139, 0.4); box-shadow: 0 0 40px rgba(236, 2, 139, 0.3); max-width: 520px; width: 100%; padding: 36px; clip-path: polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px); text-align: center;">
-      <div style="font-size: 2.4rem; margin-bottom: 8px;">⚡</div>
-      <h2 style="font-size: 1.5rem; font-weight: 800; color: #fff; margin-bottom: 6px; letter-spacing: -0.5px;">R-HIVE <span style="color: #ec028b;">OS</span></h2>
-      <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #e2ab49; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px;">Executive Telephony Swarm Control</div>
-      <p style="font-size: 0.85rem; color: #94a3b8; line-height: 1.5; margin-bottom: 24px;">
-        Restricted access. Sign in with your authorized Google Account to control Honey, test web voice streams, and manage prompt tuning rules.
+  <div id="auth-gate" style="position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(20px); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(8, 19, 124, 0.25); max-width: 500px; width: 100%; padding: 36px; text-align: center;">
+      <div style="width: 48px; height: 48px; margin: 0 auto 12px; background: rgba(8, 19, 124, 0.08); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #08137C;">⚡</div>
+      <h2 style="font-size: 1.6rem; font-weight: 800; color: #08137C; margin-bottom: 4px; letter-spacing: -0.5px;">R-HIVE <span style="color: #ec028b;">OS</span></h2>
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 700; color: #e2ab49; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 1px;">Executive Telephony Swarm Control</div>
+      <p style="font-size: 0.88rem; color: #475569; line-height: 1.5; margin-bottom: 24px;">
+        Restricted executive access. Authenticate with your authorized Google Account to control Honey, test real-time voice streams, and manage swarm behavior rules.
       </p>
 
       <!-- Auth Error Notification -->
-      <div id="auth-error-box" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; padding: 12px; margin-bottom: 20px; font-size: 0.8rem; color: #fca5a5; text-align: left; border-radius: 4px;">
+      <div id="auth-error-box" style="display: none; background: rgba(239, 68, 68, 0.08); border: 1px solid #ef4444; padding: 12px; margin-bottom: 20px; font-size: 0.8rem; color: #b91c1c; text-align: left; border-radius: 8px;">
         <span style="font-weight: 700;">⛔ Access Denied:</span> <span id="auth-error-msg">Account not whitelisted.</span>
       </div>
 
-      <!-- Google GIS Button Render Target -->
-      <div id="g_id_onload"
-           data-client_id="910835773728-dummy.apps.googleusercontent.com"
-           data-callback="handleGoogleCredentialResponse"
-           data-auto_prompt="false">
-      </div>
-      <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="filled_black" data-text="signin_with" data-size="large" style="display: flex; justify-content: center; margin-bottom: 20px;"></div>
-
-      <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); padding: 14px; margin-bottom: 24px; text-align: left; border-radius: 4px;">
-        <div style="font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; color: #94a3b8; text-transform: uppercase; margin-bottom: 6px;">Whitelisted Executive Accounts:</div>
-        <div style="font-size: 0.8rem; color: #fff; display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-          <span style="color: #ec028b;">●</span> Michael Robinson (<span style="color: #e2ab49;">CEO</span>) - michael@rhiveconstruction.com / mjrob14@gmail.com
+      <!-- Real Google GIS Sign-In Render Target -->
+      <div style="display: flex; justify-content: center; margin-bottom: 24px;">
+        <div id="g_id_onload"
+             data-client_id="910835773728-dummy.apps.googleusercontent.com"
+             data-callback="handleGoogleCredentialResponse"
+             data-auto_prompt="false">
         </div>
-        <div style="font-size: 0.8rem; color: #fff; display: flex; align-items: center; gap: 8px;">
-          <span style="color: #ec028b;">●</span> Kara Robinson (<span style="color: #e2ab49;">President</span>) - kara@rhiveconstruction.com
-        </div>
+        <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="outline" data-text="signin_with" data-size="large"></div>
       </div>
 
-      <!-- Quick 1-Click Executive Authentication Shortcuts -->
-      <div style="display: flex; flex-direction: column; gap: 10px;">
-        <button onclick="authenticateAs('michael@rhiveconstruction.com', 'Michael Robinson', 'Owner & CEO (5%)')" style="padding: 12px 18px; background: #ec028b; color: #fff; border: none; font-weight: 700; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 0 15px rgba(236, 2, 139, 0.4);">
-          <span>🔐</span> Sign in as Michael Robinson (Work)
-        </button>
-        <button onclick="authenticateAs('mjrob14@gmail.com', 'Michael Robinson', 'Owner & CEO (Personal Google)')" style="padding: 10px 18px; background: transparent; color: #fff; border: 1px solid rgba(236, 2, 139, 0.5); font-weight: 600; font-size: 0.8rem; cursor: pointer;">
-          Sign in with Personal Google (mjrob14@gmail.com)
-        </button>
-        <button onclick="authenticateAs('kara@rhiveconstruction.com', 'Kara Robinson', 'President & Owner (95%)')" style="padding: 10px 18px; background: transparent; color: #fff; border: 1px solid rgba(226, 171, 73, 0.5); font-weight: 600; font-size: 0.8rem; cursor: pointer;">
-          Sign in as Kara Robinson (kara@rhiveconstruction.com)
-        </button>
+      <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 16px; text-align: left;">
+        <div style="font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: #08137C; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">Whitelisted Executive Accounts:</div>
+        <div style="font-size: 0.82rem; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+          <span style="color: #ec028b; font-weight: 900;">●</span> Michael Robinson (<span style="color: #08137C; font-weight: 600;">CEO</span>) &mdash; <span style="font-size: 0.78rem; color: #64748B;">michael@rhiveconstruction.com / mjrob14@gmail.com</span>
+        </div>
+        <div style="font-size: 0.82rem; color: #0F172A; display: flex; align-items: center; gap: 8px;">
+          <span style="color: #ec028b; font-weight: 900;">●</span> Kara Robinson (<span style="color: #08137C; font-weight: 600;">President</span>) &mdash; <span style="font-size: 0.78rem; color: #64748B;">kara@rhiveconstruction.com</span>
+        </div>
       </div>
     </div>
   </div>
@@ -2049,20 +2038,30 @@
       return JSON.parse(jsonPayload);
     }
 
-    function handleGoogleCredentialResponse(response) {
+    async function handleGoogleCredentialResponse(response) {
       try {
-        const payload = parseJwt(response.credential);
-        const email = (payload.email || '').toLowerCase();
-        const name = payload.name || payload.given_name || 'Google User';
-
-        if (isWhitelisted(email)) {
-          const role = email.includes('kara') ? 'President & Owner (95%)' : 'Owner & CEO (5%)';
-          authenticateAs(email, name, role);
+        const res = await fetch('/api/auth/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ credential: response.credential })
+        });
+        const data = await res.json();
+        if (data.authorized) {
+          const user = {
+            email: data.email,
+            name: data.name || (data.email.includes('kara') ? 'Kara Robinson' : 'Michael Robinson'),
+            role: data.role || (data.email.includes('kara') ? 'President & Owner (95%)' : 'Owner & CEO (5%)'),
+            token: response.credential,
+            loggedAt: new Date().toISOString()
+          };
+          localStorage.setItem('rhive_auth_user', JSON.stringify(user));
+          checkAuth();
         } else {
-          showAuthDenied(email);
+          showAuthDenied(data.error || 'Unauthorized account');
         }
       } catch(e) {
-        console.error('Google credential parse error:', e);
+        console.error('Google credential verification error:', e);
+        showAuthDenied(e.message);
       }
     }
 

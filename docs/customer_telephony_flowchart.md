@@ -1,69 +1,67 @@
-# R-HIVE Construction Roofing Specialists: Master Customer Telephony Flowchart & Script Matrix (Revision 63)
-**System Target Line:** +1 (839) 867-6637 (`839-86-ROOFS`) | **Engine:** Google Gemini 3.1 Flash Live Multimodal Speech-to-Speech  
-**Acoustic Profile:** Leda (Honey AI Roofing Specialist) | **Acoustic Ambience:** Pure Studio Close-Mic (-16.5 dBFS RMS)  
-**Architecture:** Zero-IVR Ring 1 Direct Answer (No DTMF / Robotic Menus)  
+# R-hive Construction Roofing Specialists: Master Customer Telephony Flowchart & Script Matrix (Revision 66)
+**System Target Line:** +1 (839) 867-6637 (`839-86-ROOFS`) *(All calls to RHIVE Main are forwarded here for Honey to answer directly)*  
+**Engine:** Google Gemini 3.8 Live Multimodal Speech-to-Speech (`gemini-3.8-live` & `gemini-3.8-live-extended-thinking`)  
+**Acoustic Profile:** Leda (Honey AI Roofing Specialist & Executive Project Specialist) | **Tone:** High warmth, happy, buoyant vocal smile  
+**Architecture:** Zero-IVR Ring 1 Direct Answer (Pure Voice, Zero Robotic Menus)  
 
 ---
 
-## 1. High-Level Customer Decision Journey Architecture
+## 1. High-Resolution Zoomable Customer Decision Architecture
+
+> [!TIP]
+> **Zoomable High-Resolution Visual Flowchart:** Below is the master visual infographic. Click or zoom in for high-definition clarity.
+
+![RHIVE Master Customer Telephony Flowchart](C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/customer_telephony_flowchart_1789780556415.jpg)
 
 ```mermaid
 flowchart TD
-    Dial["Caller Dials +1 (839) 867-6637"] --> Ring1["Honey Ring-1 Direct Answer (Zero IVR Menus / Pure Voice)<br/>150ms Carrier Settle + Warm Vocal Smile<br/>'Hello, this is Honey! R-hive Construction's AI Roofing Specialist...'"]
+    Dial["Caller Dials Office Line / Forwarded from Main"] --> Ring1["Honey Ring-1 Direct Answer (Zero IVR Menus / Pure Voice)<br/>150ms Settle Delay + Buoyant Vocal Smile<br/>'Hello, this is Honey! R-hive's AI Roofing Specialist, how may I assist with your roofing project today!?'"]
 
     %% Direct Address & Intent Flow
     Ring1 --> AddrCapture1["Customer States Reason & Property Address"]
-    AddrCapture1 --> ToolProp1["TOOL: verify_address<br/>OpenStreetMap Geocoding + Utah County Parcel ($0.00) + Open-Meteo"]
+    AddrCapture1 --> ToolProp1["TOOL: verify_address<br/>OpenStreetMap Geocoding + Utah County Parcel ($0.00) + Open-Meteo County Weather"]
     
     ToolProp1 --> AddrConfirm{"Mandatory Audio Verification Gate:<br/>Honey reads back: 'I have [Address], [City], Utah [Zip]—does that match your property?'<br/>Honey PAUSES & WAITS for verbal confirmation"}
     
     AddrConfirm -->|No / Corrected| FixAddr["Caller Corrects Number or Street -> Re-run verify_address"]
     FixAddr --> ToolProp1
-    AddrConfirm -->|Yes / Confirmed| PropNameUpdate["Derive & Adopt propertyName:<br/>e.g., 'the 9917 South property' or 'the 10437 Shady Plum property'<br/>Set addressConfirmed: true"]
+    AddrConfirm -->|Yes / Confirmed| PropNameUpdate["Derive & Adopt propertyName:<br/>e.g., 'the 9917 South property' or 'the 10437 Shady Plum property'<br/>Honey: 'I have your property details right here on my phone.'"]
 
     %% Intent Qualification with Shorthand
-    PropNameUpdate --> Q_Intent{"Honey Qualifies Intent (Adopting Shorthand):<br/>'Perfect! For the [propertyName], are you looking to replace an aging roof,<br/>is this for storm or insurance damage, an active leak, or a commercial building?'"}
+    PropNameUpdate --> Q_Intent{"Honey Qualifies Intent (Adopting Shorthand):<br/>'Perfect! For the [propertyName], are you looking for a certified quote on an aging roof,<br/>is this for storm damage, leaks, and emergency tarping, or commercial and multi-property projects?'"}
 
-    %% Case 1: Residential Replacement (Core Business Model - Remote Aerial)
-    Q_Intent -->|Case 1: Residential Replacement| RemoteAerial["Core Model: Remote Aerial Measurement<br/>Honey: 'We measure your roof via precision aerial engineering to deliver<br/>a certified quote without interrupting your day with a truck roll.'"]
-    RemoteAerial --> MeasureCall["4-Question MeasureCall Ping-Pong Sequence:<br/>1. Solar panels / warranty?<br/>2. Recent changes vs satellite?<br/>3. Layer count & skylights?<br/>4. Soffit intake ventilation (Decade Built)?"]
+    %% Case 1: Residential Replacement (Core Business Model - Remote Aerial + 15-Min Video Option)
+    Q_Intent -->|Case 1: New Customers & Certified Quotes| RemoteAerial["Core Model: Remote Aerial Measurement & 15-Min Video Call<br/>Honey: 'We measure your roof via precision aerial engineering to deliver<br/>a certified quote without interrupting your day with a truck roll.'"]
+    RemoteAerial --> VideoCallOption{"Visible from Ground?<br/>Offer 15-Minute Remote Phone Video Call"}
+    VideoCallOption -->|Homeowner Walks Outside| VideoSlot["Schedule 15-Minute Remote Video Call Inspection<br/>Specialist inspects live from ground via smartphone video"]
+    VideoCallOption -->|Aerial Scan Preferred| MeasureCall["MeasureCall Ping-Pong Sequence (1 Question / Turn):<br/>1. Structure changes & Solar detach warranty?<br/>2. Skylights, swamp cooler & satellite removals?<br/>3. Layer count (slope-aware)?<br/>4. Slat board decking & eave ventilation?<br/>5. Gutters & winter ice dam areas?<br/>6. DISC psychometrics & timeline?"]
+    VideoSlot --> CloseProtocol
     MeasureCall --> CloseProtocol
 
-    %% Case 2: Commercial Roof
-    Q_Intent -->|Case 2: Commercial Property| CommercialPath["On-Site Justification: Complex flat roof / TPO / mechanical penetrations<br/>TOOL: get_available_windows (Michael & Kara Calendar)"]
+    %% Case 2: Commercial & Multi-Property Management
+    Q_Intent -->|Case 2: Commercial & Multi-Property Projects| CommercialPath["Commercial roofs & multi-property portfolios require on-site evaluations for core cuts & parapets<br/>TOOL: get_available_windows (Michael & Kara Calendar)"]
     CommercialPath --> PresentSlots
 
-    %% Case 3: Insurance Storm Claim (UPPA Compliant)
-    Q_Intent -->|Case 3: Insurance Claim| InsurancePath["On-Site Justification: Forensic storm damage scope documentation for adjuster (UPPA Compliant)<br/>TOOL: get_available_windows (Michael & Kara Calendar)"]
-    InsurancePath --> PresentSlots
-
-    %% Case 4: Roof Repair Diagnostic (Strictly 1 Question at a Time)
-    Q_Intent -->|Case 4: Roof Repair| Q_Leak{"Turn 2A (Discrete Question 1):<br/>'Is water actively dripping inside right now?'"}
-
-    %% Sub-Case 4A: Active Leak
-    Q_Leak -->|Yes (Dripping Now)| ActiveTarp["Emergency Leak Tarping ($150 Flat Fee)<br/>100% credited to permanent repairs, claim, or replacement<br/>TOOL: get_available_windows + book_inspection"]
+    %% Case 3: Storm Damage, Leaks & Emergency Tarping
+    Q_Intent -->|Case 3: Storm Damage, Leaks & Emergency Tarping| LeakCheck{"Active Leak / Dripping Inside Now?"}
+    LeakCheck -->|Yes| ActiveTarp["Emergency Leak Tarping ($150+ Credited Fee)<br/>Honey checks County & City Weather Urgency:<br/>'It looks like there is an [X]% chance of rain in [County] moving into [City]...'"]
     ActiveTarp --> CloseProtocol
 
-    %% Step 4B: Roof Age
-    Q_Leak -->|No (Not Dripping)| Q_RoofAge{"Turn 2B (Discrete Question 2):<br/>'Is the top layer of your roof older or younger than 15 years?'"}
+    LeakCheck -->|No / Storm Insurance Claim| InsurancePath["Forensic storm damage scope documentation for adjuster (UPPA Compliant)<br/>TOOL: get_available_windows"]
+    InsurancePath --> PresentSlots
 
-    %% Older than 15 Years
-    Q_RoofAge -->|Older than 15 Years| OlderRoof["Brittle Shingles: Spot repairs do not hold<br/>Honey qualifies for certified full replacement + repair on-site quote<br/>TOOL: get_available_windows"]
+    %% Case 4: Roof Repairs (Clear Photos vs 15-Min Video Call vs On-Site)
+    Q_Intent -->|Case 4: Roof Repairs| RepairAge{"Is roof older or younger than 15 years?"}
+    RepairAge -->|Older than 15 Years| OlderRoof["Brittle Shingles: Spot repairs do not hold<br/>Qualify for certified replacement + repair quote<br/>TOOL: get_available_windows"]
     OlderRoof --> PresentSlots
-
-    %% Younger than 15 Years
-    Q_RoofAge -->|Younger than 15 Years| Q_Photos{"Turn 2C (Discrete Question 3):<br/>'Do you happen to have clear visible photos of the damaged area on the roof that caused the leak?'"}
-
-    %% Photos Available
-    Q_Photos -->|Yes (Clear Visible Roof Photos)| ExternalPhotos["Customer Has Clear Visible Roof Damage Photos<br/>Honey: 'Your project specialist just texted you from 801-449-1451.<br/>Project specialist will review photos within 24 hours.'"]
-    ExternalPhotos --> CloseProtocol
-
-    %% No Photos / Inside Ceiling Only
-    Q_Photos -->|No (Or Inside Drywall Only)| InsideOnly["Inside ceiling photos do NOT show roof source<br/>On-site physical inspection required<br/>TOOL: get_available_windows"]
-    InsideOnly --> PresentSlots
+    RepairAge -->|Younger than 15 Years| RepairTriage{"Has visible exterior photos or inside drywall?"}
+    RepairTriage -->|Exterior Photos| SendPhotoSMS["Text clear exterior photos back to specialist<br/>Reviewed within 24 hours"]
+    SendPhotoSMS --> CloseProtocol
+    RepairTriage -->|No Photos / Cannot Access| VideoOrOnSite["Offer 15-Minute Remote Video Call from Ground<br/>or On-Site Inspection"]
+    VideoOrOnSite --> PresentSlots
 
     %% Calendar Booking Branch
-    PresentSlots["Honey Presents Tight 3-Hour Arrival Cushion:<br/>'Our crew lead has availability between twelve noon and three PM today. Does that work for you?'"]
+    PresentSlots["Honey Presents Tight 3-Hour Arrival Cushion"]
     PresentSlots --> SlotConfirm["Customer Confirms Arrival Window"]
     SlotConfirm --> BookCal["TOOL: book_inspection<br/>Inserts into 'RHIVE Project Inspections' Google Calendar<br/>SMS to Michael, Kara & Customer | Chat Webhook"]
     BookCal --> CloseProtocol
@@ -73,11 +71,12 @@ flowchart TD
     TradePath --> KaraWhisper["Kara Warm Whisper Handoff (+150ms settle pause)"]
 
     %% Branch: Cold Solicitors & Spammers (Flow 4)
-    Ring1 -->|Cold Pitch / Marketing / Spammer| SpamPath["Anti-Spam Quarantine Policy Triggered<br/>Redirect to info@rhiveconstruction.com"]
-    SpamPath --> DropCall["Pushback / Resistance -> Immediate hangup_call Tool Execution"]
+    Ring1 -->|Cold Pitch / Marketing / Spammer| SpamPath["Anti-Spam Quarantine Policy Triggered<br/>16-Word Pruned Prompt Redirect to info@rhiveconstruction.com"]
+    SpamPath --> GracefulDrop["Event-Driven Speech Buffer Disconnect<br/>Wait turnComplete + 1500ms audio drain -> terminate carrier"]
 
     %% Mandatory 4-Step Close Sequence
-    CloseProtocol["Mandatory 4-Step Closing Protocol"]
+    CloseProtocol["Mandatory Closing Sequence:<br/>Wait 600ms -> say 'Goodbye!' -> wait 150ms -> terminate line cleanly"]
+```
     CloseProtocol --> Step1["Step 1: Express Authentic Gratitude (with Vocal Smile)"]
     Step1 --> Step2["Step 2: Communication Channel & Contact Confirmation"]
     Step2 --> Step3["Step 3: Secondary Assistance Check ('Is there anything else I can check?')"]

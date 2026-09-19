@@ -1,7 +1,8 @@
 # Flow 1: Residential & Commercial Quotes, Repairs, Replacements & Maintenance
-**Swarm Revision:** Revision 56 Master Alignment  
+**Swarm Revision:** Revision 66 Master Alignment  
 **Target Environment:** Google Cloud Run (`rhive-voice-live-bridge`)  
-**Telephony Engine:** Gemini 3.1 Flash Live Speech-to-Speech (Full-Duplex WebSockets)  
+**Telephony Engine:** Google Gemini 3.8 Live Multimodal Speech-to-Speech (`gemini-3.8-live` & `gemini-3.8-live-extended-thinking`)  
+**System Target Line:** +1 (839) 867-6637 (`839-86-ROOFS`) *(All calls to RHIVE Main are forwarded here for Honey to answer directly)*  
 **Lead Architect:** Michael Robinson (RHIVE Construction)  
 **Primary Review Document:** `flow_quotes_residential_commercial.md`
 
@@ -11,42 +12,52 @@
 
 Flow 1 governs all residential and commercial roofing inquiries spanning full replacements, repairs, ongoing service agreements, and routine maintenance visits along the Wasatch Front. 
 
-The core operational thesis of RHIVE is **remote aerial engineering precision**: a Certified Quote has a dedicated Project Specialist pull high-resolution satellite scans, county parcel tax rolls, municipal permit history, and manufacturer codes to calculate the exact engineering proposal. **We do not need to be at the address to build a certified quote.** An on-site roof inspection is strictly reserved for 5 explicit exceptions.
+The core operational thesis of RHIVE is **remote aerial engineering precision**: a Certified Quote has a dedicated Project Specialist pull high-resolution satellite scans, county parcel tax rolls, municipal permit history, and manufacturer codes to calculate the exact engineering proposal. **We do not need to be at the address to build a certified quote.** For residential roofs visible from the ground and minor repairs, Honey offers a **15-Minute Remote Phone Video Call Inspection**, eliminating unnecessary truck rolls entirely. An in-person on-site roof inspection is strictly reserved for 5 explicit exceptions.
+
+> [!TIP]
+> **Zoomable High-Resolution Visual Flowchart:** Below is the master visual infographic for Flow 1. Click or zoom in for high-definition clarity.
+>
+> ![Flow 1 Quotes Flowchart](C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/flow1_quotes_flowchart_1789780581988.jpg)
 
 ```mermaid
 flowchart TD
-    A[Inbound Call on Ring 1] --> B[Honey Greeting: 150ms Settle Delay + Vocal Smile]
+    A[Inbound Call / Forwarded from RHIVE Main] --> B["Honey Ring 1 Answer (Zero IVR Menus / Pure Voice)<br/>150ms Settle Delay + Buoyant Vocal Smile<br/>'Hello, this is Honey! R-hive's AI Roofing Specialist, how may I assist with your roofing project today!?'"]
     B --> C{Caller Stated Name?}
     C -- Yes --> D[Store Name & Use Casual First Name]
     C -- No --> E[Capture First Name]
     D --> F[Turn 2: Capture Property Address]
     E --> F
-    F --> G[Google Maps Geocoding & County Parcel Query]
+    F --> G[OpenStreetMap Geocoding & County Parcel Query]
     G --> H{Address Valid & Wasatch Front?}
     H -- No / Misheard --> I[Address Reloop: Phonetic & Number Confirmation]
     I --> G
     H -- Out of Service Area --> J[Polite Out-of-Area Referral & Clean Disconnect]
-    H -- Yes --> H1["Turn 3: Mandatory Audio Verification<br/>'I have 9917 S 3200 W in South Jordan, 84095—does that match your property?'"]
+    H -- Yes --> H1["Turn 3: Mandatory Audio Verification Gate<br/>'I have [Address], [City], Utah [Zip]—does that match your property?'<br/>Honey PAUSES & WAITS for verbal confirmation"]
     H1 --> H2{"Caller Confirms Audio Accuracy?"}
     H2 -- No / Correction --> I
-    H2 -- Yes --> H3["Update propertyName Shorthand:<br/>'the 9917 South property'"]
+    H2 -- Yes --> H3["Derive propertyName Shorthand:<br/>'the 9917 South property'<br/>Honey: 'I have your property details right here on my phone.'"]
     H3 --> K[Trigger Google Solar API & County Tax Roll Query]
     K --> L[Extract SQ, Facets, Pitch Matrix & Year Built / Pre-1972 Slat Decking]
-    L --> M{Intent Triage Gate: "For the 9917 South property..."}
+    L --> M{Intent Triage Gate: "For the [propertyName]..."}
     
     M -- Ballpark / Tire-Kicker --> N[Instant Ballpark Estimator vs Certified Quote Choice]
     N --> O{Wants Certified Quote?}
-    O -- Yes --> P[Advance to MeasureCall Ping-Pong]
+    O -- Yes --> P[Advance to Remote Precision / MeasureCall]
     O -- No --> Q[Educate on Instant Estimator & Text Link]
 
     M -- Commercial All Types --> R[Schedule On-Site Commercial Roof Inspection: 60/80 TPO/PVC]
     M -- Active Leak Tarping --> S[Schedule Emergency Tarp: $150+ Credited Fee with Steep Pitch Escalation]
-    M -- Repair >15yo Roof --> T[Schedule On-Site Roof Inspection: Brittleness Check]
-    M -- Repair <15yo Roof --> U{Caller Confirms Clear Visible Photos?}
-    U -- Yes --> U1[Dispatch Photo Upload SMS: Review within 24 Hrs]
-    U -- No / Interior Only --> T
+    
+    %% Repair & Replacement Ground Visibility Triage
+    M -- Residential Roof Replacement / Repair --> V_Option{"Visible from Ground?<br/>Offer 15-Minute Remote Phone Video Call"}
+    V_Option -- Yes / Ground Visible --> V_Video["Schedule 15-Minute Remote Phone Video Call Inspection<br/>Specialist inspects live via homeowner smartphone stream"]
+    V_Option -- No / Aerial Only --> P[Advance to MeasureCall Ping-Pong Sequence]
+    
+    M -- Repair >15yo Roof (No Video) --> T[Schedule On-Site Roof Inspection: Brittleness Check]
+    M -- Repair <15yo Roof --> U{Caller Mentions Active Interior Leaks / Drywall Damage?}
+    U -- Yes --> U1[Inquire on Drywall Photos & Dispatch Photo Triage SMS]
+    U -- No / Exterior Only --> V_Option
     M -- Specialty Material --> V0[Consultative Specialty Partner Referral: Metal/Tile/Slate/Euroshield]
-    M -- Full Replacement --> P
 
     subgraph MeasureCall ["MeasureCall Ping-Pong Sequence (1 Question / Turn)"]
         P --> V1[Q1: Structure Changes, Solar Panels & Detach Party: Installer vs RHIVE]
@@ -64,12 +75,13 @@ flowchart TD
         V6 --> V7[Q7: Customer Profile Transition & DISC Psychometrics: D / I / S / C]
     end
 
+    V_Video --> W
     V7 --> W[4-Step Closing Protocol]
     subgraph ClosingProtocol ["4-Step Closing Protocol & Dossier Verification"]
         W --> X1[1. Gratitude & Confirmation]
         X1 --> X2[2. Complete Dossier Verification: Phonetic Email Spelling & Summary]
-        X2 --> X3[3. Direct Text Channel from Project Specialist: 801-449-1451]
-        X3 --> X4[4. Warm Goodbye & Clean Disconnect: Complete Dossier to Michael & Kara]
+        X2 --> X3[3. Dedicated Project Specialist Text Channel (Zero Spoken Numbers)]
+        X3 --> X4["4. Disconnect Sequence:<br/>Finish Sentence -> Wait 600ms -> 'Goodbye!' -> Wait 150ms -> Carrier Disconnect"]
     end
 ```
 
@@ -80,14 +92,16 @@ flowchart TD
 ### 2.1 Canonical Greeting & Telephony Timing Parameters
 
 Honey answers directly on **Ring 1** with zero robotic IVR switchboards:
-> *"Hello, this is Honey! R-hive Construction's AI Roofing Specialist, how may I assist your call today!?"*
+> *"Hello, this is Honey! R-hive's AI Roofing Specialist, how may I assist with your roofing project today!?"*
 
 > [!IMPORTANT]
 > **Branding & Spoken Pronunciation Rule:** 
-> - **Spoken Branding (Voice Agents):** For proper TTS phonetics over the phone, the company name is strictly spoken as `"R-hive Construction Roofing Specialists"` (pronounced `"R-hive"`, using strictly the letter "R", never "Are").
+> - **Spoken Branding (Voice Agents):** For proper TTS phonetics over the phone, the company name is strictly spoken as `"R-hive Construction roofing specialists!"` (pronounced `"R-hive"`, using strictly the letter "R", never "Are"). Always maintain singular brand identity. Never pluralize as "R-hive's Construction".
 > - **Written Branding (Customer & Marketing Copy):** When transcription is not involved and it is writing read by the customer, it is strictly the official `"RHIVE Construction Roofing Specialists"` (or `"RHIVE Construction"`).
+> - **Office Line Forwarding:** All incoming calls to the RHIVE Main office line are seamlessly forwarded directly to `+1 (839) 867-6637` (`839-86-ROOFS`), where Honey answers immediately for the entire company.
 > - **Role Title:** Never use "concierge". Honey is the `"AI Roofing Specialist"` or `"Executive Project Specialist"`.
-> - Always maintain singular brand identity. Never pluralize the company name.
+> - **No Phone Number Speech:** Honey must never speak telephone numbers out loud over voice calls.
+> - **Device Context:** Honey speaks as having access via phone ("I have your property details right here on my phone"), never "on my screen".
 
 #### Telephony Timing & Settle Delay Configuration
 To ensure Michael can adjust audio timing and connection latency directly from this artifact, the telephony pipeline adheres to the following strict temporal parameters:
@@ -111,16 +125,20 @@ To ensure Michael can adjust audio timing and connection latency directly from t
 │ Barge-in Interrupt Delta │ <80ms     │ Inbound audio cancels active speech  │
 │                          │           │ playback immediately via Twilio clear│
 ├──────────────────────────┼───────────┼──────────────────────────────────────┤
-│ Async Tool Filler Delay  │ 220ms     │ Natural acoustic acknowledgment      │
-│                          │           │ injected while background tools run. │
+│ Disconnect Speech Buffer │ 600ms     │ Waits 600ms after final sentence,    │
+│                          │           │ says "Goodbye!", waits 150ms, then   │
+│                          │           │ drops carrier line cleanly.          │
+├──────────────────────────┼───────────┼──────────────────────────────────────┤
+│ Async Tool Interleaving  │ 0ms       │ Gemini 3.8 Live reasoning-while-talk │
+│                          │           │ executes background tools in parallel│
 └──────────────────────────┴───────────┴──────────────────────────────────────┘
 ```
 
 ---
 
-### 2.2 Deep Reasoning: How Honey is Coded to Sound Happy and Upbeat
+### 2.2 Deep Reasoning: How Honey is Coded to Sound Happy and Upbeat (Gemini 3.8 Live)
 
-To achieve an industry-leading voice experience that sounds genuinely happy, warm, and conversational—rather than robotic, flat, or synthetic—the system leverages **Google Gemini 3.1 Flash Live** full-duplex Speech-to-Speech (`gemini-3.1-flash-live-preview`) over native WebSockets.
+To achieve an industry-leading voice experience that sounds genuinely happy, warm, and conversational—rather than robotic, flat, or synthetic—the system leverages **Google Gemini 3.8 Live Multimodal Speech-to-Speech** (`gemini-3.8-live` and `gemini-3.8-live-extended-thinking`) over native full-duplex WebSockets.
 
 #### 1. Why Legacy 3-Tier Voice Architectures Fail (The Robotic Uncanny Valley)
 Traditional voice bots use a 3-tier cascade:
@@ -129,38 +147,38 @@ $$\text{Audio In} \xrightarrow{\text{STT}} \text{Text} \xrightarrow{\text{LLM}} 
 * **Loss of Prosodic Context:** Speech-to-Text strips away all caller emotion, tone, and pacing into flat ASCII text. The TTS synthesizer then receives plain text without knowing the emotional valence, reading words with sterile, robotic cadence.
 * **Artificial Monotone:** Standard TTS engines produce robotic pauses at periods and commas, sounding like a machine reading an instruction manual.
 
-#### 2. The Multimodal Speech-to-Speech Revolution (Gemini 3.1 Flash Live)
-Gemini 3.1 Flash Live operates as a single, unified neural network:
+#### 2. The Multimodal Speech-to-Speech Revolution (Gemini 3.8 Live)
+Gemini 3.8 Live operates as a single, unified neural network:
 $$\text{Raw PCM Audio In (16kHz)} \xrightarrow{\text{BidiStream Live API}} \text{Raw PCM Audio Out (24kHz)}$$
 The internal transformer attention heads process audio tokens directly. The model natively predicts fundamental frequency ($F_0$), vocal tract resonance, aspiration, micro-breathing, and emotional timbre in real time without converting to intermediate text.
 
-#### 3. Acoustic Physics of the "Vocal Smile" (Formant Engineering)
+#### 3. Gemini 3.8 Live Architectural Advancements
+Released by Google on September 15, 2026, the **Gemini 3.8 Live** architecture introduces three foundational breakthroughs for telephony:
+1. **"Reasoning While Talking":** Parallel background tool execution while actively generating natural conversational speech. Honey can check county parcel tax rolls, geocoding, or weather data in parallel without dead air or uncomfortable pauses.
+2. **Interleaved Asynchronous Function Calling:** Honey seamlessly integrates tool call outputs mid-dialogue without resetting audio stream state or dropping acoustic context.
+3. **#1 Ranked Speech-to-Speech Quality:** Highest conversational naturalness, emotional prosody retention, and lowest acoustic hallucination rates on the Artificial Analysis Speech Index.
+
+#### 4. Acoustic Physics of the "Vocal Smile" (Formant Engineering)
 When a human smiles while speaking:
 * The **zygomaticus major** and **risorius** facial muscles retract the lip corners upward and outward.
 * This physical retraction shortens the acoustic vocal tract by 10% to 15%.
 * In acoustic physics, shortening the vocal tract shifts the fundamental resonant formant frequencies higher:
   - Formant $F_1$ increases by $\approx 150\,\text{Hz}$ (producing open, bright vowel coloring).
   - Formant $F_2$ increases by $\approx 250\,\text{Hz}$ (producing crisp, forward, hospitable resonance).
-* Because Gemini 3.1 Flash Live was trained on massive multimodal human audio dialogues, instructing the model:
+* Because Gemini 3.8 Live was trained on massive multimodal human audio dialogues, instructing the model:
   `"You speak with a continuous, audible vocal smile at all times—bright, buoyant, warm intonation, raised pitch formants, and open vowel resonance"`
   directly activates the neural weights that reproduce these exact physical acoustic features.
 
-#### 4. The Anti-Cliché Rule: Why Saying "Happy" Destroys Customer Trust
+#### 5. The Anti-Cliché Rule: Why Saying "Happy" Destroys Customer Trust
 * **The Psychological Trap:** When an AI says *"I am so happy to help you today"* or *"I'd be glad to assist you"*, callers immediately recognize a canned corporate script. Verbal claims of happiness without genuine acoustic resonance sound patronizing and fake.
 * **The RHIVE Directive:** Honey is **strictly forbidden** from saying `"happy"`, `"glad"`, or `"happy to help"`. 
 * **The Result:** 100% of Honey's happiness, warmth, and hospitality is perceived organically through **acoustic prosody, active listening affirmation cadence, vocal brightness, and prompt responsiveness**, creating an authentic emotional connection.
 
-#### 5. The 4 Missing Speech-to-Speech Optimization Pillars
-1. **RTP Frame Alignment & Jitter Buffering:** Standard WebSockets suffer from chunk starvation if network packets arrive out of order. The bridge buffers 20ms audio slices to ensure a buttery smooth PCM feed to the mobile carrier.
-2. **Calibrated VAD Turn-Taking:** Callers frequently pause for 600ms–800ms when recalling their address or year built. Legacy bots interrupt after 400ms. Honey's silence cushion is set to `900ms–1100ms`, eliminating premature cutoffs.
-3. **Conversational Tool Fillers:** While Google Maps, County Parcel ArcGIS, and Google Solar APIs execute in the background (~250ms), Honey provides natural micro-acknowledgments (*"Got that address, let me pull up your aerial view here..."*) so the line never goes dead.
-4. **Emotional State Mirroring & Acoustic Entrainment:** If a caller is stressed with an active leak, Honey's pitch drops to a steady, calm, grounded frequency; if a homeowner is excited about a remodel, Honey matches their upbeat conversational tempo.
-
 #### 6. Production Server Implementation Pattern (`services/telephony-live-bridge/server.js`)
 ```javascript
-// Production WebSocket initialization for Gemini 3.1 Flash Live Speech-to-Speech
+// Production WebSocket initialization for Gemini 3.8 Live Speech-to-Speech
 const session = await ai.live.connect({
-  model: 'gemini-3.1-flash-live-preview',
+  model: 'gemini-3.8-live',
   config: {
     responseModalities: ['AUDIO'],
     speechConfig: {
@@ -170,13 +188,16 @@ const session = await ai.live.connect({
     },
     systemInstruction: {
       parts: [{
-        text: `You are Honey, the dedicated AI specialist for R-hive Construction in Utah.
+        text: `You are Honey, the dedicated AI roofing specialist for R-hive Construction in Utah.
 ACOUSTIC DIRECTIVES (CRITICAL):
 - Carrier Connection Timing: Inject a 150ms settle pause before your first utterance.
 - Continuous Vocal Smile: You literally sound as though you are smiling through the phone at all times.
-- Phonetic Brand Anchor: Say "R-hive" when singular, and "R-hive's" when plural/possessive.
+- Phonetic Brand Anchor: Strictly speak the company name as "R-hive Construction roofing specialists!" (singular brand anchor).
 - Formant & Resonance: Bright upper-register resonance, upward terminal inflection on affirmations.
 - Strict Banned Words: NEVER say "happy", "so happy", "happy to help", "as an AI", or "I apologize".
+- Device Framing: Refer to having data "right here on my phone", NEVER "on my screen".
+- Zero Spoken Phone Numbers: NEVER speak phone numbers out loud over voice calls.
+- Disconnect Sequence: Finish your closing statement, pause 600ms, say "Goodbye!", pause 150ms, then end the call cleanly.
 - Turn Economy: Keep all responses strictly under 25 words per turn.
 - Continuous Transcript Memory: Continuously track all prior utterances and data points in live session memory.
 - Upfront Dynamic Field Recognition: If the caller mentions their name, address, roof age, or materials early, capture it instantly and NEVER ask for it again.`
@@ -225,9 +246,16 @@ ACOUSTIC DIRECTIVES (CRITICAL):
 
 ---
 
-## 4. The 5 Exceptions Requiring an On-Site Roof Inspection
+## 4. Remote Aerial Precision, 15-Minute Video Call Option & On-Site Exceptions
 
-For standard replacements, a Certified Quote is engineered remotely via aerial scans and Google Solar data—**no truck roll is needed**. An on-site roof inspection is scheduled **only** under these 5 conditions:
+For standard replacements and residential inquiries, a Certified Quote is engineered remotely via aerial scans and Google Solar data—**no truck roll is needed**.
+
+> [!TIP]
+> **15-Minute Remote Phone Video Call Inspection:**
+> For residential roofs visible from the ground and minor repairs, Honey offers a **15-Minute Remote Phone Video Call Inspection** with a dedicated Project Specialist. The homeowner simply steps outside with their smartphone, points the camera at the eaves, valleys, or problem areas, and the specialist reviews the condition live in 15 minutes. This completely eliminates unnecessary truck rolls, respects the customer's time, and accelerates same-day certified quote turnaround.
+
+### The 5 Explicit Exceptions Requiring an In-Person On-Site Roof Inspection
+An in-person truck roll is scheduled **only** under these 5 conditions:
 
 1. **Active Water Intrusion Tarping:** Requires emergency leak stabilization. Mobilization starts at **$150+** (basic single-area tarp, 100% credited toward permanent repair/claim).
    * **Steep Slope & Complex Facet Escalation Warning:** If Google Solar returns a roof pitch $\ge 8:12$ or $>20$ facets, Honey proactively advises:
@@ -237,13 +265,15 @@ For standard replacements, a Certified Quote is engineered remotely via aerial s
 4. **Insurance Storm Damage (Strict UPPA Statutory Compliance):** 
    * **The Law:** Under Utah Code § 31A-26 (and national Unauthorized Practice of Public Adjusting regulations), roofing contractors and AI agents are legally prohibited from stating whether damage "qualifies for a claim," advising on claim approval, or acting as public adjusters.
    * **The Role:** RHIVE conducts an **on-site roof damage inspection** to document visible physical storm damage (impact strikes, creased shingles, wind lift, collateral gutter/vent damage) and prepare an objective **scope of work report to know what it will take to get either the repair or replacement taken care of**, giving the homeowner an informed baseline before sharing with their insurance carrier.
-5. **Homeowner Roof Inspection Request:** The customer explicitly requests a specialist physically walk the property.
+5. **Homeowner Explicit Request:** The customer explicitly asks for a specialist to physically walk the property in person.
 
-> [!TIP]
-> **Clear Visible Photo Triage Rule:** For repairs on roofs under 15 years old with no active interior leak:
-> * Honey asks: *"Do you happen to have clear visible photos of the damaged area on the roof that caused the leak?"*
-> * **If YES:** Honey dispatches an automated SMS triage link from your project specialist (`801-449-1451`). The customer replies with their photos, and a Project Specialist reviews them within 24 hours to determine if an on-site roof inspection is needed or if a guaranteed repair quote can be issued remotely.
-> * **If NO (or interior only):** Honey explains that interior drywall photos do not show exterior roof conditions, and immediately books the on-site roof inspection.
+> [!IMPORTANT]
+> **Exterior Photo & Interior Drywall Triage Rules:**
+> - **Drywall Photos Rule:** Honey **only** inquires about photos of interior drywall or ceiling stains if the caller explicitly reports active interior water intrusion. If the customer does not mention interior leaks, Honey focuses strictly on exterior roofing conditions.
+> - **Exterior Photo Triage:** For repairs on roofs under 15 years old where the homeowner already has photos:
+>   - Honey asks: *"Do you happen to have clear photos of the damaged area on the roof?"*
+>   - **If YES:** Honey dispatches an automated SMS triage link from the dedicated project specialist channel. The customer replies with their photos, and a Project Specialist reviews them within 24 hours to determine whether a guaranteed repair quote can be issued remotely.
+>   - **If NO (or interior only):** Honey explains that interior drywall photos do not show the exterior roof leak source, and offers either the **15-Minute Remote Phone Video Call** or books an in-person roof damage inspection.
 
 ---
 
@@ -394,19 +424,20 @@ Honey confirms contact details with strict phonetic spelling:
 * **MeasureCall Summary Playback:**
   > *"Perfect. So we have 1420 East 8600 South in Sandy—single layer, no additions, installer handling solar reset, front and back gutters, and prioritizing lifetime warranty protection. Did I get everything right?"*
 
-### Step 3: Direct Specialist Text Channel Established
-* Honey calls `send_quote_verification_sms` to dispatch the verification text from your project specialist (`801-449-1451`).
-* *Honey:* *"I just dispatched a text from your project design specialist with their direct cell. Did that pop through on your screen?"*
-* *Honey:* *"Awesome! Feel free to message your project design specialist or give me a call back and I'm happy to assist anytime! Have a wonderful day!"*
+### Step 3: Dedicated Specialist Text Channel Established
+* Honey calls `send_quote_verification_sms` to dispatch the verification text from your dedicated project specialist channel (strictly zero spoken telephone numbers over the line).
+* *Honey:* *"I just dispatched a text from your project design specialist with their direct channel. Did that pop through on your phone?"*
+* *Honey:* *"Awesome! Feel free to message your project design specialist or call back anytime. Have a wonderful day!"*
 
-### Step 4: Multi-Channel Executive Dossier Dispatch (SMS & Email to Michael & Kara)
-The instant `send_quote_verification_sms` or `book_inspection` fires, the production engine dispatches the full dossier across all three executive communication channels:
+### Step 4: Disconnect Sequence Timing Protocol & Multi-Channel Dossier Dispatch
+* **Carrier Disconnect Sequence:** Honey finishes her closing statement -> pauses 600ms -> says *"Goodbye!"* -> pauses 150ms -> terminates carrier line cleanly via `armGracefulHangup()`.
+* The instant `send_quote_verification_sms` or `book_inspection` fires, the production engine dispatches the full dossier across all three executive communication channels:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │               EXECUTIVE NOTIFICATION DISPATCH ARCHITECTURE                  │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ 1. Direct Carrier SMS to Michael (801-449-1451) & Kara (801-441-0024)       │
+│ 1. Direct Carrier SMS to Michael & Kara                                     │
 │    - Customer name, phone, verified address, county parcel ID, year built   │
 │    - Pre-1972 slat board decking risk warning ($78.13/sheet budget note)    │
 │    - Solar status & detach party (installer vs rhive)                       │
@@ -431,15 +462,15 @@ The instant `send_quote_verification_sms` or `book_inspection` fires, the produc
 
 | Swarm Node | Scope & Function | Document Link |
 | :--- | :--- | :--- |
-| **Flow 1** | Residential & Commercial Certified Quotes, Repairs & Maintenance | [flow_quotes_residential_commercial.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/26528e87-5332-4030-9fe4-230271a6a111/flow_quotes_residential_commercial.md) |
-| **Flow 2** | Emergency Active Leak Tarping ($150+ Credited) & Insurance Restoration | [flow_emergency_leaks_insurance_storm.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/26528e87-5332-4030-9fe4-230271a6a111/flow_emergency_leaks_insurance_storm.md) |
-| **Flow 3** | Trade Partners, Material Suppliers, Municipal Permitting & Compliance | [flow_trade_suppliers_permitting_compliance.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/26528e87-5332-4030-9fe4-230271a6a111/flow_trade_suppliers_permitting_compliance.md) |
-| **Flow 4** | Cold Solicitor & Unsolicited Marketing Anti-Spam Perimeter Quarantine | [flow_anti_spam_quarantine.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/26528e87-5332-4030-9fe4-230271a6a111/flow_anti_spam_quarantine.md) |
-| **Master Spec** | Complete Master Telephony System Specifications & Swarm Architecture | [master_telephony_workflow_specification.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/26528e87-5332-4030-9fe4-230271a6a111/master_telephony_workflow_specification.md) |
-| **Master Index** | Unified Telephony Swarm Master Registry & Technical Asset Ledger | [master_telephony_artifact_registry.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/26528e87-5332-4030-9fe4-230271a6a111/master_telephony_artifact_registry.md) |
-| **Flowchart** | Visual End-to-End Decision Flowchart & Script Matrix | [customer_telephony_flowchart.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/26528e87-5332-4030-9fe4-230271a6a111/customer_telephony_flowchart.md) |
-| **Live Bridge** | Production GCP Cloud Run Speech-to-Speech WebSocket Implementation | [server.js](file:///c:/Users/mjrob/OneDrive/Desktop/App%20Repo%20s/MJR_EPA/services/telephony-live-bridge/server.js) |
-| **Walkthrough** | Live Deployment Logs, Validation Evidence & Verification Test Suite | [walkthrough.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/26528e87-5332-4030-9fe4-230271a6a111/walkthrough.md) |
+| **Flow 1** | Residential & Commercial Certified Quotes, Repairs & Maintenance | [flow_quotes_residential_commercial.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/flow_quotes_residential_commercial.md) |
+| **Flow 2** | Emergency Active Leak Tarping ($150+ Credited) & Insurance Restoration | [flow_emergency_leaks_insurance_storm.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/flow_emergency_leaks_insurance_storm.md) |
+| **Flow 3** | Trade Partners, Material Suppliers, Municipal Permitting & Compliance | [flow_trade_suppliers_permitting_compliance.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/flow_trade_suppliers_permitting_compliance.md) |
+| **Flow 4** | Cold Solicitor & Unsolicited Marketing Anti-Spam Perimeter Quarantine | [flow_anti_spam_quarantine.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/flow_anti_spam_quarantine.md) |
+| **Master Spec** | Complete Master Telephony System Specifications & Swarm Architecture | [master_telephony_workflow_specification.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/master_telephony_workflow_specification.md) |
+| **Master Index** | Unified Telephony Swarm Master Registry & Technical Asset Ledger | [master_telephony_artifact_registry.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/master_telephony_artifact_registry.md) |
+| **Flowchart** | Visual End-to-End Decision Flowchart & Script Matrix | [customer_telephony_flowchart.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/customer_telephony_flowchart.md) |
+| **Live Bridge** | Production GCP Cloud Run Speech-to-Speech WebSocket Implementation | [server.js](file:///c:/Users/mjrob/OneDrive/Desktop/App%20Repo%20s/RHIVE-Construction/RHIVE-Telephony/server.js) |
+| **Walkthrough** | Live Deployment Logs, Validation Evidence & Verification Test Suite | [walkthrough.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/walkthrough.md) |
 
 ---
 
@@ -493,14 +524,14 @@ Executed via `POST /api/telephony/flows/simulate` using Gemini 3.5 Flash-Lite ag
 
 ```mermaid
 flowchart LR
-    A[Caller Audio & Speech] --> B[Gemini 3.1 Flash Live WebSockets]
+    A[Caller Audio & Speech] --> B[Gemini 3.8 Live Multimodal WebSockets]
     B --> C[Real-Time Tool Execution]
     C --> D[County ArcGIS REST OpenData]
     C --> E[Google Maps & Solar APIs]
     C --> F[Google Calendar FreeBusy]
     D & E & F --> G[(Live Session Data Matrix)]
-    G --> H[RHIVE Main Line SMS 435-417-6637]
-    G --> I[Caller SMS from Michael 801-449-1451]
+    G --> H[RHIVE System SMS Channels]
+    G --> I[Caller SMS from Dedicated Project Specialist Channel]
     G --> J[Google Chat Space 'JustCall Leads']
     G --> K[Google Calendar Invite & Workspace Email]
     G --> L[Google Drive Phone Folder Vault]

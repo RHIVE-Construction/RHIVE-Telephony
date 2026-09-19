@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
     :root {
       --bg-main: #FFFFFF;
@@ -595,6 +596,43 @@
 </head>
 <body>
 
+  <!-- EXECUTIVE GOOGLE AUTH GATE -->
+  <div id="auth-gate" style="position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(20px); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(8, 19, 124, 0.25); max-width: 500px; width: 100%; padding: 36px; text-align: center;">
+      <div style="width: 48px; height: 48px; margin: 0 auto 12px; background: rgba(8, 19, 124, 0.08); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #08137C;">⚡</div>
+      <h2 style="font-size: 1.6rem; font-weight: 800; color: #08137C; margin-bottom: 4px; letter-spacing: -0.5px;">R-HIVE <span style="color: #ec028b;">OS</span></h2>
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 700; color: #e2ab49; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 1px;">Executive Telephony Swarm Control</div>
+      <p style="font-size: 0.88rem; color: #475569; line-height: 1.5; margin-bottom: 24px;">
+        Restricted executive access. Authenticate with your authorized Google Account to control Honey, monitor real-time calls, and review swarm metrics.
+      </p>
+
+      <!-- Auth Error Notification -->
+      <div id="auth-error-box" style="display: none; background: rgba(239, 68, 68, 0.08); border: 1px solid #ef4444; padding: 12px; margin-bottom: 20px; font-size: 0.8rem; color: #b91c1c; text-align: left; border-radius: 8px;">
+        <span style="font-weight: 700;">⛔ Access Denied:</span> <span id="auth-error-msg">Account not whitelisted.</span>
+      </div>
+
+      <!-- Real Google GIS Sign-In Render Target -->
+      <div style="display: flex; justify-content: center; margin-bottom: 24px;">
+        <div id="g_id_onload"
+             data-client_id="910835773728-dummy.apps.googleusercontent.com"
+             data-callback="handleGoogleCredentialResponse"
+             data-auto_prompt="false">
+        </div>
+        <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="outline" data-text="signin_with" data-size="large"></div>
+      </div>
+
+      <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 16px; text-align: left;">
+        <div style="font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: #08137C; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">Whitelisted Executive Accounts:</div>
+        <div style="font-size: 0.82rem; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+          <span style="color: #ec028b; font-weight: 900;">●</span> Michael Robinson (<span style="color: #08137C; font-weight: 600;">CEO</span>) &mdash; <span style="font-size: 0.78rem; color: #64748B;">michael@rhiveconstruction.com / mjrob14@gmail.com</span>
+        </div>
+        <div style="font-size: 0.82rem; color: #0F172A; display: flex; align-items: center; gap: 8px;">
+          <span style="color: #ec028b; font-weight: 900;">●</span> Kara Robinson (<span style="color: #08137C; font-weight: 600;">President</span>) &mdash; <span style="font-size: 0.78rem; color: #64748B;">kara@rhiveconstruction.com</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- HEADER -->
   <header>
     <div class="nav-container">
@@ -604,9 +642,14 @@
       </a>
       <div class="badge-live">
         <span class="badge-dot"></span>
-        <span>GEMINI 3.1 LIVE • ACTIVE</span>
+        <span>GEMINI 3.8 LIVE • ACTIVE</span>
       </div>
-      <div class="nav-actions">
+      <div class="nav-actions" style="display: flex; align-items: center; gap: 12px;">
+        <div id="user-badge" style="display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 999px;">
+          <div id="user-avatar" style="width: 24px; height: 24px; background: #08137C; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700;">M</div>
+          <span id="user-email-display" style="font-size: 0.8rem; font-weight: 600; color: #0F172A;">Executive</span>
+          <button onclick="signOut()" style="background: none; border: none; font-size: 0.75rem; color: #ec028b; font-weight: 600; cursor: pointer; padding: 0 4px;" title="Sign Out">✕</button>
+        </div>
         <a href="/settings" class="btn-secondary">⚙️ Advanced Cockpit</a>
         <button class="btn-primary" onclick="openTestModal()">🎙️ Test Live Honey</button>
       </div>
@@ -624,7 +667,7 @@
       </div>
       <div class="metric-card">
         <div class="metric-label">Voice Speech Engine</div>
-        <div class="metric-value" style="font-size: 1.35rem; margin-top: 6px;">Gemini 3.1 Flash</div>
+        <div class="metric-value" style="font-size: 1.35rem; margin-top: 6px;">Gemini 3.8 Live</div>
         <div class="metric-sub">⚡ Full-duplex speech-to-speech</div>
       </div>
       <div class="metric-card">
@@ -968,6 +1011,80 @@
       div.innerText = text || '';
       return div.innerHTML;
     }
+
+    // ========================================================================
+    // EXECUTIVE AUTHENTICATION & GOOGLE IDENTITY SERVICES GATE
+    // ========================================================================
+    const WHITELIST = [
+      'michael@rhiveconstruction.com',
+      'mjrob14@gmail.com',
+      'kara@rhiveconstruction.com'
+    ];
+
+    function isWhitelisted(email) {
+      if (!email) return false;
+      const lower = email.toLowerCase().trim();
+      return WHITELIST.includes(lower) || lower.endsWith('@rhiveconstruction.com');
+    }
+
+    async function handleGoogleCredentialResponse(response) {
+      try {
+        const res = await fetch('/api/auth/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ credential: response.credential })
+        });
+        const data = await res.json();
+        if (data.authorized) {
+          const user = {
+            email: data.email,
+            name: data.name || (data.email.includes('kara') ? 'Kara Robinson' : 'Michael Robinson'),
+            role: data.role || (data.email.includes('kara') ? 'President & Owner (95%)' : 'Owner & CEO (5%)'),
+            token: response.credential,
+            loggedAt: new Date().toISOString()
+          };
+          localStorage.setItem('rhive_auth_user', JSON.stringify(user));
+          checkAuth();
+        } else {
+          showAuthDenied(data.error || 'Unauthorized account');
+        }
+      } catch(e) {
+        console.error('Google credential verification error:', e);
+        showAuthDenied(e.message);
+      }
+    }
+
+    function showAuthDenied(msg) {
+      const box = document.getElementById('auth-error-box');
+      const errEl = document.getElementById('auth-error-msg');
+      if (box && errEl) {
+        errEl.innerText = msg;
+        box.style.display = 'block';
+      }
+    }
+
+    function checkAuth() {
+      const user = JSON.parse(localStorage.getItem('rhive_auth_user') || 'null');
+      if (user && isWhitelisted(user.email)) {
+        document.getElementById('auth-gate').style.display = 'none';
+        const emailDisplay = document.getElementById('user-email-display');
+        const avatarDisplay = document.getElementById('user-avatar');
+        if (emailDisplay) emailDisplay.innerText = user.name || user.email;
+        if (avatarDisplay) avatarDisplay.innerText = (user.name || user.email || 'M')[0].toUpperCase();
+      } else {
+        document.getElementById('auth-gate').style.display = 'flex';
+      }
+    }
+
+    function signOut() {
+      localStorage.removeItem('rhive_auth_user');
+      checkAuth();
+    }
+
+    // Run auth check on initialization
+    window.addEventListener('DOMContentLoaded', () => {
+      checkAuth();
+    });
   </script>
 </body>
 </html>
