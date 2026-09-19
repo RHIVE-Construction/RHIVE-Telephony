@@ -1,29 +1,37 @@
 # 🛡️ Flow 4: Cold Solicitor Anti-Spam Quarantine
 **System OS:** ANTIGRAVITY V8.0  
-**Swarm Revision:** Revision 60 Production Release  
+**Swarm Revision:** Revision 67 Master Alignment  
 **Target Environment:** Google Cloud Run (`rhive-voice-live-bridge`)  
-**Live Telephony Endpoint:** `+1 (839) 867-6637` (+1 839-86-ROOFS)  
+**Live Telephony Endpoint:** `+1 (839) 867-6637` (+1 839-86-ROOFS) *(All calls to RHIVE Main are forwarded here for Honey to answer directly)*  
+**Live Executive Dashboard:** [https://rhive-voice-live-bridge-910835773728.us-central1.run.app/](https://rhive-voice-live-bridge-910835773728.us-central1.run.app/)  
 **Assigned Swarm Role:** Honey (AI Roofing Specialist & Anti-Spam Sentry)  
 
 ---
 
 ## 1. Executive Workflow Scope & Operating Model
 
-This flow establishes an automated perimeter defense against unsolicited cold sales calls, offshore SEO agencies, telemarketing lead brokers, merchant service solicitations, and automated robocallers. It enforces a strict 2-Question Qualification Gate, eliminates upward interruptions to Michael and Kara, and redirects legitimate inquiries to corporate email (`info@rhiveconstruction.com`). When pushback occurs, Honey executes `hangup_call({"reason": "solicitor_rejected"})`.
+This flow establishes an automated perimeter defense against unsolicited cold sales calls, offshore SEO agencies, telemarketing lead brokers, merchant service solicitations, and automated robocallers. It enforces a strict 2-Question Qualification Gate, eliminates upward interruptions to Michael and Kara, maintains absolute schedule confidentiality, and redirects legitimate inquiries to corporate email (`info@rhiveconstruction.com`). 
+
+### Rev 67 Zero Speech-Cutoff Disconnect Engine:
+1. When Honey detects cold vendor solicitation or caller pushback, she invokes `hangup_call({"reason": "solicitor_quarantine"})`.
+2. Unlike legacy blind timers (`1200ms`/`3500ms`) which prematurely dropped carrier audio mid-word, Rev 67 uses an event-driven `armGracefulHangup()` state machine.
+3. The server waits for Gemini Live to emit `turnComplete: true` (speech generation 100% complete).
+4. A dedicated `1500ms` audio buffer drain timer (`onTurnCompleteForHangup`) allows all audio frames in Twilio's RTP jitter buffer to play out cleanly to the caller's ear.
+5. The carrier PSTN leg is then terminated cleanly via the Twilio REST API (`terminateTwilioCall`). Honey will **never** cut herself off mid-sentence.
 
 ```mermaid
 flowchart TD
-    Inbound["Inbound Caller: Unknown / Cold Pitch / Solicitor"] --> HoneyGreet["Honey Ring-1 Direct Greeting (Polite Invariant)"]
+    Inbound["Inbound Caller: Unknown / Cold Pitch / Solicitor"] --> WhitelistCheck{"Caller ID Check:<br/>Michael Cell (+18019284434 or +18014491451)?"}
+    WhitelistCheck -->|"Yes (Executive Whitelist)"| AdminOverride["Founder Voice MCP Admin Override Mode Enabled"]
+    WhitelistCheck -->|"No (External / Unknown)"| HoneyGreet["Honey Ring-1 Direct Greeting (Polite Invariant)"]
+    
     HoneyGreet --> Gate1["Gate 1: Identify Entity & Project Scope<br/>'What company are you with, and what project are you calling about?'"]
     
     Gate1 --> ScopeCheck{"Is Caller Pitching Marketing, SEO, Leads, or Services?"}
     
-    ScopeCheck -->|"Yes (Solicitor / Cold Vendor)"| QuarantineNotice["Polite Quarantine Policy Triggered:<br/>'RHIVE has a company policy against unsolicited phone pitches.'"]
-    QuarantineNotice --> RedirectEmail["Redirect to Corporate Mailbox:<br/>'Please email your proposal to info@rhiveconstruction.com.'"]
-    RedirectEmail --> PushbackCheck{"Caller Accepts or Pushes Back?"}
-    
-    PushbackCheck -->|"Pushes Back / Demands Cell Phone"| HardDrop["Execute hangup_call tool immediately"]
-    PushbackCheck -->|"Polite Disconnect"| CleanClose["Polite Wrap-up & hangup_call"]
+    ScopeCheck -->|"Yes (Solicitor / Cold Vendor)"| QuarantineNotice["Polite Intelligent Quarantine & Procurement Policy:<br/>'Our procurement team reviews all vendor proposals in writing with portfolio specs.<br/>Please submit details to info@rhiveconstruction.com. Thank you, have a great day, goodbye!'"]
+    QuarantineNotice --> DisconnectEngine["Rev 67 Disconnect Engine:<br/>1. Invoke hangup_call<br/>2. Wait for turnComplete: true<br/>3. Drain Twilio audio buffer (1500ms)<br/>4. Terminate carrier PSTN leg via REST API"]
+    DisconnectEngine --> ZeroCutoffClean["100% Zero-Speech-Cutoff Guaranteed"]
 ```
 
 ---
@@ -31,16 +39,16 @@ flowchart TD
 ## 2. Core Operational Invariants & Security Guardrails
 
 ### A. Zero Upward Delegation Rule
-* **No Transfers Under Any Circumstance:** Honey must **NEVER** transfer an unsolicited sales caller or marketing rep to Michael's mobile (`801-449-1451`) or Kara's mobile (`801-441-0024`).
-* **Schedule Confidentiality:** Honey must never disclose executive schedules, calendar availability, or physical whereabouts (e.g., never say *"Michael is out on a roof until 3 PM"* or *"Kara will be in tomorrow"*).
+* **No Transfers Under Any Circumstance:** Honey must **NEVER** transfer an unsolicited sales caller or marketing rep to Michael's mobile or Kara's mobile.
+* **Global Schedule Confidentiality:** Honey must **never** disclose executive schedules, calendar availability, appointment times, or physical whereabouts (e.g., never say *"Michael is out on a roof until 3 PM"*, *"Kara will be in tomorrow"*, or *"They are in a meeting"*). She states simply that executive reviews occur through written procurement submissions.
 
-### B. Standard Vendor Protocol
-* RHIVE handles all vendor evaluation, vendor onboarding, and partnership solicitations asynchronously.
-* All cold outreach must be routed exclusively to:
+### B. Intelligent Conversational Procurement Policy
+* Honey provides intelligent business reasoning: RHIVE's executive and procurement teams review all subcontractor, supplier, software, and marketing proposals asynchronously through written submissions with portfolio documentation.
+* All vendor outreach must be routed exclusively to:
   $$\text{info@rhiveconstruction.com}$$
 * Any paper mail or physical media solicitations are declined over the phone.
 
-### C. Conversational Economy (<15 Words per Turn)
+### C. Conversational Economy (<18 Words per Turn)
 * Long conversational engagements waste AI token budgets and invite persistent telemarketing rebuttals.
 * Honey delivers swift, authoritative, courteous statements that leave no opening for sales counter-arguments.
 
@@ -59,14 +67,16 @@ flowchart TD
 
 #### Turn 1: Caller Discloses Cold Pitch
 * **Caller:** *"I'm with Apex Lead Gen. We want to sell you exclusive roofing leads in Salt Lake City."*
-* **Honey (<25 Words):**
-  > *"R-HIVE has a strict policy against phone solicitations. Please email your proposal to info@rhiveconstruction.com."*
+* **Honey (<22 Words Verbatim):**
+  > *"Our procurement team reviews all vendor proposals in writing. Please submit your materials to info@rhiveconstruction.com. Have a wonderful day! Goodbye!"*
+* **Carrier Action:** Honey calls `hangup_call({"reason": "solicitor_quarantine"})`. Server arms graceful disconnect, waits for `turnComplete: true`, drains audio buffer for 1500ms, and terminates carrier leg cleanly.
 
-#### Turn 2: Caller Attempts Pushback / Demand for Owner
-* **Caller:** *"Can I just get Michael's cell phone number or transfer to him?"*
-* **Honey (<18 Words):**
-  > *"All vendor solicitations must go through our email. Thank you and have a good day."*
-* **Action:** Honey immediately invokes `hangup_call({"reason": "solicitor_rejected"})`. Audio terminates cleanly.
+#### In-Call Executive Admin Override (Michael's Whitelisted Numbers):
+* If Michael calls from either of his personal lines:
+  - `+1 (801) 928-4434`
+  - `+1 (801) 449-1451`
+* Flow 4 quarantine is bypassed completely.
+* Honey recognizes Michael's phone number and voice, enters Voice MCP Administrative Override mode, and allows real-time behavioral rule edits, prompting adjustments, and system status inquiries without ever hanging up.
 
 ---
 
@@ -80,5 +90,4 @@ flowchart TD
 | **Flow 4** | Cold Solicitor & Unsolicited Marketing Anti-Spam Perimeter Quarantine | [flow_anti_spam_quarantine.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/flow_anti_spam_quarantine.md) |
 | **Master Spec** | Complete Master Telephony System Specifications & Swarm Architecture | [master_telephony_workflow_specification.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/master_telephony_workflow_specification.md) |
 | **Flowchart** | Visual End-to-End Decision Flowchart & Script Matrix | [customer_telephony_flowchart.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/customer_telephony_flowchart.md) |
-| **Live Bridge** | Production GCP Cloud Run Speech-to-Speech WebSocket Implementation | [server.js](file:///c:/Users/mjrob/OneDrive/Desktop/App%20Repo%20s/MJR_EPA/services/telephony-live-bridge/server.js) |
-| **A2A Results** | Overnight Agent-to-Agent Simulation Test Suite & Performance Log | [rev60_a2a_simulation_results.json](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/rev60_a2a_simulation_results.json) |
+| **Live Bridge** | Production GCP Cloud Run Speech-to-Speech WebSocket Implementation | [server.js](file:///c:/Users/mjrob/OneDrive/Desktop/App%20Repo%20s/RHIVE-Construction/RHIVE-Telephony/server.js) |

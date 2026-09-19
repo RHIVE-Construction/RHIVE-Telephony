@@ -3438,14 +3438,48 @@
       }
     }
 
+    async function initGoogleAuth() {
+      try {
+        const res = await fetch('/api/auth/config');
+        const config = await res.json();
+        if (config.clientId) {
+          const gIdOnload = document.getElementById('g_id_onload');
+          if (gIdOnload) gIdOnload.setAttribute('data-client_id', config.clientId);
+          if (window.google && window.google.accounts && window.google.accounts.id) {
+            google.accounts.id.initialize({
+              client_id: config.clientId,
+              callback: handleGoogleCredentialResponse,
+              auto_select: false
+            });
+            const signinBtn = document.querySelector('.g_id_signin');
+            if (signinBtn) {
+              google.accounts.id.renderButton(signinBtn, {
+                type: 'standard',
+                shape: 'rectangular',
+                theme: 'outline',
+                text: 'signin_with',
+                size: 'large'
+              });
+            }
+          }
+        }
+      } catch(e) {
+        console.warn('[Google Auth Init Warning]', e);
+      }
+    }
+
     // Bootstrap
     checkAuth();
+    initGoogleAuth();
     loadStatus();
     refreshCalendar();
     loadPendingTunings();
     loadActiveRules();
     loadCallFlows();
     setInterval(loadStatus, 5000);
+    window.addEventListener('load', () => {
+      initGoogleAuth();
+    });
   </script>
 </body>
 </html>

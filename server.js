@@ -1174,10 +1174,23 @@ function isSimulationOrTest(phone) {
 }
 
 // ============================================================================
-// AMBIENT ACOUSTIC ENGINE (OFFICE & CONSTRUCTION SOUNDSCAPES)
+// AMBIENT ACOUSTIC ENGINE (OFFICE & ROOFING CONSTRUCTION SOUNDSCAPES)
 // ============================================================================
 let officeAmbientBuffer = null;
 let constructionAmbientBuffer = null;
+let compositeAmbientBuffer = null;
+
+try {
+  const compositePath = path.join(__dirname, 'ambient', 'office_roofing_composite.wav');
+  if (fs.existsSync(compositePath)) {
+    const raw = fs.readFileSync(compositePath);
+    const pcmData = raw.subarray(44); // Strip 44-byte WAV header
+    compositeAmbientBuffer = new Int16Array(pcmData.buffer, pcmData.byteOffset, pcmData.length / 2);
+    console.log('[Ambient] Loaded composite office+roofing soundscape (' + compositeAmbientBuffer.length + ' samples, ' + (compositeAmbientBuffer.length / 8000).toFixed(1) + 's)');
+  }
+} catch(e) {
+  console.warn('[Ambient] Failed to load composite ambient:', e.message);
+}
 
 try {
   const officePath = path.join(__dirname, 'ambient', 'office_ambient.wav');
@@ -1347,20 +1360,26 @@ function calculateEnergy(buf) {
 /**
  * Resamples Gemini 24kHz linear PCM to 8kHz mu-law and blends ambient room soundscape.
  */
-function pcm24kToMuLaw8kWithAmbient(pcm24kBuf, ambientMode = 'office', session = null) {
+function pcm24kToMuLaw8kWithAmbient(pcm24kBuf, ambientMode = 'composite', session = null) {
   const num24kSamples = Math.floor(pcm24kBuf.length / 2);
   const num8kSamples = Math.floor(num24kSamples / 3);
   const muLawBuf = Buffer.alloc(num8kSamples);
 
-  let ambBuf = null;
-  let ambGain = 0.0; // Disabled for 100% close-mic vocal presence & studio clarity
+  let ambBuf = compositeAmbientBuffer || officeAmbientBuffer;
+  let ambGain = 0.045; // -27dB subtle authentic contractor office + exterior craftsmanship presence
 
   if (ambientMode === 'construction') {
-    ambBuf = constructionAmbientBuffer;
-    ambGain = 0.0;
+    ambBuf = constructionAmbientBuffer || compositeAmbientBuffer;
+    ambGain = 0.050;
   } else if (ambientMode === 'office') {
-    ambBuf = officeAmbientBuffer;
+    ambBuf = officeAmbientBuffer || compositeAmbientBuffer;
+    ambGain = 0.040;
+  } else if (ambientMode === 'off' || ambientMode === 'none' || ambientMode === 'studio') {
+    ambBuf = null;
     ambGain = 0.0;
+  } else if (ambientMode === 'composite' || ambientMode === 'office_roofing') {
+    ambBuf = compositeAmbientBuffer || officeAmbientBuffer;
+    ambGain = 0.045;
   }
 
   for (let i = 0; i < num8kSamples; i++) {
@@ -1369,7 +1388,7 @@ function pcm24kToMuLaw8kWithAmbient(pcm24kBuf, ambientMode = 'office', session =
     const s2 = pcm24kBuf.readInt16LE((i * 3 + 2) * 2);
     let voiceSample = Math.round((s0 + s1 + s2) / 3);
 
-    // Pure direct speech-to-speech without room reverberation or ambient wash
+    // Blend subtle ambient background soundscape into voice
     if (ambGain > 0 && ambBuf && session) {
       const ambIndex = session.ambientSampleIndex % ambBuf.length;
       const ambSample = ambBuf[ambIndex];
@@ -6376,7 +6395,7 @@ app.get('/health', (req, res) => {
     status: 'ok',
     service: 'RHIVE Multi-Model Telephony Swarm & Speech-to-Speech Bridge',
     version: '1.6.0',
-    revision: 'Rev 66',
+    revision: 'Rev 67',
     model: LIVE_VOICE_MODEL,
     models: {
       voiceEngine: LIVE_VOICE_MODEL,
@@ -6392,10 +6411,24 @@ app.get('/health', (req, res) => {
     calendarDwdConnected: !!calendarClient,
     ambientOfficeLoaded: !!officeAmbientBuffer,
     ambientConstructionLoaded: !!constructionAmbientBuffer,
+    ambientCompositeLoaded: !!compositeAmbientBuffer,
     transferRingExists: fs.existsSync(path.join(__dirname, 'audio', 'transfer_ring.wav')),
     controlPanelAvailable: fs.existsSync(path.join(__dirname, 'public', 'settings.html')),
     dashboardAvailable: fs.existsSync(path.join(__dirname, 'public', 'dashboard.html')),
     timestamp: new Date().toISOString()
+  });
+});
+
+// Dynamic Google Identity Services Configuration
+app.get('/api/auth/config', (req, res) => {
+  res.json({
+    clientId: process.env.GOOGLE_OAUTH_CLIENT_ID || '910835773728-dummy.apps.googleusercontent.com',
+    authEnabled: true,
+    whitelist: [
+      'michael@rhiveconstruction.com',
+      'mjrob14@gmail.com',
+      'kara@rhiveconstruction.com'
+    ]
   });
 });
 

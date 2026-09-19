@@ -98,7 +98,8 @@ async function runTests() {
   try {
     const res = await axios.get(`http://localhost:${TEST_PORT}/health`);
     assert(res.status === 200 && res.data.status === 'ok', 'GET /health returns 200 OK');
-    assert(res.data.revision === 'Rev 66', 'Health reports revision: Rev 66');
+    assert(res.data.revision === 'Rev 67', 'Health reports revision: Rev 67');
+    assert(res.data.ambientCompositeLoaded === true, 'Health reports ambientCompositeLoaded: true');
     assert(res.data.dashboardAvailable === true, 'Health reports Executive Dashboard is available');
     assert(res.data.models && (res.data.models.voiceEngine === 'gemini-3.8-live' || res.data.models.voiceEngine === 'gemini-3.1-flash-live-preview'), 'Health reports Voice Engine: ' + res.data.models.voiceEngine);
     assert(res.data.models && res.data.models.extendedThinking === 'gemini-3.8-live-extended-thinking', 'Health reports Extended Thinking: gemini-3.8-live-extended-thinking');
@@ -108,9 +109,18 @@ async function runTests() {
 
     // Verify GET / serves the all-white dashboard
     const dashRes = await axios.get(`http://localhost:${TEST_PORT}/`);
-    assert(dashRes.status === 200 && dashRes.data.includes('Executive Telephony Dashboard'), 'GET / serves Rev 66 All-White Executive Dashboard');
+    assert(dashRes.status === 200 && dashRes.data.includes('Executive Telephony Dashboard'), 'GET / serves Rev 67 All-White Executive Dashboard');
   } catch(e) {
     assert(false, 'GET /health error: ' + e.message);
+  }
+
+  // Test 2B: Dynamic Google Auth Config Endpoint
+  try {
+    const authConfig = await axios.get(`http://localhost:${TEST_PORT}/api/auth/config`);
+    assert(authConfig.status === 200 && authConfig.data.clientId, 'GET /api/auth/config returns 200 and clientId');
+    assert(authConfig.data.authEnabled === true, 'GET /api/auth/config reports authEnabled: true');
+  } catch(e) {
+    assert(false, 'GET /api/auth/config error: ' + e.message);
   }
 
   // Test 3: Auth Verify (Whitelist Gate)
