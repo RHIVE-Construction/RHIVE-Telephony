@@ -100,7 +100,8 @@ async function runTests() {
     assert(res.status === 200 && res.data.status === 'ok', 'GET /health returns 200 OK');
     assert(res.data.revision === 'Rev 66', 'Health reports revision: Rev 66');
     assert(res.data.dashboardAvailable === true, 'Health reports Executive Dashboard is available');
-    assert(res.data.models && res.data.models.voiceEngine === 'gemini-3.1-flash-live-preview', 'Health reports Voice Engine: gemini-3.1-flash-live-preview');
+    assert(res.data.models && (res.data.models.voiceEngine === 'gemini-3.8-live' || res.data.models.voiceEngine === 'gemini-3.1-flash-live-preview'), 'Health reports Voice Engine: ' + res.data.models.voiceEngine);
+    assert(res.data.models && res.data.models.extendedThinking === 'gemini-3.8-live-extended-thinking', 'Health reports Extended Thinking: gemini-3.8-live-extended-thinking');
     assert(res.data.models && res.data.models.agenticWriting === 'gemini-3.8-flash', 'Health reports Agentic Writing & DISC: gemini-3.8-flash');
     assert(res.data.models && res.data.models.reasoningInspector === 'gemini-3.5-flash-lite', 'Health reports Sub-300ms Reasoning Inspector: gemini-3.5-flash-lite');
     assert(res.data.models && res.data.models.liveTranscription === 'gemini-3.5-transcribe-live', 'Health reports Bidirectional Streaming STT: gemini-3.5-transcribe-live');
