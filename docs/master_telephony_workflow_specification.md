@@ -1,4 +1,4 @@
-# 🏗️ RHIVE Master Telephony Swarm: Technical Workflow Specification
+﻿# 🏗️ RHIVE Master Telephony Swarm: Technical Workflow Specification
 **System OS:** ANTIGRAVITY V8.0 (Sovereign Execution Builder)  
 **Swarm Revision:** Revision 67 Production Release  
 **Target Environment:** Google Cloud Run (`rhive-voice-live-bridge`)  
@@ -18,7 +18,7 @@ The RHIVE telephony swarm operates on a unified, high-speed multimodal pipeline 
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ Inbound Call -> Direct Ring-1 Answer (No Robotic Menus / Zero IVR Delay)    │
 │ Honey Greeting: "Hi, this is Honey! R-hive's AI Roofing Specialist,        │
-│                  how may I assist with your roofing project today!?"        │
+│                  what can we take care of on your roof today!?"        │
 │                  (+150ms carrier settle pause + audible vocal smile)        │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ Address Audio Confirmation Gate:                                            │
@@ -131,3 +131,4 @@ Instead of quoting arbitrary time blocks, Honey calculates dynamic arrival windo
 | **Master Spec** | Complete Master Telephony System Specifications & Swarm Architecture | [master_telephony_workflow_specification.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/master_telephony_workflow_specification.md) |
 | **Flowchart** | Visual End-to-End Decision Flowchart & Script Matrix | [customer_telephony_flowchart.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/customer_telephony_flowchart.md) |
 | **Live Bridge** | Production GCP Cloud Run Speech-to-Speech WebSocket Implementation | [server.js](file:///c:/Users/mjrob/OneDrive/Desktop/App%20Repo%20s/RHIVE-Construction/RHIVE-Telephony/server.js) |
+

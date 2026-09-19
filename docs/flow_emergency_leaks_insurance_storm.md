@@ -1,4 +1,4 @@
-# 🚨 Flow 2: Emergency Active Leaks & Insurance Storm Damage Restoration
+﻿# 🚨 Flow 2: Emergency Active Leaks & Insurance Storm Damage Restoration
 **System OS:** ANTIGRAVITY V8.0  
 **Swarm Revision:** Revision 67 Master Alignment  
 **Target Environment:** Google Cloud Run (`rhive-voice-live-bridge`)  
@@ -15,7 +15,7 @@ Flow 2 unifies all urgent distress calls, active water intrusions, and insurance
 
 ```mermaid
 flowchart TD
-    Inbound["Caller Inbound: Active Leak or Storm/Hail Damage"] --> HoneyGreet["Honey Ring-1 Direct Greeting (Empathetic Triage)<br/>'Hi, this is Honey! R-hive's AI Roofing Specialist, how may I assist with your roofing project today!?'"]
+    Inbound["Caller Inbound: Active Leak or Storm/Hail Damage"] --> HoneyGreet["Honey Ring-1 Direct Greeting (Empathetic Triage)<br/>'Hi, this is Honey! R-hive's AI Roofing Specialist, what can we take care of on your roof today!?'"]
     HoneyGreet --> AddressCapture["Address Capture & GIS Polygon Check (Utah County & Salt Lake County)"]
     
     AddressCapture --> AddressGate["Mandatory Address Audio Confirmation Gate:<br/>Honey reads back geocoded address, pauses, and awaits caller confirmation"]
@@ -144,3 +144,4 @@ flowchart TD
 | **Master Spec** | Complete Master Telephony System Specifications & Swarm Architecture | [master_telephony_workflow_specification.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/master_telephony_workflow_specification.md) |
 | **Flowchart** | Visual End-to-End Decision Flowchart & Script Matrix | [customer_telephony_flowchart.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/customer_telephony_flowchart.md) |
 | **Live Bridge** | Production GCP Cloud Run Speech-to-Speech WebSocket Implementation | [server.js](file:///c:/Users/mjrob/OneDrive/Desktop/App%20Repo%20s/RHIVE-Construction/RHIVE-Telephony/server.js) |
+
