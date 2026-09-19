@@ -612,7 +612,7 @@
       </div>
 
       <!-- Real Google GIS Sign-In Render Target -->
-      <div style="display: flex; justify-content: center; margin-bottom: 24px;">
+      <div style="display: flex; justify-content: center; margin-bottom: 16px;">
         <div id="g_id_onload"
              data-client_id="910835773728-dummy.apps.googleusercontent.com"
              data-callback="handleGoogleCredentialResponse"
@@ -620,6 +620,18 @@
         </div>
         <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="outline" data-text="signin_with" data-size="large"></div>
       </div>
+
+      <!-- Instant Executive Passkey Gate -->
+      <div style="display: flex; align-items: center; margin: 12px 0 16px; color: #94A3B8; font-size: 0.72rem; font-family: 'JetBrains Mono', monospace; font-weight: 700;">
+        <div style="flex: 1; height: 1px; background: #E2E8F0;"></div>
+        <span style="padding: 0 10px; text-transform: uppercase; letter-spacing: 0.5px;">OR EXECUTIVE PASSKEY</span>
+        <div style="flex: 1; height: 1px; background: #E2E8F0;"></div>
+      </div>
+
+      <form id="passkey-form" onsubmit="handlePasskeySubmit(event)" style="display: flex; gap: 8px; margin-bottom: 24px;">
+        <input type="password" id="passkey-input" placeholder="Enter Executive Passkey" style="flex: 1; padding: 10px 14px; border: 1px solid #CBD5E1; border-radius: 8px; font-size: 0.85rem; font-family: 'Rubik', sans-serif; outline: none;" required />
+        <button type="submit" style="background: #08137C; color: #FFFFFF; border: none; border-radius: 8px; padding: 10px 20px; font-weight: 700; font-size: 0.85rem; cursor: pointer;">Unlock</button>
+      </form>
 
       <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 16px; text-align: left;">
         <div style="font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: #08137C; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">Whitelisted Executive Accounts:</div>
@@ -1050,6 +1062,38 @@
         }
       } catch(e) {
         console.error('Google credential verification error:', e);
+        showAuthDenied(e.message);
+      }
+    }
+
+    async function handlePasskeySubmit(event) {
+      if (event) event.preventDefault();
+      const passkeyInput = document.getElementById('passkey-input');
+      const passkey = (passkeyInput?.value || '').trim();
+      if (!passkey) return;
+
+      try {
+        const res = await fetch('/api/auth/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ passkey })
+        });
+        const data = await res.json();
+        if (data.authorized) {
+          const user = {
+            email: data.email,
+            name: data.name || 'Michael Robinson (Executive)',
+            role: data.role || 'Owner & CEO (5%)',
+            token: 'passkey_' + Date.now(),
+            loggedAt: new Date().toISOString()
+          };
+          localStorage.setItem('rhive_auth_user', JSON.stringify(user));
+          checkAuth();
+        } else {
+          showAuthDenied(data.error || 'Invalid Executive Passkey');
+        }
+      } catch(e) {
+        console.error('Passkey verification error:', e);
         showAuthDenied(e.message);
       }
     }

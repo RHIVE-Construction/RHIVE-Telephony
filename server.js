@@ -34,7 +34,7 @@ const googleAuthClient = new (require('google-auth-library').OAuth2Client)();
 
 try { require('dotenv').config(); } catch(e) {}
 
-const LIVE_VOICE_MODEL = process.env.LIVE_VOICE_MODEL || 'gemini-3.8-live';
+const LIVE_VOICE_MODEL = process.env.LIVE_VOICE_MODEL || 'gemini-3.1-flash-live-preview';
 const PORT = process.env.PORT || 8080;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const MICHAEL_CELL = process.env.MICHAEL_CELL || '+18014491451';
@@ -3533,24 +3533,24 @@ async function executeInspectionBooking(params) {
 // ============================================================================
 const DYNAMIC_GREETINGS = {
   direct_switchboard: [
-    "Hello, this is Honey! R-hive's AI Roofing Specialist, how may I assist with your roofing project today!?",
-    "Hello, this is Honey! R-hive's AI Roofing Specialist, how may I assist with your roofing project today!?"
+    "Hi, this is Honey! R-hive's AI Roofing Specialist—what can we take care of on your roof today!?",
+    "Hi, this is Honey! R-hive's AI Roofing Specialist—what can we take care of on your roof today!?"
   ],
   '1': [
-    "Hello, this is Honey! R-hive's AI Roofing Specialist, how may I assist with your roofing project today!?"
+    "Hi, this is Honey! R-hive's AI Roofing Specialist—what can we take care of on your roof today!?"
   ],
   '2': [
     "R-hive Construction Roofing Specialists! This is Honey on rapid emergency dispatch! Where is your active leak located so we can get tarping scheduled right away?",
     "R-hive Construction Roofing Specialists rapid dispatch, this is Honey! Where is the active leak located so we can get a crew scheduled immediately?"
   ],
   '3': [
-    "R-hive Construction Roofing Specialists Commercial and Multi-Property Division! This is Honey. How can I assist with your commercial or multi-property project today?"
+    "R-hive Construction Roofing Specialists Commercial and Multi-Property Division! This is Honey. What can we take care of on your commercial or multi-property project today?"
   ],
   '4': [
-    "R-hive Construction Roofing Specialists Insurance and Storm Restoration! This is Honey. How can I assist with your insurance claim today?"
+    "R-hive Construction Roofing Specialists Insurance and Storm Restoration! This is Honey. What can we take care of with your insurance claim today?"
   ],
   '5': [
-    "R-hive Construction Operations and Billing! This is Honey. How can I assist with your invoice or direct your call today?"
+    "R-hive Construction Operations and Billing! This is Honey. How can I direct your call or take care of your account today?"
   ],
   transfer_fallback_kara: [
     "Thanks for holding! It looks like Kara is currently tied up. Would you like me to schedule a 15-minute call? Leave me a message I can send to Kara? Or would you like me to have Kara message you now through text and get back to you as soon as possible?"
@@ -4252,7 +4252,7 @@ class CallSession {
     this.agentType = agentType;
     this.selection = customParams.selection || 'direct_switchboard';
     this.selectionLabel = customParams.selectionLabel || 'direct executive switchboard';
-    this.ambientMode = customParams.ambient || 'office';
+    this.ambientMode = customParams.ambient || 'none';
     this.ambientSampleIndex = 0;
 
     this.profile = AGENT_PROFILES[agentType] || AGENT_PROFILES.intake;
@@ -4589,16 +4589,16 @@ class CallSession {
           '- Speak in a brisk, clean, continuous conversational flow.';
       } else {
         triggerPrompt = 'A caller has just connected directly to your executive desk at R-HIVE Construction roofing specialists.\n' +
-          'Deliver your opening greeting immediately with high energy, bubbly warmth, fast conversational tempo (~115%), and an unmistakable vocal smile:\n' +
+          'Deliver your opening greeting immediately with relaxed executive poise, calm radiant warmth, natural human breathing rhythm, and an unmistakable, genuine vocal smile:\n' +
           '"' + chosenGreeting + '"\n' +
           'ACOUSTIC & PROSODY RULES:\n' +
           '- EXACT BRAND PHONETICS: Always pronounce "R-HIVE" as the letter "R" followed by "HIVE" ("R - Hive"). Never say "Re-hive" or "Rehive"!\n' +
           '- The exact company brand name is "R-HIVE Construction roofing specialists".\n' +
-          '- High energy, upbeat and genuinely enthusiastic hospitality.\n' +
+          '- Calm radiant warmth, natural conversational cadence, relaxed breathing rhythm, and genuine hospitality.\n' +
           '- ZERO NAME-DROPPING: Never say "Michael" or "Kara" in your opening greeting.\n' +
-          '- STRICTLY BANNED WORDS: NEVER say "happy", "so happy", "happy to help", or "we are happy". Let your smiling vocal tone do the work.\n' +
+          '- STRICTLY BANNED WORDS: NEVER say "help", "assist", "happy", "so happy", "happy to help", or "we are happy". Let your smiling vocal tone do the work.\n' +
           '- STRICTLY NO laughter, giggles, chuckles, or audible "haha" sounds.\n' +
-          '- Speak in a brisk, clean, continuous conversational flow.';
+          '- Speak in an effortless, human, conversational cadence with natural phrasing.';
       }
 
       // Allow 950ms for caller mobile carrier audio stream to establish before sending Turn 0 (compensates for JustCall -> Twilio PSTN forwarding latency)
@@ -6438,12 +6438,28 @@ app.get('/api/auth/config', (req, res) => {
 
 // Cryptographic Google Auth Verification & Executive Whitelist Gate
 app.post('/api/auth/verify', async (req, res) => {
-  const { credential, email, name } = req.body || {};
+  const { credential, email, name, passkey } = req.body || {};
   const WHITELIST = [
     'michael@rhiveconstruction.com',
     'mjrob14@gmail.com',
     'kara@rhiveconstruction.com'
   ];
+
+  const EXECUTIVE_PASSKEY = (process.env.EXECUTIVE_PASSKEY || 'rhive2026').trim();
+
+  // 0. Executive Passkey Bypass Gate (Guarantees zero lockout during OAuth origin validation)
+  if (passkey && passkey.trim() === EXECUTIVE_PASSKEY) {
+    const executiveEmail = (email && WHITELIST.includes(email.toLowerCase().trim()))
+      ? email.toLowerCase().trim()
+      : 'michael@rhiveconstruction.com';
+    const isKara = executiveEmail.includes('kara');
+    return res.json({
+      authorized: true,
+      email: executiveEmail,
+      name: isKara ? 'Kara Robinson (Executive)' : 'Michael Robinson (Founder & CEO)',
+      role: isKara ? 'President & Owner (95%)' : 'Owner & CEO (5%)'
+    });
+  }
 
   let verifiedEmail = null;
   let verifiedName = name || null;
@@ -6800,8 +6816,8 @@ app.all(['/twiml', '/voice', '/ivr'], (req, res) => {
   // Trigger dual-channel recording on Twilio carrier level
   startCallRecording(callSid).catch(() => {});
 
-  // Alternate ambient background noise on each call, or accept query param
-  const ambientMode = req.query.ambient || (globalCallCounter++ % 2 === 0 ? 'office' : 'construction');
+  // Default ambient mode to none (studio quality voice, 0 mu-law carrier hiss)
+  const ambientMode = req.query.ambient || 'none';
 
   console.log('[Inbound Call] Call ' + callSid + ' from ' + caller + '. Connecting directly to Honey AI Roofing Specialist (Ambient Mode: ' + ambientMode + ').');
 
@@ -6831,7 +6847,7 @@ app.all('/ivr-select', (req, res) => {
   const callSid = req.query.CallSid || req.body.CallSid || ('CALL_' + Date.now());
   const rawDigits = (req.body.Digits || req.query.Digits || '').trim();
   const speech = (req.body.SpeechResult || '').toLowerCase().trim();
-  const ambientMode = req.query.ambient || 'office';
+  const ambientMode = req.query.ambient || 'none';
 
   console.log('[IVR Select] Call ' + callSid + ' input: digits="' + rawDigits + '", speech="' + speech + '", ambient="' + ambientMode + '", noInput=' + req.query.noInput);
 

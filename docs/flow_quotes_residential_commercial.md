@@ -1,4 +1,4 @@
-# Flow 1: Residential & Commercial Quotes, Repairs, Replacements & Maintenance
+﻿# Flow 1: Residential & Commercial Quotes, Repairs, Replacements & Maintenance
 **Swarm Revision:** Revision 67 Master Alignment  
 **Target Environment:** Google Cloud Run (`rhive-voice-live-bridge`)  
 **Telephony Engine:** Google Gemini 3.8 Live Multimodal Speech-to-Speech (`gemini-3.8-live` & `gemini-3.8-live-extended-thinking`)  
@@ -20,7 +20,7 @@ The core operational thesis of RHIVE is **remote aerial engineering precision**:
 
 ```mermaid
 flowchart TD
-    A["Inbound Call / Forwarded from RHIVE Main"] --> B["Honey Ring 1 Answer (Zero IVR Menus / Pure Voice)<br/>150ms Settle Delay + Radiant Vocal Smile<br/>'Hi, this is Honey! R-hive's AI Roofing Specialist, how may I assist with your roofing project today!?'"]
+    A["Inbound Call / Forwarded from RHIVE Main"] --> B["Honey Ring 1 Answer (Zero IVR Menus / Pure Voice)<br/>150ms Settle Delay + Radiant Vocal Smile<br/>'Hi, this is Honey! R-hive's AI Roofing Specialist, what can we take care of on your roof today!?'"]
     B --> C{Caller Stated Name?}
     C -- Yes --> D["Store Name & Adopt Casual First Name<br/>Data Field: callerName"]
     C -- No --> E["Capture First Name<br/>Data Field: callerName"]
@@ -94,7 +94,7 @@ flowchart TD
 ### 2.1 Canonical Greeting & Telephony Timing Parameters
 
 Honey answers directly on **Ring 1** with zero robotic IVR switchboards:
-> *"Hi, this is Honey! R-hive's AI Roofing Specialist, how may I assist with your roofing project today!?"*
+> *"Hi, this is Honey! R-hive's AI Roofing Specialist, what can we take care of on your roof today!?"*
 
 > [!IMPORTANT]
 > **Branding & Spoken Pronunciation Rules:** 
@@ -390,3 +390,4 @@ Once the MeasureCall sequence is complete, Honey executes the mandatory 4-step c
 | **Master Spec** | Complete Master Telephony System Specifications & Swarm Architecture | [master_telephony_workflow_specification.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/master_telephony_workflow_specification.md) |
 | **Flowchart** | Visual End-to-End Decision Flowchart & Script Matrix | [customer_telephony_flowchart.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/customer_telephony_flowchart.md) |
 | **Live Bridge** | Production GCP Cloud Run Speech-to-Speech WebSocket Implementation | [server.js](file:///c:/Users/mjrob/OneDrive/Desktop/App%20Repo%20s/RHIVE-Construction/RHIVE-Telephony/server.js) |
+

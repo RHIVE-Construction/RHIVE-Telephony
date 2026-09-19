@@ -1,4 +1,4 @@
-# R-hive Construction Roofing Specialist: Master Customer Telephony Flowchart & Script Matrix (Revision 67)
+﻿# R-hive Construction Roofing Specialist: Master Customer Telephony Flowchart & Script Matrix (Revision 67)
 **System Target Line:** +1 (839) 867-6637 (`839-86-ROOFS`) *(All calls to RHIVE Main are forwarded to this line for Honey to answer directly)*  
 **Engine:** Google Gemini 3.8 Live Multimodal Speech-to-Speech (`gemini-3.8-live` & `gemini-3.8-live-extended-thinking`)  
 **Acoustic Profile:** Leda (Honey AI Roofing Specialist & Executive Project Specialist) | **Tone:** High warmth, radiant vocal smile  
@@ -13,7 +13,7 @@
 
 ```mermaid
 flowchart TD
-    Dial["Caller Dials Office Line / Forwarded from RHIVE Main"] --> Ring1["Honey Ring-1 Direct Answer (Zero IVR Menus / Pure Voice)<br/>150ms Settle Delay + Radiant Vocal Smile<br/>'Hi, this is Honey! R-hive's AI Roofing Specialist, how may I assist with your roofing project today!?'"]
+    Dial["Caller Dials Office Line / Forwarded from RHIVE Main"] --> Ring1["Honey Ring-1 Direct Answer (Zero IVR Menus / Pure Voice)<br/>150ms Settle Delay + Radiant Vocal Smile<br/>'Hi, this is Honey! R-hive's AI Roofing Specialist, what can we take care of on your roof today!?'"]
 
     %% Direct Address & Intent Flow
     Ring1 --> AddrCapture1["Customer States Reason & Property Address"]
@@ -92,7 +92,7 @@ flowchart TD
 ### Turn 1: Honey's Canonical Opening Greeting (Ring 1 Direct Answer)
 * **Trigger:** Caller dials `+1 (839) 867-6637` (or forwarded from RHIVE Main). Zero robotic menus, zero DTMF options.
 * **Honey Speech (<20 Words):**
-  > *"Hi, this is Honey! R-hive's AI Roofing Specialist, how may I assist with your roofing project today!?"*
+  > *"Hi, this is Honey! R-hive's AI Roofing Specialist, what can we take care of on your roof today!?"*
 
 ---
 
@@ -158,3 +158,4 @@ flowchart TD
 | **Flow 4** | Cold Solicitor & Unsolicited Marketing Anti-Spam Perimeter Quarantine | [flow_anti_spam_quarantine.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/flow_anti_spam_quarantine.md) |
 | **Master Spec** | Complete Master Telephony System Specifications & Swarm Architecture | [master_telephony_workflow_specification.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/master_telephony_workflow_specification.md) |
 | **Live Bridge** | Production GCP Cloud Run Speech-to-Speech WebSocket Implementation | [server.js](file:///c:/Users/mjrob/OneDrive/Desktop/App%20Repo%20s/RHIVE-Construction/RHIVE-Telephony/server.js) |
+

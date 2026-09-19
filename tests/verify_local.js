@@ -134,6 +134,16 @@ async function runTests() {
     assert(false, 'Auth verify error: ' + e.message);
   }
 
+  // Test 3B: Auth Verify (Executive Passkey Bypass)
+  try {
+    const passkeyOk = await axios.post(`http://localhost:${TEST_PORT}/api/auth/verify`, {
+      passkey: 'rhive2026'
+    });
+    assert(passkeyOk.status === 200 && passkeyOk.data.authorized === true, 'POST /api/auth/verify authorizes executive via rhive2026 passkey');
+  } catch(e) {
+    assert(false, 'Passkey verify error: ' + e.message);
+  }
+
   // Test 4: Auth Reject (Unauthorized)
   try {
     await axios.post(`http://localhost:${TEST_PORT}/api/auth/verify`, {
