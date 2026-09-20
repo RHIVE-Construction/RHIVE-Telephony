@@ -1988,7 +1988,7 @@ async function executeSpecialistTextRequest(params) {
     const topicDetails = invoiceNumber && !safeReason.toLowerCase().includes(invoiceNumber.toLowerCase())
       ? `${safeReason} (Invoice #${invoiceNumber})`
       : safeReason;
-    const callerConfirmMsg = `Hi ${safeCallerName}, this is ${resolvedSenderTitle}. I saw that we were unable to get to the phone regarding ${topicDetails}. You can either text me back right here to move forward, or let me know and I can give you a call back as soon as possible!`;
+    const callerConfirmMsg = `RHIVE: Hi ${safeCallerName}, this is Kara in operations. I received your note regarding ${topicDetails}. Text me right here or let me know if you'd prefer a quick call!`;
     sendMultiChannelSms({ to: safePhone, body: callerConfirmMsg, preferredSender: isKara ? 'kara' : 'michael' });
     recentSmsRouting.set(normalizePhoneDigits(safePhone), {
       targetSpecialist,
@@ -2158,7 +2158,7 @@ async function executeCallbackBooking(params) {
   if (customerPhone && !customerPhone.startsWith('SIM_')) {
     sendMultiChannelSms({
       to: customerPhone,
-      body: `Hi ${callerName}, this is RHIVE Construction. We have scheduled your 15-minute call with Kara for ${slotSpoken}. A calendar invite has been sent to your email! If you need anything sooner, text this thread.`,
+      body: `RHIVE: Hi ${callerName}, your 15-min call with Kara is confirmed for ${slotSpoken}. A calendar invite is in your email. Text this thread if you need anything sooner.`,
       preferredSender: targetSpecialist || 'kara'
     }).catch(e => console.warn('[Callback Customer SMS Warning]', e.message));
   }
@@ -3496,7 +3496,7 @@ async function executeInspectionBooking(params) {
     if (targetPhone && !isSimulatedCall) {
       const emailNotice = validCustomerEmail ? ' A calendar invite has been sent to your email.' : '';
       const cleanCustomerName = (callerName && callerName !== 'Homeowner' && callerName !== 'there' && callerName !== 'Unknown Caller') ? ' ' + callerName : '';
-      const smsCustomer = 'RHIVE Free Inspection Confirmed: Hi' + cleanCustomerName + ', your certified roof inspection is locked in for ' + inspectionSlot + ' at ' + propertyAddress + '.' + emailNotice + ' Michael or our project specialist will text your cell 15 minutes before arrival tomorrow. Questions? Call or text 801-449-1451.';
+      const smsCustomer = 'RHIVE: Hi' + cleanCustomerName + ', your roof inspection at ' + propertyAddress + ' is confirmed for ' + inspectionSlot + '.' + emailNotice + ' We will text you 15 mins before arrival. Questions? Text or call 801-449-1451.';
       sendMultiChannelSms({
         to: targetPhone,
         body: smsCustomer,
@@ -4922,7 +4922,7 @@ class CallSession {
         // 1. Dispatch customer SMS establishing direct line with Project Specialist
         if (targetPhone && !targetPhone.startsWith('SIM_')) {
           const greetingName = cleanCallerName ? ' ' + cleanCallerName : '';
-          const smsBody = 'Hi' + greetingName + ', this is your Project Design Specialist with RHIVE Construction (801-449-1451). I will be handling your certified roof quote for ' + propertyAddress + '. Feel free to text me directly on this thread anytime with questions or details about your roof!';
+          const smsBody = 'RHIVE: Hi' + greetingName + ', this is your project specialist for ' + propertyAddress + '. We are preparing your certified roof quote now. Feel free to text photos or questions directly to this thread!';
           sendMultiChannelSms({
             to: targetPhone,
             body: smsBody,
@@ -5022,7 +5022,7 @@ class CallSession {
         if (targetPhone && !targetPhone.startsWith('SIM_')) {
           sendMultiChannelSms({
             to: targetPhone,
-            body: 'Hi ' + callerName + '! This is your project specialist with RHIVE Construction (801-449-1451). Please reply directly to this text with 2 or 3 photos of your roof damage, and I will review them right away for your repair quote!',
+            body: 'RHIVE: Hi ' + callerName + ', please reply directly with 2 or 3 photos of your roof damage. Our specialist will review your slope and shingle match immediately.',
             preferredSender: 'michael'
           }).catch(e => console.warn('[Photo Upload SMS Warning]', e.message));
         }
@@ -5039,7 +5039,7 @@ class CallSession {
         if (targetPhone && !targetPhone.startsWith('SIM_')) {
           sendMultiChannelSms({
             to: targetPhone,
-            body: 'Hi ' + callerName + '! Here is the RHIVE Construction homepage: https://rhiveconstruction.com - You can explore instant ballpark pricing in under 60 seconds! Questions? Text or call your project specialist at 801-449-1451.',
+            body: 'RHIVE: Hi ' + callerName + ', here is your 60-second ballpark roof calculator: https://rhiveconstruction.com — Text or call 801-449-1451 with questions.',
             preferredSender: 'michael'
           }).catch(e => console.warn('[Ballpark SMS Warning]', e.message));
         }
