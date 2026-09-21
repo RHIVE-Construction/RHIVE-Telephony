@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RHIVE Telephony Swarm: Outcomes, Triggers & Templates Matrix</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    :root {
+      --rhive-navy: #08137C;
+      --rhive-pink: #EC028B;
+      --rhive-dark: #0f172a;
+      --rhive-border: #e2e8f0;
+      --rhive-bg: #f8fafc;
+    }
+    .badge-f1 { background-color: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .badge-f2 { background-color: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    .badge-f3 { background-color: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .badge-f4 { background-color: #faf5ff; color: #7e22ce; border: 1px solid #e9d5ff; }
+    .badge-edge { background-color: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+    
+    .dest-office { background-color: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
+    .dest-michael { background-color: #eff6ff; color: #1e40af; border: 1px solid #93c5fd; }
+    .dest-kara { background-color: #fdf2f8; color: #9d174d; border: 1px solid #fbcfe8; }
+
+    .sms-bubble {
+      background: #f1f5f9;
+      border-radius: 14px 14px 14px 2px;
+      position: relative;
+    }
+    .copy-btn:active { transform: scale(0.96); }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen p-4 md:p-8 font-sans antialiased">
+
+  <!-- TOP HEADER -->
+  <div class="max-w-7xl mx-auto mb-6">
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-pink-50 text-[#EC028B] border border-pink-200">
+            RHIVE Swarm OS V8.0
+          </span>
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-[#08137C] border border-blue-200">
+            Gemini 3.1 Flash Live
+          </span>
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            Main Office Default (+1 435-417-6637)
+          </span>
+        </div>
+        <h1 class="text-2xl md:text-3xl font-black tracking-tight text-slate-900">
+          Telephony Swarm: Outcomes, Triggers & Templates Matrix
+        </h1>
+        <p class="text-sm text-slate-500 mt-1">
+          Complete operational catalog of all 42 conversational pathways, human-cadenced Honey responses, and high-velocity SMS dispatches.
+        </p>
+      </div>
+
+      <!-- Quick Stats -->
+      <div class="flex items-center gap-3">
+        <div class="text-center px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl">
+          <div class="text-xl font-extrabold text-slate-800" id="stat-count">42</div>
+          <div class="text-xs text-slate-500 uppercase font-semibold">Total Outcomes</div>
+        </div>
+        <div class="text-center px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl">
+          <div class="text-xl font-extrabold text-emerald-600">100%</div>
+          <div class="text-xs text-slate-500 uppercase font-semibold">&lt;160c SMS</div>
+        </div>
+        <div class="text-center px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl">
+          <div class="text-xl font-extrabold text-blue-600">5</div>
+          <div class="text-xs text-slate-500 uppercase font-semibold">Domains</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTROL BAR: SEARCH, FILTERS & VIEW MODES -->
+  <div class="max-w-7xl mx-auto mb-6">
+    <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-4">
+      
+      <!-- Search & View Toggle -->
+      <div class="flex flex-col md:flex-row items-center justify-between gap-3">
+        <!-- Search Input -->
+        <div class="relative w-full md:w-96">
+          <svg class="w-4 h-4 text-slate-400 absolute left-3 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+          <input 
+            type="text" 
+            id="searchInput" 
+            placeholder="Search by ID, keyword (e.g. solar, tarp, Kara, permit)..." 
+            class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#08137C] focus:bg-white transition-all"
+            oninput="filterOutcomes()"
+          />
+        </div>
+
+        <!-- View Toggle & Destination Filter -->
+        <div class="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+          <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600">
+            <button id="viewBtnCards" onclick="setViewMode('cards')" class="px-3 py-1.5 rounded-lg bg-white text-slate-900 shadow-sm transition-all">
+              Executive Cards
+            </button>
+            <button id="viewBtnTable" onclick="setViewMode('table')" class="px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 transition-all">
+              Data Spreadsheet
+            </button>
+          </div>
+
+          <select id="destFilter" onchange="filterOutcomes()" class="bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#08137C]">
+            <option value="all">🏢 All Staff Routing</option>
+            <option value="office">🏢 Main Office Line (+1 435-417-6637)</option>
+            <option value="michael">👤 Michael Robinson (+1 801-449-1451)</option>
+            <option value="kara">👩 Kara Robinson (+1 801-441-0024)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Flow Tabs -->
+      <div class="flex items-center gap-2 overflow-x-auto pb-1 text-xs font-bold scrollbar-none">
+        <button onclick="setFlowFilter('all')" class="flow-tab active px-3 py-1.5 rounded-xl bg-slate-900 text-white transition-all whitespace-nowrap" data-flow="all">
+          All Outcomes (42)
+        </button>
+        <button onclick="setFlowFilter('Flow 1: Quotes')" class="flow-tab px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all whitespace-nowrap" data-flow="Flow 1: Quotes">
+          Flow 1: Quotes (16)
+        </button>
+        <button onclick="setFlowFilter('Flow 2: Emergency')" class="flow-tab px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all whitespace-nowrap" data-flow="Flow 2: Emergency">
+          Flow 2: Emergency & Leaks (6)
+        </button>
+        <button onclick="setFlowFilter('Flow 3: Trade/Kara')" class="flow-tab px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all whitespace-nowrap" data-flow="Flow 3: Trade/Kara">
+          Flow 3: Trade & Kara Operations (9)
+        </button>
+        <button onclick="setFlowFilter('Flow 4: Anti-Spam')" class="flow-tab px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all whitespace-nowrap" data-flow="Flow 4: Anti-Spam">
+          Flow 4: Anti-Spam & Protection (5)
+        </button>
+        <button onclick="setFlowFilter('Edge Cases')" class="flow-tab px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all whitespace-nowrap" data-flow="Edge Cases">
+          Edge Cases & Fail-safes (6)
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- CONTAINER: CARDS VIEW (DEFAULT) -->
+  <div id="cardsContainer" class="max-w-7xl mx-auto space-y-4">
+    <!-- Populated via JS -->
+  </div>
+
+  <!-- CONTAINER: SPREADSHEET TABLE VIEW -->
+  <div id="tableContainer" class="max-w-7xl mx-auto hidden">
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="bg-slate-100/75 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider">
+              <th class="p-3.5 w-20">ID</th>
+              <th class="p-3.5 w-32">Flow</th>
+              <th class="p-3.5 w-48">Scenario & Trigger</th>
+              <th class="p-3.5 w-80">Honey Spoken Response</th>
+              <th class="p-3.5 w-72">Dispatched Customer SMS</th>
+              <th class="p-3.5 w-64">Staff Alert & Destination</th>
+              <th class="p-3.5 w-48">Automated Tool / Post-Call</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody" class="divide-y divide-slate-100">
+            <!-- Populated via JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-lg border border-slate-700 transform translate-y-20 opacity-0 transition-all duration-200 flex items-center gap-2">
+    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+    </svg>
+    <span id="toastMsg">Copied to clipboard</span>
+  </div>
+
+  <!-- DATA SCRIPT -->
+  <script>
+    const outcomesData = [
+      {
+        id: "OUT-101",
+        flow: "Flow 1: Quotes",
+        title: "Certified On-Site Inspection Booked",
+        scenario: "Full roof replacement quote; homeowner agrees to certified inspection window.",
+        trigger: 'Keywords: "replace roof", "new roof", "bid", "quote", "inspection". Agrees to 3-hr window.',
+        data: "callerName, propertyAddress, inspectionSlot, customerPhone, customerEmail, roofAge, deckingType",
+        honeyScript: "You're all set! Your roof inspection is confirmed for [Slot] at [Address]. Michael will text your cell fifteen minutes before arriving tomorrow. Thank you for choosing R-HIVE—we'll take great care of your roof!",
+        customerSms: "RHIVE: Hi [Name], your roof inspection at [Address] is confirmed for [Slot]. We'll text you 15 mins before arrival. Questions? Text or call 801-449-1451.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "📅 INSPECTION BOOKED: [Name] ([Phone]) | [Address] | [Slot] | Scope: [Scope]",
+        tool: "book_inspection, verify_address, get_available_windows",
+        postCall: "Calendar event created; Google Drive folder provisioned; Google Chat alert posted; graceful disconnect."
+      },
+      {
+        id: "OUT-102",
+        flow: "Flow 1: Quotes",
+        title: "Digital Aerial CAD Quote Requested",
+        scenario: "Certified quote requested via Cloud Aerial Scan; homeowner does not want immediate on-site visit.",
+        trigger: 'Keywords: "just email quote", "aerial scan", "busy right now", "text me the numbers", "don\'t come out yet".',
+        data: "callerName, propertyAddress, customerPhone, customerEmail, shingleType, projectScope",
+        honeyScript: "I've pulled up your parcel in our cloud portal. I just sent a direct text to your cell ending in [Last 4]—our specialist will run your aerial CAD scan and text your certified quote right over.",
+        customerSms: "RHIVE: Hi [Name], your roof quote for [Address] is in progress. Text photos or questions directly to this thread anytime!",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "📋 DIGITAL QUOTE REQUEST: [Name] ([Phone]) | [Address]",
+        tool: "send_quote_verification_sms, verify_address",
+        postCall: "Lead dossier saved to Google Drive; Google Chat card posted; SMS thread active; graceful disconnect."
+      },
+      {
+        id: "OUT-103",
+        flow: "Flow 1: Quotes",
+        title: ">15-Year-Old Shingle Embrittlement Triage",
+        scenario: "Roof >15 years old with aging shingles; homeowner inquires about spot leak repair.",
+        trigger: 'Keywords: "15 years old", "20 years old", "original roof", "shingles cracking", "small leak on old roof".',
+        data: "roofAge, leakLocation, propertyAddress, embrittlementConfirmed: true",
+        honeyScript: "On roofs over fifteen years old, shingles lose their oils and become brittle—spot repairs often crack adjacent courses. Our specialist will evaluate if a repair will hold or if replacing the weathered south and west slopes makes more sense.",
+        customerSms: "RHIVE: Hi [Name], your specialist (801-449-1451) is reviewing your roof at [Address] to evaluate whether a spot repair or partial slope replacement is needed.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "⚠️ >15YO ROOF REVIEW: [Name] ([Phone]) | [Address] | Scope: Repair vs Partial Slope",
+        tool: "send_quote_verification_sms, get_available_windows",
+        postCall: "Scope report configured for partial slope evaluation; Drive dossier updated; graceful disconnect."
+      },
+      {
+        id: "OUT-104",
+        flow: "Flow 1: Quotes",
+        title: "2-to-3 Photo MMS Repair Triage",
+        scenario: "Spot repair inquiry on newer roof; caller has photos of damage or missing shingles.",
+        trigger: 'Keywords: "wind blew off shingles", "have pictures", "repair leak", "ridge cap blew off", "photo upload".',
+        data: "callerName, customerPhone, propertyAddress, repairType: spot_shingle",
+        honeyScript: "I just texted your cell ending in [Last 4]. Reply with two or three clear photos of the damage, and our specialist will review your slope and shingle match immediately.",
+        customerSms: "RHIVE: Hi [Name], please reply directly with 2–3 photos of your roof damage. Our specialist will review your slope and shingle match immediately.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "📸 PHOTO REPAIR TRIAGE: [Name] ([Phone]) | [Address]",
+        tool: "send_photo_upload_sms, update_caller_profile",
+        postCall: "2-way MMS photo upload thread opened; Lead marked repair_photo_triage; graceful disconnect."
+      },
+      {
+        id: "OUT-105",
+        flow: "Flow 1: Quotes",
+        title: "60-Second Ballpark Calculator Lead",
+        scenario: "Caller demands rough ballpark price in <60 seconds before giving full address.",
+        trigger: 'Keywords: "how much per square", "ballpark", "rough idea", "price range", "under 60 seconds".',
+        data: "callerName, customerPhone, ballparkRequested: true",
+        honeyScript: "Most architectural roofs here run 450 to 650 dollars per square depending on pitch and layers. I just texted our sixty-second ballpark calculator to your cell ending in [Last 4].",
+        customerSms: "RHIVE: Hi [Name], here is your 60-second ballpark roof calculator: https://rhiveconstruction.com — Text or call 801-449-1451 with questions.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "⚡ BALLPARK LEAD: [Name] ([Phone])",
+        tool: "send_ballpark_sms, update_caller_profile",
+        postCall: "Ballpark link SMS delivered; lead tracked in CRM; Honey continues conversational scoping or graceful close."
+      },
+      {
+        id: "OUT-106",
+        flow: "Flow 1: Quotes",
+        title: "15-Minute Video Inspection Scheduled",
+        scenario: "Virtual Scope of Work via Google Meet / Phone Camera scheduled with specialist.",
+        trigger: 'Keywords: "video call", "facetime", "virtual inspection", "video inspection".',
+        data: "callerName, customerPhone, customerEmail, videoInspectionSlot",
+        honeyScript: "We can do a quick fifteen-minute video walkthrough over Google Meet. I've sent the link to your email, and our specialist will connect with you at [Slot]!",
+        customerSms: "RHIVE: Hi [Name], your 15-min virtual roof walkthrough is confirmed for [Slot]. Google Meet link sent to your email. Direct: 801-449-1451.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "📹 VIDEO INSPECTION BOOKED: [Name] ([Phone]) | [Slot]",
+        tool: "book_inspection, schedule_callback",
+        postCall: "Calendar invite dispatched with Google Meet URL; Drive folder created; graceful disconnect."
+      },
+      {
+        id: "OUT-107",
+        flow: "Flow 1: Quotes",
+        title: "Commercial Flat Roof (TPO / PVC / EPDM)",
+        scenario: "Commercial complex, multi-family, flat roof, warehouse, or parapet wall scope.",
+        trigger: 'Keywords: "flat roof", "commercial", "TPO", "PVC", "warehouse", "strip mall", "multi-family".',
+        data: "propertyType: Commercial, flatRoofMembrane, drainageType, bldgSqft",
+        honeyScript: "R-HIVE specializes in commercial single-ply TPO and PVC systems with heat-welded seams. Our commercial lead will review your parapet walls and drainage. Let me verify your property address.",
+        customerSms: "RHIVE Commercial: Hi [Name], our Commercial Division is reviewing aerial scans for [Address]. Text this thread with any plan specs or notes.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "🏢 COMMERCIAL ROOF INQUIRY: [Name] ([Phone]) | [Address] | Membrane: [Membrane]",
+        tool: "verify_address, send_quote_verification_sms",
+        postCall: "Commercial Lead Dossier generated; tagged Commercial_TPO; Google Chat card sent to Commercial room; disconnect."
+      },
+      {
+        id: "OUT-108",
+        flow: "Flow 1: Quotes",
+        title: "Specialty Material Consultation (Metal / Tile / Slate)",
+        scenario: "Caller requests standing seam metal, concrete tile, copper accents, or cedar shake.",
+        trigger: 'Keywords: "standing seam", "metal roof", "tile roof", "slate", "copper accents", "shake".',
+        data: "materialPreference: specialty, specialtyType, propertyAddress",
+        honeyScript: "We handle specialty standing seam metal and tile through our certified subcontractor crews under R-HIVE's prime warranty. Let's capture your architectural specs so we can price the exact gauge and profile.",
+        customerSms: "RHIVE Specialty: Hi [Name], our architectural design team is reviewing your [Material] specs for [Address]. We'll text your certified proposal shortly.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "✨ SPECIALTY ROOF LEAD: [Name] ([Phone]) | [Address] | Material: [Material]",
+        tool: "update_caller_profile, send_quote_verification_sms",
+        postCall: "Specialty lead tagged; retained under RHIVE contract; graceful disconnect."
+      },
+      {
+        id: "OUT-109",
+        flow: "Flow 1: Quotes",
+        title: "Pre-1972 Substrate Discovery (1x6 Slat Decking)",
+        scenario: "Year built < 1972 from tax rolls or caller states home built in 1960s with spaced slat boards.",
+        trigger: 'Year built < 1972 from tax rolls or caller states: "built in 1960s", "wood slats", "skip sheathing".',
+        data: "decadeBuilt, isPre1972: true, deckingType: slat_board",
+        honeyScript: "Because your home was built before 1972, you likely have spaced one-by-six slat decking underneath. Code requires a solid nailable deck, so our specialist will inspect whether plywood re-sheathing is needed.",
+        customerSms: "RHIVE: Hi [Name], noting your home was built before 1972. Our inspection will check for spaced slat boards to confirm CDX decking code compliance.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "⚠️ PRE-1972 ROOF: [Address] built [Year]. Slat-board decking inspection required. Budget for potential CDX re-decking.",
+        tool: "verify_address, update_caller_profile",
+        postCall: "Decking line item flagged on quote dossier; inspection scope updated; disconnect."
+      },
+      {
+        id: "OUT-110",
+        flow: "Flow 1: Quotes",
+        title: "Solar Panel Detach & Reset Required",
+        scenario: "Homeowner has active rooftop solar array; requires safe detach and reset coordination.",
+        trigger: 'Keywords: "solar panels", "solar on roof", "who takes down panels", "solar installer".',
+        data: "solarStatus: present, solarDetachParty: rhive_or_installer, solarCompany",
+        honeyScript: "For solar homes, we coordinate directly with your installer or our trusted solar partners to safely detach and reset your array, keeping your production warranties fully protected.",
+        customerSms: "RHIVE: Noted your solar array at [Address]. We'll coordinate directly with certified detach/reset crews during reroofing to protect your warranties.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "☀️ SOLAR DETACH/RESET: [Address] | Solar Provider: [Provider]",
+        tool: "update_caller_profile, send_quote_verification_sms",
+        postCall: "Solar detach/reset scope item logged in dossier; disconnect."
+      },
+      {
+        id: "OUT-111",
+        flow: "Flow 1: Quotes",
+        title: "Seamless Gutter Scope & Location Specification",
+        scenario: "Caller requests new or replacement seamless rain gutters and downspouts.",
+        trigger: 'Keywords: "gutters", "downspouts", "rain gutters", "water running over edge".',
+        data: "gutterScope: new_or_replace, gutterLocations: front_back_all, gutterSize: 5in_or_6in",
+        honeyScript: "For gutters, are you looking to replace existing gutters or install new seamless gutters—and is that for the front, back, or all the way around your roofline?",
+        customerSms: "RHIVE: Noted seamless gutters for [Locations] at [Address]. Gutter scope added to your certified quote.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "🌧️ GUTTERS: [Scope] seamless gutters for [Locations] at [Address].",
+        tool: "update_caller_profile",
+        postCall: "Gutter linear footage calculation queued; disconnect."
+      },
+      {
+        id: "OUT-112",
+        flow: "Flow 1: Quotes",
+        title: "Skylight Replacement / Velux Kit Assessment",
+        scenario: "Existing skylights or sun tunnels on roofline; age assessment for curb flashing.",
+        trigger: 'Keywords: "skylights", "velux", "tunnel light", "sun tunnel", "skylight leak".',
+        data: "skylights_count, skylightCondition, propertyAddress",
+        honeyScript: "We always inspect skylight flashing during reroofing. If yours are over ten years old, we recommend replacing them with factory-sealed Velux units while the roof is open.",
+        customerSms: "RHIVE: Skylight assessment noted for [Address]. We'll inspect curb flashing and provide factory-sealed Velux options.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "☀️ SKYLIGHTS: [Count] units at [Address]. Inspect curb flashing and seals.",
+        tool: "update_caller_profile",
+        postCall: "Skylight replacement flagged on proposal; disconnect."
+      },
+      {
+        id: "OUT-113",
+        flow: "Flow 1: Quotes",
+        title: "Evaporative Swamp Cooler Removal & Deck Infill",
+        scenario: "Caller converted to central AC and wants abandoned swamp cooler removed and framed over.",
+        trigger: 'Keywords: "swamp cooler", "evaporative cooler", "take off cooler", "abandoned cooler", "AC conversion".',
+        data: "swamp_cooler_removal: true, propertyAddress",
+        honeyScript: "If you've converted to central AC, our crew will haul away the swamp cooler, infill the roof deck with solid plywood, and shingle seamlessly across the opening.",
+        customerSms: "RHIVE: Swamp cooler removal & solid decking infill added to your scope for [Address].",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "❄️ COOLER: Swamp cooler removal & decking infill required at [Address].",
+        tool: "update_caller_profile",
+        postCall: "Cooler disposal fee & decking patch included in quote; disconnect."
+      },
+      {
+        id: "OUT-114",
+        flow: "Flow 1: Quotes",
+        title: "Multiple Shingle Layers Discovery (>1 Layer)",
+        scenario: "Caller mentions roof already has two layers; requires complete double tear-off.",
+        trigger: 'Keywords: "second layer", "two layers", "overlay", "previous roof had shingles on top".',
+        data: "shingleLayers: 2_plus, tearOffRequired: true",
+        honeyScript: "Building code prohibits a third layer of shingles due to Wasatch snow loads. Our scope will include a clean double tear-off down to bare wood for proper manufacturer fastening.",
+        customerSms: "RHIVE: Double tear-off scope noted for [Address] to ensure bare-wood fastening and manufacturer warranty compliance.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "🔨 MULTI-LAYER: [Count] shingle layers at [Address]. Double tear-off required.",
+        tool: "update_caller_profile",
+        postCall: "Tear-off labor multiplier applied to estimate; disconnect."
+      },
+      {
+        id: "OUT-115",
+        flow: "Flow 1: Quotes",
+        title: "Driver (D) Personality High-Velocity Compression",
+        scenario: "Caller is fast-paced, impatient, brief, interrupting, demands quick numbers.",
+        trigger: 'Caller speech: Brisk, fast-paced, brief, interrupting, "just give me the numbers".',
+        data: "discProfile: D, turnEconomy: <18_words",
+        honeyScript: "Got it. Pulled up your parcel and texted your cell ending in [Last 4]. We'll text your certified options right over.",
+        customerSms: "RHIVE: Hi [Name], certified pricing options for [Address] are in progress now. Text or call 801-449-1451 anytime.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "⚡ DRIVER LEAD: [Name] ([Phone]) | [Address] | Fast-track CAD quote",
+        tool: "send_quote_verification_sms, hangup_call",
+        postCall: "Compressed under 75s total call duration; immediate text sent; graceful disconnect."
+      },
+      {
+        id: "OUT-116",
+        flow: "Flow 1: Quotes",
+        title: "Analytical (C) Personality Technical Deep-Dive",
+        scenario: "Caller asks detailed engineering questions on ice damming, ASTM ratings, and ventilation.",
+        trigger: "Caller speech: Technical questions, asks about ice damming, ventilation ratios, warranties, ASTM ratings.",
+        data: "discProfile: C, materialPreference: Owens_Corning_Duration",
+        honeyScript: "We install commercial-grade Owens Corning Duration shingles featuring SureNail Technology, rated for 130 mile-per-hour winds with full synthetic underlayment.",
+        customerSms: "RHIVE: Spec sheet for Owens Corning Duration (130mph SureNail) at [Address] is ready. Questions? Text our design team at 801-449-1451.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "🔬 ANALYTICAL LEAD: [Name] ([Phone]) | [Address] | Requested full engineering spec sheet",
+        tool: "update_caller_profile, send_quote_verification_sms",
+        postCall: "Technical dossier compiled; high-fidelity engineering details saved to Drive; disconnect."
+      },
+      {
+        id: "OUT-201",
+        flow: "Flow 2: Emergency",
+        title: "Active Roof Leak with $150 Emergency Tarp Fee Accepted",
+        scenario: "Active roof leak; homeowner accepts $150 emergency tarp mobilization fee.",
+        trigger: 'Keywords: "water coming in", "ceiling dripping", "bucket", "leak right now", "tarp". Agrees to $150 fee.',
+        data: "callerName, propertyAddress, leakLocation, emergencyFeeAcknowledged: true",
+        honeyScript: "Emergency dispatch is locked in for [Address]. Our crew is en route within our three-hour window to tarp and secure your roof. If safe, set a bucket underneath and keep clear of any sagging drywall.",
+        customerSms: "RHIVE Emergency: Crew dispatched to [Address] ($150 credited fee). Tech will text 15 mins before arriving. Direct line: 801-449-1451.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "🚨 EMERGENCY LEAK: [Name] ([Phone]) | [Address] | [Details] | $150 Fee Confirmed",
+        tool: "dispatch_emergency_crew, book_inspection",
+        postCall: "Urgent Google Chat card dispatched to Emergency Response space; Drive emergency folder created; graceful disconnect."
+      },
+      {
+        id: "OUT-202",
+        flow: "Flow 2: Emergency",
+        title: "Catastrophic Tree Fall / Structural Collapse (Directed to Michael)",
+        scenario: "Fallen tree crushed roof or major structural breach requiring rigging cranes.",
+        trigger: 'Keywords: "tree fell on roof", "hole in roof", "structural damage", "rafters broken", "crushed".',
+        data: "severityLevel: catastrophic, propertyAddress, structuralDamage: true",
+        honeyScript: "This is an urgent structural emergency. I'm escalating this immediately to Michael Robinson and our senior rigging supervisor. Please stay clear of that area—we are mobilizing right now!",
+        customerSms: "RHIVE Emergency: Structural alert escalated directly to Michael Robinson (801-449-1451). Rigging supervisor is reviewing dispatch for [Address].",
+        staffDestination: "michael",
+        staffDestinationLabel: "👤 Michael Robinson (+1 801-449-1451)",
+        staffSms: "🚨 STRUCTURAL COLLAPSE: Tree/structure breach at [Address]! Immediate executive rigging mobilization required!",
+        tool: "dispatch_emergency_crew, send_quote_verification_sms",
+        postCall: "Priority 1 emergency broadcast to Michael Robinson's direct cell; live call audio archived; disconnect."
+      },
+      {
+        id: "OUT-203",
+        flow: "Flow 2: Emergency",
+        title: "Insurance Storm Restoration Claim Assistance",
+        scenario: "Hail or wind storm damage with open insurance carrier claim.",
+        trigger: 'Keywords: "insurance claim", "adjuster", "wind damage", "hail damage", "State Farm", "Allstate", "deductible".',
+        data: "insuranceCarrier, claimNumber, adjusterDate, propertyAddress",
+        honeyScript: "We meet your insurance adjuster on-site with our digital CAD reports to make sure every damaged facet and flashing run is fully approved, with zero out-of-pocket beyond your deductible.",
+        customerSms: "RHIVE Insurance: We noted your [Carrier] claim for [Address]. We will meet your adjuster on-site with CAD reports. Direct: 801-449-1451.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "📑 INSURANCE CLAIM: [Name] ([Phone]) | Carrier: [Carrier] | Claim #[Number] | [Address]",
+        tool: "update_caller_profile, book_inspection",
+        postCall: "Insurance Claim Dossier created on Drive; adjuster meeting scheduled; disconnect."
+      },
+      {
+        id: "OUT-204",
+        flow: "Flow 2: Emergency",
+        title: "Emergency Fee Declined -> Free Scheduled Quote Triage",
+        scenario: "Caller refuses $150 emergency mobilization fee; triaged to standard free scheduled inspection.",
+        trigger: 'Caller refuses fee: "I\'m not paying $150", "free estimate only", "don\'t want to pay for tarping".',
+        data: "emergencyFeeAcknowledged: false, propertyAddress",
+        honeyScript: "Completely understand! Our on-site certified replacement inspections and scheduled quote evaluations are always one hundred percent free. Would tomorrow morning or afternoon work better for our specialist to come by?",
+        customerSms: "RHIVE: Free scheduled inspection windows for [Address] are open this week. Text roof photos to 801-449-1451 for an instant digital review.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "📋 SCHEDULED LEAD (FEE DECLINED): [Name] ([Phone]) | [Address] | Triaged to Free Quote",
+        tool: "get_available_windows, send_photo_upload_sms",
+        postCall: "Fee decline noted; gracefully triaged to standard Flow 1 free scheduled quote; disconnect."
+      },
+      {
+        id: "OUT-205",
+        flow: "Flow 2: Emergency",
+        title: "After-Hours Active Leak Triage (7 PM - 6 AM)",
+        scenario: "Active leak call arriving between 19:00 and 06:00 MST; alerts night supervisor.",
+        trigger: "Incoming call timestamp: 19:00 - 06:00 MST with active leak keywords.",
+        data: "isAfterHours: true, leakDetails, propertyAddress",
+        honeyScript: "Our night-duty supervisor is being alerted with your address at [Address]. I've also sent a direct text to your cell so you have an immediate line to our on-call tech.",
+        customerSms: "RHIVE Emergency: Night supervisor received your alert for [Address]. Text photos or leak notes to this thread (801-449-1451).",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "🌙 AFTER-HOURS LEAK: [Address] reported at [Time]. On-call supervisor review required.",
+        tool: "dispatch_emergency_crew, send_quote_verification_sms",
+        postCall: "Emergency escalation logged to Main Office & on-call supervisor; Drive folder created; disconnect."
+      },
+      {
+        id: "OUT-206",
+        flow: "Flow 2: Emergency",
+        title: "Pre-Storm Preventive Inspection Triage",
+        scenario: "Severe weather alert forecast; caller wants roof checked before storm arrives.",
+        trigger: 'Caller mentions incoming storm: "storm coming tonight", "snow forecast", "want to check before it rains".',
+        data: "weatherUrgency: true, propertyAddress",
+        honeyScript: "With severe weather forecasted, our schedule is filling quickly. Let's lock in your arrival window right now before storm crews are fully booked.",
+        customerSms: "RHIVE Priority: Pre-storm roof inspection for [Address] confirmed ahead of incoming weather. Specialist direct: 801-449-1451.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "⛈️ PRE-STORM INSPECTION: [Name] ([Phone]) | [Address] | Priority weather slot booked",
+        tool: "get_available_windows, book_inspection",
+        postCall: "Storm priority tag applied to Google Calendar event; disconnect."
+      },
+      {
+        id: "OUT-301",
+        flow: "Flow 3: Trade/Kara",
+        title: "Screened Whisper Transfer to Kara Robinson (Directed to Kara)",
+        scenario: "Caller specifically requests Kara Robinson, billing, vendor payment, or accounting.",
+        trigger: 'DTMF 5 or Keywords: "Kara", "billing", "invoice", "vendor", "accounting", "payable".',
+        data: "callerName, companyName, invoiceNumber, transferReason",
+        honeyScript: "Let me connect you directly to Kara in operations. One moment while I bridge your line.",
+        customerSms: "Streaming clean MP3 hold music (rhive_hold_option3_operations.mp3).",
+        staffDestination: "kara",
+        staffDestinationLabel: "👩 Kara Robinson (+1 801-441-0024)",
+        staffSms: "📞 INCOMING CALL: [Name] - [Company] regarding [Reason]. Whisper prompt sent to Kara mobile.",
+        tool: "transfer_to_specialist (target: Kara)",
+        postCall: "If Kara accepts: Connected in Twilio Conference. If unavailable: Triaged to Options A, B, or C."
+      },
+      {
+        id: "OUT-302",
+        flow: "Flow 3: Trade/Kara",
+        title: "Kara Busy Fallback Option A: 15-Min Executive Call (Directed to Kara)",
+        scenario: "Kara unavailable; caller reserves a 15-minute executive call directly on Kara's calendar.",
+        trigger: "Kara does not answer, rejects transfer, or is on a jobsite; caller chooses Option 1.",
+        data: "callerName, customerPhone, customerEmail, slotTime, targetSpecialist: kara",
+        honeyScript: "Kara is currently tied up on a project site, but I reserved a fifteen-minute call directly on her calendar for [Slot]. An invite is on its way to your email!",
+        customerSms: "RHIVE: Hi [Name], your 15-min call with Kara is confirmed for [Slot]. A calendar invite is in your email. Text this thread if you need anything sooner.",
+        staffDestination: "kara",
+        staffDestinationLabel: "👩 Kara Robinson (+1 801-441-0024)",
+        staffSms: "📅 CALENDAR CALL: 15-min call with [Name] ([Phone]) regarding [Reason] on [Slot].",
+        tool: "schedule_callback, hangup_call",
+        postCall: "Google Calendar event created on Kara's calendar; Google Chat card posted; disconnect."
+      },
+      {
+        id: "OUT-303",
+        flow: "Flow 3: Trade/Kara",
+        title: "Kara Busy Fallback Option B: Direct 2-Way Text (Directed to Kara)",
+        scenario: "Kara unavailable; caller requests an immediate direct text back from Kara's line.",
+        trigger: "Kara unavailable; caller chooses Option 2 (text message).",
+        data: "callerName, customerPhone, companyName, invoiceNumber, reason",
+        honeyScript: "I just sent Kara an urgent alert with your details. She'll text your cell shortly. Thanks for calling R-HIVE!",
+        customerSms: "RHIVE: Hi [Name], this is Kara in operations. I received your note regarding [Reason]. Text me right here or let me know if you'd prefer a quick call!",
+        staffDestination: "kara",
+        staffDestinationLabel: "👩 Kara Robinson (+1 801-441-0024)",
+        staffSms: "📱 TEXT REQUEST - KARA: [Name] - [Company] ([Phone]) | Inv #[Invoice] | Topic: [Reason] | Requested direct text.",
+        tool: "request_kara_text, hangup_call",
+        postCall: "Urgent alert on Kara's mobile; 2-way SMS active; Google Chat card dispatched; disconnect."
+      },
+      {
+        id: "OUT-304",
+        flow: "Flow 3: Trade/Kara",
+        title: "Kara Busy Fallback Option C: Transcribed Message Saved to Drive",
+        scenario: "Kara unavailable; caller speaks verbal message; transcribed and archived to Drive.",
+        trigger: "Kara unavailable; caller chooses Option 3 (leave verbal message).",
+        data: "callerName, customerPhone, messageContent, urgency",
+        honeyScript: "Please go ahead and speak your message for Kara, and I'll deliver the transcript and audio directly to her desk right away. ... Got it, Kara has your message!",
+        customerSms: "RHIVE: Hi [Name], we received your message: \"[Message]\". Our operations team will follow up with you shortly.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "📝 VOICEMAIL FOR OPERATIONS: [Name] ([Phone]): \"[Message]\"",
+        tool: "take_message, hangup_call",
+        postCall: "Message transcribed via Gemini; audio file & text saved to Drive; Main Office feed notified; disconnect."
+      },
+      {
+        id: "OUT-305",
+        flow: "Flow 3: Trade/Kara",
+        title: "Screened Whisper Transfer to Michael Robinson (Directed to Michael)",
+        scenario: "Caller specifically requests Michael Robinson, CEO, founder, or project escalation.",
+        trigger: 'Keywords: "Michael Robinson", "speak with Michael", "founder", "CEO", "field escalation".',
+        data: "callerName, companyName, reason, targetSpecialist: michael",
+        honeyScript: "Let me connect you directly to Michael Robinson. One moment while I bridge your line.",
+        customerSms: "Streaming clean MP3 hold music.",
+        staffDestination: "michael",
+        staffDestinationLabel: "👤 Michael Robinson (+1 801-449-1451)",
+        staffSms: "📞 INCOMING CALL: [Name] regarding [Reason]. Whisper prompt sent to Michael mobile.",
+        tool: "transfer_to_specialist (target: Michael)",
+        postCall: "If Michael accepts: Bridged in conference. If busy: Triaged to scheduled call or SMS."
+      },
+      {
+        id: "OUT-306",
+        flow: "Flow 3: Trade/Kara",
+        title: "Quality B Roofing VIP Fast-Track (Directed to Kara)",
+        scenario: "Premier subcontractor crew Quality B Roofing calling; bypasses standard screening.",
+        trigger: 'Caller ID matches Quality B Roofing or states: "Quality B", "Quality B Roofing", "subcontractor crew".',
+        data: "companyName: Quality B Roofing, isVIPTrade: true",
+        honeyScript: "Quality B Roofing, welcome! Connecting you straight to Kara right away.",
+        customerSms: "Instant PBX transfer ring played; zero delay.",
+        staffDestination: "kara",
+        staffDestinationLabel: "👩 Kara Robinson (+1 801-441-0024)",
+        staffSms: "⭐ VIP SUBCONTRACTOR: Quality B Roofing on the line for Kara.",
+        tool: "transfer_to_specialist (bypass standard screening)",
+        postCall: "Instant high-priority transfer to Kara Robinson; disconnect."
+      },
+      {
+        id: "OUT-307",
+        flow: "Flow 3: Trade/Kara",
+        title: "Municipal Permitting & City Inspector Coordination (Directed to Kara)",
+        scenario: "City building inspector or municipal department calling regarding active roofing permit.",
+        trigger: 'Keywords: "building department", "city inspector", "permit", "inspection sign-off", "Salt Lake City", "Sandy".',
+        data: "permitNumber, cityJurisdiction, propertyAddress",
+        honeyScript: "Thank you for the permitting update for [Address]. Directing your details straight to Kara in compliance right now.",
+        customerSms: "RHIVE: Permit update logged for [Address]. Kara Robinson in compliance has received your inspection notes.",
+        staffDestination: "kara",
+        staffDestinationLabel: "👩 Kara Robinson (+1 801-441-0024)",
+        staffSms: "🏛️ CITY PERMIT: [City] Inspector regarding Permit #[Number] at [Address].",
+        tool: "transfer_to_specialist, request_kara_text",
+        postCall: "High-priority compliance alert logged; immediate bridge or direct SMS alert dispatched."
+      },
+      {
+        id: "OUT-308",
+        flow: "Flow 3: Trade/Kara",
+        title: "Material Supplier Logistics Update (ABC Supply, Beacon, SRS)",
+        scenario: "Distributor calling regarding shingle drop, rooftop delivery schedule, or PO confirmation.",
+        trigger: 'Caller ID / speech: "ABC Supply", "Beacon Roofing", "SRS", "material delivery", "shingle drop".',
+        data: "supplierName, jobsiteAddress, deliveryTime, poNumber",
+        honeyScript: "Thanks for the delivery update for [Address]. Logging this to today's jobsite schedule and alerting our field lead immediately.",
+        customerSms: "RHIVE: Delivery confirmation received for [Address]. Logistics recorded.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "🚚 MATERIAL DELIVERY: [Supplier] delivery at [Time] for [Address] (PO #[PO]).",
+        tool: "update_caller_profile, request_kara_text",
+        postCall: "Delivery logged to jobsite dossier; SMS dispatched to Main Office feed; disconnect."
+      },
+      {
+        id: "OUT-309",
+        flow: "Flow 3: Trade/Kara",
+        title: "Dynamic Calendar VIP Match (Directed to Michael)",
+        scenario: "Caller phone matches an attendee on today's Google Calendar or active Gmail thread with Michael.",
+        trigger: "Caller phone matches attendee on today's Google Calendar or active Gmail thread.",
+        data: "calendarMatchedEvent, attendeeName, isVipScheduled: true",
+        honeyScript: "Hi [Name]! I see you're on Michael's calendar today for [Time]. Connecting you straight to his line right now!",
+        customerSms: "Connecting to executive line directly.",
+        staffDestination: "michael",
+        staffDestinationLabel: "👤 Michael Robinson (+1 801-449-1451)",
+        staffSms: "⭐ SCHEDULED MEETING: [Name] (scheduled for [Time]) is calling your line directly.",
+        tool: "transfer_to_specialist, check_specialist_availability",
+        postCall: "Bypasses general switchboard screening; routes straight to Michael's cell."
+      },
+      {
+        id: "OUT-401",
+        flow: "Flow 4: Anti-Spam",
+        title: "Cold Solicitor / Digital Marketing Quarantine",
+        scenario: "Vendor offering SEO, lead generation, merchant processing, or payroll services.",
+        trigger: 'Keywords: "Google ranking", "SEO", "leads in your area", "payroll services", "merchant processing".',
+        data: "solicitorType: marketing_seo, companyName, offeredService",
+        honeyScript: "Our executive team reviews all vendor proposals in writing. Please email your information to info at r-hive construction dot com. Thank you!",
+        customerSms: "None sent to solicitor.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "🛡️ QUARANTINED: [Company] offering [Service] from [Phone]. Logged to spam audit.",
+        tool: "hangup_call (reason: quarantine_complete)",
+        postCall: "Polite quarantine; graceful disconnect; zero owner time wasted."
+      },
+      {
+        id: "OUT-402",
+        flow: "Flow 4: Anti-Spam",
+        title: "Automated Robocall / Prerecorded Broadcast Termination",
+        scenario: "Acoustic detection of automated broadcast or silence >4s after connect.",
+        trigger: "Acoustic detection: Prerecorded audio, zero response to greeting, silence >4s after connect.",
+        data: "isRobocall: true, telecomCarrier",
+        honeyScript: "(Clean, silent carrier termination — zero operator audio wasted.)",
+        customerSms: "None.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "🤖 ROBOCALL TERMINATED: [Phone] dropped automatically.",
+        tool: "hangup_call (reason: automated_telemarketer)",
+        postCall: "Immediate carrier termination; number flagged in spam ledger; zero toll costs."
+      },
+      {
+        id: "OUT-403",
+        flow: "Flow 4: Anti-Spam",
+        title: "Aggressive Sales Demanding Owner by Name Blocked",
+        scenario: "Solicitor demands owner by name without active project; refuses company scope.",
+        trigger: 'Solicitor demands: "Put Michael on", "I need to speak to the owner right now". Refuses company scope.',
+        data: "isAggressiveSolicitor: true, refusedScope: true",
+        honeyScript: "Michael and Kara are on active jobsites and don't take unscheduled sales calls. Please email info at r-hive construction dot com. Thank you!",
+        customerSms: "None sent to solicitor.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "🛡️ VENDOR BLOCKED: [Phone] demanding owner without active project.",
+        tool: "hangup_call (reason: schedule_confidentiality)",
+        postCall: "Schedule confidentiality maintained; zero calendar details leaked; graceful disconnect."
+      },
+      {
+        id: "OUT-404",
+        flow: "Flow 4: Anti-Spam",
+        title: "Founder Personal Mobile Recognition (Pass-Through to Michael)",
+        scenario: "Caller ID matches Michael Robinson's personal mobile numbers.",
+        trigger: "Caller ID matches Michael Robinson's verified personal mobile numbers (801-928-4434 / 801-449-1451).",
+        data: "isFounder: true, founderName: Michael Robinson",
+        honeyScript: "Hi Michael! Founder administrative connection confirmed. Unlocking live bridge control.",
+        customerSms: "Administrative bypass.",
+        staffDestination: "michael",
+        staffDestinationLabel: "👤 Michael Robinson (+1 801-449-1451)",
+        staffSms: "👑 FOUNDER ACCESS: Live bridge control unlocked for Michael.",
+        tool: "verify_auth_token, trigger_git_sync_and_deploy",
+        postCall: "Direct executive pass-through; live voice testing mode active; admin control unlocked."
+      },
+      {
+        id: "OUT-405",
+        flow: "Flow 4: Anti-Spam",
+        title: "Roofing Subcontractor Crew / Job Applicant Intake",
+        scenario: "Roofing crew or installer seeking employment or subcontracting agreements.",
+        trigger: 'Keywords: "looking for work", "roofing job", "subcontractor crew looking for contracts", "hiring".',
+        data: "applicantName, crewSize, tradeExperience, phone",
+        honeyScript: "We're always looking for quality roofing craftsmen! I just texted our installer application link to your phone so you can submit your crew info directly.",
+        customerSms: "RHIVE: Hi [Name], submit your crew credentials and trade experience here: https://rhiveconstruction.com/careers — Operations reviews weekly.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "👷 CREW APPLICATION: [Name] ([Phone]) | Crew Size: [Size] | Submitted to Careers portal.",
+        tool: "sendSms, hangup_call",
+        postCall: "Subcontractor intake lead recorded; applicant notified via SMS; graceful disconnect."
+      },
+      {
+        id: "OUT-501",
+        flow: "Edge Cases",
+        title: "Degraded Cellular Signal / Unintelligible Audio Recovery",
+        scenario: "Audio SNR <10dB, broken packets, severe background noise; rescued via direct SMS.",
+        trigger: "Signal analysis: Audio SNR <10dB, missing words, unintelligible audio packets.",
+        data: "audioQuality: degraded, callerPhone",
+        honeyScript: "I'm having a little trouble hearing you clearly. I just texted your cell ending in [Last 4] so you can text us your address or questions directly!",
+        customerSms: "RHIVE: Hi, our line had some static! Feel free to text this thread with your address or any roof questions (801-449-1451).",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "📶 STATIC RESCUE: Rescued [Phone] via direct SMS thread due to poor cellular signal.",
+        tool: "send_quote_verification_sms, hangup_call",
+        postCall: "Direct text channel opened; caller rescued from bad cellular connection; graceful disconnect."
+      },
+      {
+        id: "OUT-502",
+        flow: "Edge Cases",
+        title: "Transparent AI Identity Affirmation",
+        scenario: 'Caller asks "Are you an AI? / Are you a robot?".',
+        trigger: 'Keywords: "are you a real person", "are you an AI", "are you a robot", "is this AI".',
+        data: "aiInquiryDetected: true",
+        honeyScript: "Yes, I'm Honey! R-hive's AI Roofing Specialist. I work directly with Michael and our field team to handle quotes and scheduling with zero wait time. What can we take care of on your roof today!?",
+        customerSms: "None required.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "🤖 AI TRANSPARENCY: Caller asked if Honey is AI; affirmed with proud executive poise.",
+        tool: "update_caller_profile",
+        postCall: "Transparent, proud AI affirmation; immediate redirection back to solving customer's roofing problem."
+      },
+      {
+        id: "OUT-503",
+        flow: "Edge Cases",
+        title: "Accidental Mid-Sentence Carrier Drop Recovery",
+        scenario: "Twilio CallStatus: completed received while turns are still active; automated SMS recovery.",
+        trigger: "Twilio CallStatus: completed received while conversation is in active quoting/scoping phase.",
+        data: "callStatus: dropped_mid_turn, lastKnownTurn",
+        honeyScript: "(Automated recovery initiated upon cellular drop event.)",
+        customerSms: "RHIVE: Hi [Name], looks like our call dropped! Text this thread anytime and we can pick up right where we left off.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "⚠️ CALL DROPPED: [Name] ([Phone]) dropped mid-turn. Auto-recovery SMS dispatched.",
+        tool: "sendCarrierSms, log_call_summary",
+        postCall: "Partial call recording saved to Drive; recovery text dispatched automatically."
+      },
+      {
+        id: "OUT-504",
+        flow: "Edge Cases",
+        title: "Spanish / Non-English Speaker Detection",
+        scenario: "Audio analysis detects Spanish language; routes to bilingual project specialist.",
+        trigger: 'Audio analysis detects Spanish language: "Hola", "habla español", "no hablo inglés".',
+        data: "language: es-US, propertyAddress",
+        honeyScript: "¡Hola! Sí, en R-HIVE contamos con especialistas en español. Le enviaré un mensaje de texto para conectarlo de inmediato.",
+        customerSms: "RHIVE: Hola [Name], su especialista bilingüe está revisando los detalles para [Address]. Puede responder con fotos o preguntas.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "🇪🇸 SPANISH LEAD: [Name] ([Phone]) at [Address]. Bilingual specialist follow-up required.",
+        tool: "send_quote_verification_sms, update_caller_profile",
+        postCall: "Tagged Spanish_Language_Lead; routed to bilingual project specialist; graceful disconnect."
+      },
+      {
+        id: "OUT-505",
+        flow: "Edge Cases",
+        title: "Out-of-Service-Area Polite Referral",
+        scenario: "Address resolves outside Wasatch Front coverage (>60 miles from Ogden-Payson corridor).",
+        trigger: "Address verification resolves outside Utah/Wasatch Front (e.g. Nevada, Idaho, Colorado, St. George).",
+        data: "propertyAddress, isOutOfArea: true, jurisdiction",
+        honeyScript: "R-HIVE focuses our crews along the Wasatch Front between Ogden and Payson. Because you're outside our coverage area, we wouldn't be able to provide our warranty service. Thank you for thinking of us!",
+        customerSms: "RHIVE: Thank you for contacting us. Your property at [Address] is outside our Wasatch Front service zone.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637)",
+        staffSms: "🗺️ OUT-OF-AREA: [Phone] at [Address] outside Wasatch Front. Referred politely.",
+        tool: "hangup_call (reason: out_of_area)",
+        postCall: "Out-of-area log recorded; polite referral; graceful disconnect."
+      },
+      {
+        id: "OUT-506",
+        flow: "Edge Cases",
+        title: "Workmanship Warranty / Escalation Intake",
+        scenario: "Post-installation inquiry, workmanship warranty ticket, or unhappy customer.",
+        trigger: 'Keywords: "leak after install", "workmanship warranty", "unhappy", "problem with crew", "complaint".',
+        data: "customerSentiment: negative, warrantyInquiry: true, propertyAddress",
+        honeyScript: "We take our workmanship warranty very seriously. I'm opening an urgent escalation ticket directly for Michael and Kara right now so we can take care of this immediately.",
+        customerSms: "RHIVE: Urgent warranty ticket #[Ticket] opened for [Address]. Executive management is reviewing your file immediately.",
+        staffDestination: "office",
+        staffDestinationLabel: "🏢 Main Office (+1 435-417-6637) (Tagged Priority 1)",
+        staffSms: "🚨 WARRANTY ESCALATION: [Name] ([Phone]) at [Address] reporting issue: \"[Issue]\". Executive review required.",
+        tool: "update_caller_profile, request_kara_text",
+        postCall: "Priority 1 escalation badge in Google Chat; Drive warranty file updated; Main Office feed alerted."
+      }
+    ];
+
+    let currentFlowFilter = 'all';
+    let currentDestFilter = 'all';
+    let currentSearchTerm = '';
+    let currentViewMode = 'cards';
+
+    function setFlowFilter(flow) {
+      currentFlowFilter = flow;
+      document.querySelectorAll('.flow-tab').forEach(tab => {
+        if (tab.getAttribute('data-flow') === flow) {
+          tab.classList.remove('bg-slate-100', 'text-slate-600', 'hover:bg-slate-200');
+          tab.classList.add('bg-slate-900', 'text-white');
+        } else {
+          tab.classList.remove('bg-slate-900', 'text-white');
+          tab.classList.add('bg-slate-100', 'text-slate-600', 'hover:bg-slate-200');
+        }
+      });
+      render();
+    }
+
+    function filterOutcomes() {
+      currentSearchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+      currentDestFilter = document.getElementById('destFilter').value;
+      render();
+    }
+
+    function setViewMode(mode) {
+      currentViewMode = mode;
+      const cardsBtn = document.getElementById('viewBtnCards');
+      const tableBtn = document.getElementById('viewBtnTable');
+      const cardsContainer = document.getElementById('cardsContainer');
+      const tableContainer = document.getElementById('tableContainer');
+
+      if (mode === 'cards') {
+        cardsBtn.classList.add('bg-white', 'text-slate-900', 'shadow-sm');
+        cardsBtn.classList.remove('text-slate-500');
+        tableBtn.classList.remove('bg-white', 'text-slate-900', 'shadow-sm');
+        tableBtn.classList.add('text-slate-500');
+        cardsContainer.classList.remove('hidden');
+        tableContainer.classList.add('hidden');
+      } else {
+        tableBtn.classList.add('bg-white', 'text-slate-900', 'shadow-sm');
+        tableBtn.classList.remove('text-slate-500');
+        cardsBtn.classList.remove('bg-white', 'text-slate-900', 'shadow-sm');
+        cardsBtn.classList.add('text-slate-500');
+        tableContainer.classList.remove('hidden');
+        cardsContainer.classList.add('hidden');
+      }
+      render();
+    }
+
+    function getFlowBadgeClass(flow) {
+      if (flow.includes('Quotes')) return 'badge-f1';
+      if (flow.includes('Emergency')) return 'badge-f2';
+      if (flow.includes('Trade')) return 'badge-f3';
+      if (flow.includes('Anti-Spam')) return 'badge-f4';
+      return 'badge-edge';
+    }
+
+    function getDestBadgeClass(dest) {
+      if (dest === 'michael') return 'dest-michael';
+      if (dest === 'kara') return 'dest-kara';
+      return 'dest-office';
+    }
+
+    function copyText(text, label) {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast(`Copied ${label} to clipboard!`);
+      });
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      toastMsg.innerText = msg;
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+      setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0');
+        toast.classList.remove('translate-y-0', 'opacity-100');
+      }, 2200);
+    }
+
+    function render() {
+      const filtered = outcomesData.filter(item => {
+        // Flow filter
+        if (currentFlowFilter !== 'all') {
+          if (currentFlowFilter === 'Edge Cases' && !item.flow.includes('Edge')) return false;
+          if (currentFlowFilter !== 'Edge Cases' && !item.flow.includes(currentFlowFilter)) return false;
+        }
+        // Destination filter
+        if (currentDestFilter !== 'all') {
+          if (item.staffDestination !== currentDestFilter) return false;
+        }
+        // Search filter
+        if (currentSearchTerm) {
+          const hay = `${item.id} ${item.flow} ${item.title} ${item.scenario} ${item.trigger} ${item.honeyScript} ${item.customerSms} ${item.staffSms} ${item.staffDestinationLabel}`.toLowerCase();
+          if (!hay.includes(currentSearchTerm)) return false;
+        }
+        return true;
+      });
+
+      document.getElementById('stat-count').innerText = filtered.length;
+
+      if (currentViewMode === 'cards') {
+        renderCards(filtered);
+      } else {
+        renderTable(filtered);
+      }
+    }
+
+    function renderCards(list) {
+      const container = document.getElementById('cardsContainer');
+      if (list.length === 0) {
+        container.innerHTML = `
+          <div class="bg-white border border-slate-200 rounded-2xl p-12 text-center text-slate-400">
+            <svg class="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <div class="text-base font-semibold text-slate-600">No matching outcomes found</div>
+            <p class="text-xs text-slate-400 mt-1">Try clearing your search term or adjusting filters.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = list.map(item => {
+        const smsLen = item.customerSms.length;
+        const isSingleSegment = smsLen <= 160;
+        const smsBadgeColor = isSingleSegment ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200';
+        
+        return `
+          <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all">
+            <!-- Header Row -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-1 rounded-lg text-xs font-black tracking-wider bg-slate-900 text-white font-mono">
+                  ${item.id}
+                </span>
+                <span class="px-2.5 py-1 rounded-lg text-xs font-semibold ${getFlowBadgeClass(item.flow)}">
+                  ${item.flow}
+                </span>
+                <h3 class="font-bold text-slate-900 text-base">
+                  ${item.title}
+                </h3>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-1 rounded-lg text-xs font-semibold ${getDestBadgeClass(item.staffDestination)}">
+                  ${item.staffDestinationLabel}
+                </span>
+              </div>
+            </div>
+
+            <!-- Caller Scenario & Trigger -->
+            <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs bg-slate-50/75 p-3 rounded-xl border border-slate-100">
+              <div>
+                <span class="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Caller Intent:</span>
+                <p class="text-slate-800 mt-0.5">${item.scenario}</p>
+              </div>
+              <div>
+                <span class="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Trigger Condition:</span>
+                <p class="text-slate-800 mt-0.5 font-mono text-[11px]">${item.trigger}</p>
+              </div>
+            </div>
+
+            <!-- Honey Spoken Script & Customer SMS Grid -->
+            <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <!-- Honey Spoken Script -->
+              <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="inline-flex items-center gap-1.5 text-xs font-bold text-[#08137C]">
+                      <svg class="w-3.5 h-3.5 text-[#EC028B]" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"></path>
+                      </svg>
+                      Honey Spoken Response (Optimized Human Cadence)
+                    </span>
+                    <button onclick="copyText('${escapeQuotes(item.honeyScript)}', '${item.id} Spoken Script')" class="copy-btn px-2 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-md text-[11px] font-semibold text-slate-600 transition-all flex items-center gap-1">
+                      <svg class="w-3 h-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                      Copy Script
+                    </button>
+                  </div>
+                  <p class="text-xs text-slate-800 leading-relaxed font-medium italic">
+                    "${item.honeyScript}"
+                  </p>
+                </div>
+                <div class="mt-2 text-[10px] text-slate-400 font-semibold">
+                  Turn Economy: ~${item.honeyScript.split(' ').length} words
+                </div>
+              </div>
+
+              <!-- Customer Dispatched SMS -->
+              <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                      <span class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                        <svg class="w-3.5 h-3.5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z"></path>
+                        </svg>
+                        Dispatched Customer SMS
+                      </span>
+                      <span class="px-1.5 py-0.5 rounded text-[10px] font-bold border ${smsBadgeColor}">
+                        ${smsLen} chars (${isSingleSegment ? '1 Segment' : '2 Segments'})
+                      </span>
+                    </div>
+                    <button onclick="copyText('${escapeQuotes(item.customerSms)}', '${item.id} Customer SMS')" class="copy-btn px-2 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-md text-[11px] font-semibold text-slate-600 transition-all flex items-center gap-1">
+                      <svg class="w-3 h-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                      Copy SMS
+                    </button>
+                  </div>
+                  <div class="sms-bubble p-3 border border-slate-200 text-xs font-mono text-slate-900 bg-white">
+                    ${item.customerSms}
+                  </div>
+                </div>
+                <div class="mt-2 text-[10px] text-slate-400 font-semibold">
+                  Sender: JustCall 10DLC (+1 801-449-1451)
+                </div>
+              </div>
+            </div>
+
+            <!-- Staff SMS Alert Banner -->
+            <div class="mt-3 bg-slate-100/80 border border-slate-200 rounded-xl p-3 flex flex-col md:flex-row md:items-center justify-between gap-2">
+              <div class="flex items-center gap-2 overflow-hidden">
+                <span class="text-xs font-bold text-slate-700 whitespace-nowrap">Staff Alert:</span>
+                <code class="text-[11px] text-slate-800 font-mono bg-white px-2 py-1 rounded border border-slate-200 truncate">
+                  ${item.staffSms}
+                </code>
+              </div>
+              <div class="flex items-center gap-2 flex-shrink-0">
+                <span class="text-[11px] font-semibold text-slate-500">Route: <strong>${item.staffDestinationLabel}</strong></span>
+                <button onclick="copyText('${escapeQuotes(item.staffSms)}', '${item.id} Staff Alert')" class="copy-btn px-2 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-md text-[10px] font-semibold text-slate-600 transition-all">
+                  Copy Alert
+                </button>
+              </div>
+            </div>
+
+            <!-- Collapsible Technical Accordion -->
+            <details class="mt-3 text-xs border border-slate-100 rounded-xl overflow-hidden group">
+              <summary class="p-2.5 bg-slate-50 hover:bg-slate-100 cursor-pointer font-bold text-slate-600 flex items-center justify-between transition-all">
+                <span>Show Technical Schema & Post-Call State</span>
+                <svg class="w-3.5 h-3.5 text-slate-400 transform group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </summary>
+              <div class="p-3 bg-white space-y-2 border-t border-slate-100">
+                <div>
+                  <span class="font-bold text-slate-500 uppercase text-[10px]">Data Schema Captured:</span>
+                  <code class="block text-[11px] text-slate-800 font-mono mt-0.5">${item.data}</code>
+                </div>
+                <div>
+                  <span class="font-bold text-slate-500 uppercase text-[10px]">Automated Tools Executed:</span>
+                  <code class="block text-[11px] text-blue-700 font-mono mt-0.5">${item.tool}</code>
+                </div>
+                <div>
+                  <span class="font-bold text-slate-500 uppercase text-[10px]">Post-Call Terminal State:</span>
+                  <p class="text-slate-700 mt-0.5">${item.postCall}</p>
+                </div>
+              </div>
+            </details>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderTable(list) {
+      const tbody = document.getElementById('tableBody');
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-slate-400">No matching outcomes found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map(item => `
+        <tr class="hover:bg-slate-50/75 transition-colors">
+          <td class="p-3 font-mono font-bold text-slate-900 align-top">${item.id}</td>
+          <td class="p-3 align-top">
+            <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${getFlowBadgeClass(item.flow)}">
+              ${item.flow}
+            </span>
+          </td>
+          <td class="p-3 align-top">
+            <div class="font-bold text-slate-900">${item.title}</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">${item.scenario}</div>
+          </td>
+          <td class="p-3 text-slate-800 italic leading-relaxed align-top">
+            "${item.honeyScript}"
+          </td>
+          <td class="p-3 font-mono text-[11px] text-slate-900 align-top">
+            <div class="bg-slate-50 p-2 rounded border border-slate-200">
+              ${item.customerSms}
+            </div>
+            <div class="text-[10px] text-slate-400 mt-1 font-sans">Length: ${item.customerSms.length} chars</div>
+          </td>
+          <td class="p-3 align-top">
+            <div class="font-bold text-xs ${item.staffDestination === 'office' ? 'text-slate-700' : (item.staffDestination === 'michael' ? 'text-blue-700' : 'text-pink-700')}">
+              ${item.staffDestinationLabel}
+            </div>
+            <div class="font-mono text-[10px] text-slate-600 mt-1 bg-slate-50 p-1.5 rounded border border-slate-200">
+              ${item.staffSms}
+            </div>
+          </td>
+          <td class="p-3 align-top">
+            <div class="font-mono text-[10px] text-blue-700">${item.tool}</div>
+            <div class="text-[10px] text-slate-500 mt-1">${item.postCall}</div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function escapeQuotes(str) {
+      return (str || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+
+    // Initial render
+    render();
+  </script>
+</body>
+</html>

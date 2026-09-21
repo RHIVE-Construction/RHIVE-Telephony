@@ -4922,7 +4922,7 @@ class CallSession {
         // 1. Dispatch customer SMS establishing direct line with Project Specialist
         if (targetPhone && !targetPhone.startsWith('SIM_')) {
           const greetingName = cleanCallerName ? ' ' + cleanCallerName : '';
-          const smsBody = 'RHIVE: Hi' + greetingName + ', this is your project specialist for ' + propertyAddress + '. We are preparing your certified roof quote now. Feel free to text photos or questions directly to this thread!';
+          const smsBody = 'RHIVE: Hi' + greetingName + ', your roof quote for ' + propertyAddress + ' is in progress. Text photos or questions directly to this thread anytime!';
           sendMultiChannelSms({
             to: targetPhone,
             body: smsBody,
