@@ -1018,13 +1018,9 @@
         <button type="submit" style="background: #08137C; color: #FFFFFF; border: none; border-radius: 8px; padding: 10px 20px; font-weight: 700; font-size: 0.85rem; cursor: pointer;">Unlock</button>
       </form>
 
-      <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 16px; text-align: left;">
-        <div style="font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: #08137C; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">Whitelisted Executive Accounts:</div>
-        <div style="font-size: 0.82rem; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-          <span style="color: #ec028b; font-weight: 900;">●</span> Michael Robinson (<span style="color: #08137C; font-weight: 600;">CEO</span>) &mdash; <span style="font-size: 0.78rem; color: #64748B;">michael@rhiveconstruction.com / mjrob14@gmail.com</span>
-        </div>
-        <div style="font-size: 0.82rem; color: #0F172A; display: flex; align-items: center; gap: 8px;">
-          <span style="color: #ec028b; font-weight: 900;">●</span> Kara Robinson (<span style="color: #08137C; font-weight: 600;">President</span>) &mdash; <span style="font-size: 0.78rem; color: #64748B;">kara@rhiveconstruction.com</span>
+      <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px; text-align: center;">
+        <div style="font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; font-weight: 600; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px;">
+          🔒 Restricted Access • Authorized Personnel Only
         </div>
       </div>
     </div>
@@ -2033,7 +2029,6 @@
     // ========================================================================
     const WHITELIST = [
       'michael@rhiveconstruction.com',
-      'mjrob14@gmail.com',
       'kara@rhiveconstruction.com'
     ];
 
@@ -2109,11 +2104,15 @@
       }
     }
 
-    function showAuthDenied(email) {
+    function showAuthDenied(errorMsg) {
       const box = document.getElementById('auth-error-box');
       const msg = document.getElementById('auth-error-msg');
       if (box && msg) {
-        msg.innerText = 'Account "' + email + '" is not authorized. Only whitelisted RHIVE executive accounts may enter.';
+        if (errorMsg && errorMsg.includes('@')) {
+          msg.innerText = 'Account "' + errorMsg + '" is not authorized. Only whitelisted RHIVE executive accounts may enter.';
+        } else {
+          msg.innerText = errorMsg || 'Authentication failed. Please verify your credentials or use the Executive Passkey.';
+        }
         box.style.display = 'block';
       }
     }

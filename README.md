@@ -23,7 +23,7 @@ An enterprise-grade, real-time telephony and voice AI orchestration engine power
 
 4. **Google Identity Auth Gate:**
    - Protects the internal control panel and telephony tools behind authorized Google Sign-In.
-   - Whitelist enforced: `michael@rhiveconstruction.com`, `mjrob14@gmail.com`, `kara@rhiveconstruction.com`.
+   - Whitelist enforced: `michael@rhiveconstruction.com`, `kara@rhiveconstruction.com`.
 
 5. **Screened Warm PBX Handoff & Specialist Whisper:**
    - Multi-channel call routing with Option 1-4 custom hold music loops (Aoede Lyria 3.5 audio suite).
