@@ -2003,10 +2003,12 @@ async function executeSpecialistTextRequest(params) {
   }
 
   // 3. Priority Google Chat Card tagged for the specialist & department
-  postGoogleChat(
-    `<b>📱 Immediate Text Message Requested for ${targetEntity}!</b><br>👤 Caller: <b>${safeCallerName}</b> (${safePhone})<br>🏢 Company: <b>${companyName || 'N/A'}</b><br>${invoiceNumber ? `📄 Invoice: <b>#${escapeXml(invoiceNumber)}</b><br>` : ''}🏢 Department: <b>${departmentLabel}</b><br>📋 Regarding: <b>${escapeXml(safeReason)}</b><br>⚡ <i>Caller requested ${targetEntity} message them now via text ASAP.</i>`,
-    `📱 Urgent Text Message Requested for ${targetEntity}`
-  );
+  if (!params.skipChatAlert) {
+    postGoogleChat(
+      `<b>📱 Immediate Text Message Requested for ${targetEntity}!</b><br>👤 Caller: <b>${safeCallerName}</b> (${safePhone})<br>🏢 Company: <b>${companyName || 'N/A'}</b><br>${invoiceNumber ? `📄 Invoice: <b>#${escapeXml(invoiceNumber)}</b><br>` : ''}🏢 Department: <b>${departmentLabel}</b><br>📋 Regarding: <b>${escapeXml(safeReason)}</b><br>⚡ <i>Caller requested ${targetEntity} message them now via text ASAP.</i>`,
+      `📱 Urgent Text Message Requested for ${targetEntity}`
+    );
+  }
 
   return {
     textRequested: true,
@@ -2169,34 +2171,63 @@ async function executeCallbackBooking(params) {
 
 
   // Alert Google Chat
-  postGoogleChat(
-    `<b>📅 15-Min Call Scheduled on ${targetSpecialist}'s Calendar!</b><br>⭐ Title: <b>${excitingTitle}</b><br>👤 Caller: <b>${callerName}</b> (${customerPhone})<br>🏢 Company: <b>${companyName || 'N/A'}</b><br>⏰ Time: <b>${slotSpoken}</b><br>📋 Topic: ${reason}<br>📧 Email: ${validCustomerEmail || 'michael@rhiveconstruction.com fallback'}`,
-    `📅 15-Min Call Scheduled`
-  );
+  if (!params.skipChatAlert) {
+    postGoogleChat(
+      `<b>📅 15-Min Call Scheduled on ${targetSpecialist}'s Calendar!</b><br>⭐ Title: <b>${excitingTitle}</b><br>👤 Caller: <b>${callerName}</b> (${customerPhone})<br>🏢 Company: <b>${companyName || 'N/A'}</b><br>⏰ Time: <b>${slotSpoken}</b><br>📋 Topic: ${reason}<br>📧 Email: ${validCustomerEmail || 'michael@rhiveconstruction.com fallback'}`,
+      `📅 15-Min Call Scheduled`
+    );
+  }
 
   return { success: true, slotSpoken, targetDate: chosenSlot.date, eventTitle: excitingTitle, startISO: chosenSlot.startISO, endISO: chosenSlot.endISO, calendarId: bookedCalendarId };
 }
+
+const completedCallRecordings = new Map();
+const hasDispatchedPostCallChat = new Set();
 
 async function postGoogleChat(text, title = '📞 RHIVE Live Voice Call', buttonUrl = null) {
   if (text && (text.includes('SIM_') || text.includes('+1801555') || text.includes('+1800555') || text.includes('SIMULATION') || text.includes('Tom Hunter') || text.includes('Elena Vance') || text.includes('Sarah Miller'))) {
     console.log('[Simulation Safety Guard] Suppressed live Google Chat webhook dispatch for simulated call.');
     return { success: true, simulated: true };
   }
-  // 1. Option B: Incoming Webhook (if configured)
-  if (GOOGLE_CHAT_WEBHOOK) {
-    try {
-      const cardWidgets = [{ textParagraph: { text } }];
-      if (buttonUrl) {
-        cardWidgets.push({
-          buttonList: {
-            buttons: [{
-              text: '📂 View Phone Dossier in Google Drive',
-              onClick: { openLink: { url: buttonUrl } }
-            }]
-          }
-        });
-      }
 
+  // Clean HTML tags for native Google Chat display
+  const cleanMarkdown = text
+    .replace(/<b>/gi, '*')
+    .replace(/<\/b>/gi, '*')
+    .replace(/<i>/gi, '_')
+    .replace(/<\/i>/gi, '_')
+    .replace(/<br\s*[\/]?>/gi, '\n')
+    .replace(/<a\s+href="([^"]+)">([^<]+)<\/a>/gi, '$1');
+
+  // Prevent duplicating buttonUrl if already included in message text
+  const shouldAppendButton = buttonUrl && !text.includes(buttonUrl);
+  const payloadText = `🦅 *${title}*\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${cleanMarkdown}` +
+    (shouldAppendButton ? `\n\n📂 *Dossier Link:* ${buttonUrl}` : '');
+
+  // 1. Primary: Direct Authenticated API Dispatch to JustCall Leads Thread
+  let dispatched = false;
+  try {
+    const chat = getGoogleChatClient();
+    if (chat) {
+      await chat.spaces.messages.create({
+        parent: LEADS_CHAT_SPACE,
+        messageReplyOption: 'REPLY_MESSAGE_FALLBACK_TO_NEW_THREAD',
+        requestBody: {
+          text: payloadText,
+          thread: { name: LEADS_CHAT_THREAD }
+        }
+      });
+      dispatched = true;
+      console.log(`[Google Chat] Dispatched 1 authoritative alert to ${LEADS_CHAT_SPACE} (thread: ${LEADS_CHAT_THREAD})`);
+    }
+  } catch(apiErr) {
+    console.warn('[Google Chat Direct API Warning, attempting fallback]:', apiErr.message);
+  }
+
+  // 2. Secondary Fallback: Webhook (ONLY if Direct API did not dispatch)
+  if (!dispatched && GOOGLE_CHAT_WEBHOOK) {
+    try {
+      const cardWidgets = [{ textParagraph: { text: payloadText.replace(/\n/g, '<br>') } }];
       const webhookUrl = GOOGLE_CHAT_WEBHOOK.includes('threadKey')
         ? GOOGLE_CHAT_WEBHOOK
         : (GOOGLE_CHAT_WEBHOOK + (GOOGLE_CHAT_WEBHOOK.includes('?') ? '&' : '?') + 'threadKey=RgYVSFhm94o');
@@ -2215,38 +2246,11 @@ async function postGoogleChat(text, title = '📞 RHIVE Live Voice Call', button
           }
         }]
       }, { timeout: 8000 });
-      console.log('[Google Chat] Webhook dispatch succeeded (thread: RgYVSFhm94o)');
+      dispatched = true;
+      console.log('[Google Chat] Fallback webhook dispatch succeeded (thread: RgYVSFhm94o)');
     } catch(e) {
-      console.warn('[Google Chat] Webhook notification failed:', e.message);
+      console.warn('[Google Chat] Webhook fallback notification failed:', e.message);
     }
-  }
-
-  // 2. Direct API Dispatch to "JustCall Leads" Space & Thread (spaces/AAQABQzOXI0/threads/RgYVSFhm94o)
-  try {
-    const chat = getGoogleChatClient();
-    if (chat) {
-      // Clean HTML tags for native markdown display in space
-      const cleanMarkdown = text
-        .replace(/<b>/gi, '*')
-        .replace(/<\/b>/gi, '*')
-        .replace(/<br\s*[\/]?>/gi, '\n')
-        .replace(/<a href="([^"]+)">([^<]+)<\/a>/gi, '$2: $1');
-      
-      const payloadText = `🦅 *${title}*\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${cleanMarkdown}` +
-        (buttonUrl ? `\n\n📂 *Dossier Link:* ${buttonUrl}` : '');
-
-      await chat.spaces.messages.create({
-        parent: LEADS_CHAT_SPACE,
-        messageReplyOption: 'REPLY_MESSAGE_FALLBACK_TO_NEW_THREAD',
-        requestBody: {
-          text: payloadText,
-          thread: { name: LEADS_CHAT_THREAD }
-        }
-      });
-      console.log(`[Google Chat] Dispatched live lead alert to ${LEADS_CHAT_SPACE} (thread: ${LEADS_CHAT_THREAD})`);
-    }
-  } catch(apiErr) {
-    console.warn('[Google Chat API Dispatch Note]', apiErr.message);
   }
 }
 
@@ -2366,12 +2370,9 @@ async function uploadCompletedRecordingToDrive({ callSid, recordingSid, recordin
     uploadedRecordingSids.add(recordingSid);
     console.log(`[Google Drive] Successfully saved finalized MP3 recording to ${safePhone} folder: ${recRes.data.name}`);
 
-    // Alert Google Chat with direct audio and folder links
-    postGoogleChat(
-      `<b>🎙️ Dual-Channel Call Audio Recording Archived!</b><br>👤 Phone: <b>${callerPhone || safePhone}</b><br>📁 Drive Folder: <a href="${phoneFolder?.webViewLink}">${safePhone}</a><br>🔊 <a href="${recRes.data.webViewLink}">Listen to Call Audio (.mp3)</a>`,
-      '🎙️ Dual-Channel Call Recording Attached',
-      phoneFolder?.webViewLink
-    );
+    if (callSid) {
+      completedCallRecordings.set(callSid, recRes.data);
+    }
 
     // Update recording link in Firestore call_logs
     if (callSid) {
@@ -2572,11 +2573,16 @@ async function archiveCallToPhoneFolder({ callSid, callerPhone, conversationTurn
       callSummary: summaryText
     });
 
-    postGoogleChat(
-      fullLeadDossier.replace(/\n/g, '<br>'),
-      '📞 RHIVE Call Completed & Lead Archived',
-      phoneFolder?.webViewLink
-    );
+    if (callSid && hasDispatchedPostCallChat.has(callSid)) {
+      console.log(`[Google Chat Safety Guard] Suppressed duplicate post-call Google Chat notification for callSid: ${callSid}`);
+    } else {
+      if (callSid) hasDispatchedPostCallChat.add(callSid);
+      postGoogleChat(
+        fullLeadDossier.replace(/\n/g, '<br>'),
+        '📞 RHIVE Call Completed & Lead Archived',
+        phoneFolder?.webViewLink
+      );
+    }
 
     sendExecutiveSummarySms(fullLeadDossier).catch(e => console.warn('[Aftercall Executive SMS Error]', e.message));
 
@@ -3184,28 +3190,54 @@ async function fetchAvailableCalendarWindows(targetDate, callerCityOrAddress = '
 // CONSOLIDATED LEAD DOSSIER BUILDER (OPTION B - 1 AUTHORITATIVE SUMMARY)
 // ============================================================================
 function buildConsolidatedLeadDossier(data) {
-  const isInspection = !!(data.inspectionSlot || data.isInspection);
-  const title = isInspection ? '📅 NEW INSPECTION & MEASURECALL DOSSIER:' : '📋 NEW CERTIFIED QUOTE REQUEST:';
-  const lines = [title];
+  const isInspection = !!(data.inspectionSlot || data.isInspection || data.isInspectionBooked);
+  const isEmergency = !!(data.emergencyFee || data.isEmergency || (data.projectScope && data.projectScope.toLowerCase().includes('leak')));
+  const isComplaint = !!(data.isComplaint || (data.messageText && /\[(COMPLAINT|SIGN REMOVAL)\]/i.test(data.messageText)));
+  const isMunicipal = !!(data.isMunicipal || (data.messageText && /\[(VERIFIED MUNICIPAL|MUNICIPAL|CODE ENFORCEMENT)\]/i.test(data.messageText)));
+  const isConsultation = !!(data.isConsultation || data.consultationSlot);
+  const isTextRequested = !!(data.isTextRequested);
+  const isTransfer = !!(data.isTransfer || (data.targetSpecialist && !isComplaint && !isMunicipal && !isConsultation && !isTextRequested));
 
-  const isPresent = (val) => {
-    if (val === null || val === undefined) return false;
-    if (typeof val === 'boolean') return val;
-    if (typeof val === 'number') return !isNaN(val);
-    if (typeof val === 'string') {
-      const trimmed = val.trim().toLowerCase();
-      return !['none', 'none reported', 'none specified', 'not specified', 'standard', 'n/a', 'unknown', '', 'false', 'undefined', 'null'].includes(trimmed);
-    }
-    return !!val;
-  };
+  let title = '📞 RHIVE INBOUND CALL COMPLETED & LEAD ARCHIVED';
+  let leadRating = data.leadRating || '3/5 (Standard Inbound)';
+  let callOutcome = data.callOutcome || 'Inbound Inquiry Archived';
 
-  // ============================================================================
-  // 1. CALL SUMMARY & RATING (TOP OF DOSSIER)
-  // ============================================================================
-  const leadRating = data.leadRating || (isInspection ? '5/5 (High-Intent Certified Inspection)' : '4/5 (Qualified Certified Quote Request)');
-  lines.push(`⭐ Lead Quality Rating: ${leadRating}`);
+  if (isEmergency) {
+    title = '🚨 RHIVE EMERGENCY LEAK TRIAGE & DISPATCH';
+    leadRating = '5/5 (High-Urgency Emergency Stabilization)';
+    callOutcome = 'Rapid Stabilization Crew Dispatched ($150 Credited Fee Acknowledged)';
+  } else if (isInspection) {
+    title = '📅 RHIVE CERTIFIED ROOF INSPECTION BOOKED';
+    leadRating = '5/5 (High-Intent Certified Inspection)';
+    callOutcome = `On-Site Inspection Booked: ${data.inspectionSlot || 'Next Open Window'}`;
+  } else if (data.quoteTier || data.isQuoteVerified) {
+    title = '📋 RHIVE CERTIFIED AERIAL QUOTE REQUEST';
+    leadRating = '5/5 (Qualified Certified Quote Request)';
+    callOutcome = 'Certified Aerial Quote Channel Established via SMS & Email';
+  } else if (isMunicipal) {
+    title = '🏛️ RHIVE MUNICIPAL CODE ENFORCEMENT VERIFICATION';
+    leadRating = '4/5 (Official Municipal Verification)';
+    callOutcome = 'Officer Credentials Logged for Executive Compliance Follow-up Today';
+  } else if (isComplaint) {
+    title = '🚨 RHIVE ESCALATED COMPLAINT / SIGN REMOVAL DISPATCH';
+    leadRating = 'Priority 1 (Executive Review Required Today)';
+    callOutcome = 'Field Route Team Dispatched for Sign Pickup / Management Manual Review Required';
+  } else if (isConsultation) {
+    title = `📅 RHIVE 15-MIN CONSULTATION BOOKED (${(data.consultationSpecialist || 'Kara').toUpperCase()})`;
+    leadRating = '4/5 (Confirmed Calendar Appointment)';
+    callOutcome = `15-Min Strategic Call Booked: ${data.consultationSlot || 'Upcoming Slot'}`;
+  } else if (isTextRequested) {
+    title = `📱 RHIVE DIRECT TEXT REQUEST (${(data.textSpecialist || 'Specialist').toUpperCase()})`;
+    leadRating = '4/5 (Direct Messaging Channel Established)';
+    callOutcome = `Customer requested text conversation with ${data.textSpecialist || 'Specialist'}`;
+  } else if (isTransfer) {
+    title = '💼 RHIVE TRADE PARTNER & OPERATIONS ROUTING';
+    leadRating = '4/5 (Verified Trade / Billing Partner)';
+    callOutcome = `Routed to ${data.targetSpecialist || 'Operations'} (${data.departmentLabel || 'Office'})`;
+  }
 
-  const callOutcome = data.callOutcome || (isInspection ? 'Certified On-Site Inspection Window Booked' : 'Certified Aerial Quote Channel Established');
+  const lines = [`*${title}*`, '━━━━━━━━━━━━━━━━━━━━━━━━━━━━'];
+  lines.push(`⭐ Lead Quality / Priority: ${leadRating}`);
   lines.push(`📋 Call Objective & Outcome: ${callOutcome}`);
 
   if (data.callSummary || data.executiveCallSummary) {
@@ -3216,23 +3248,21 @@ function buildConsolidatedLeadDossier(data) {
   const durationStr = data.callDuration ? ` | Duration: ${data.callDuration}` : '';
   lines.push(`⏰ Call Timestamp: ${callTimeStr}${durationStr}`);
 
-  // ============================================================================
-  // 2. EVERY FIELD COLLECTED (34-VARIABLE INTAKE MATRIX)
-  // ============================================================================
+  // Caller Identity
   const rawName = (data.callerName || data.customerName || '').trim();
   let firstName = data.firstName;
   let lastName = data.lastName;
-  if (!firstName && rawName && rawName !== 'Unknown Caller' && rawName !== 'Homeowner' && rawName !== 'there') {
+  if (!firstName && rawName && !['Unknown Caller', 'Homeowner', 'there', 'Customer'].includes(rawName)) {
     const parts = rawName.split(/\s+/);
     firstName = parts[0];
     lastName = parts.slice(1).join(' ');
   }
-  if (firstName) {
-    lines.push(`👤 Customer Name: ${firstName}${lastName ? ' ' + lastName : ''} (First: ${firstName} | Last: ${lastName || 'N/A'})`);
-  }
+  const callerDisplayName = firstName ? `${firstName}${lastName ? ' ' + lastName : ''}` : (rawName || 'Inbound Caller');
+  lines.push(`👤 Customer / Caller: ${callerDisplayName}${firstName ? ` (First: ${firstName} | Last: ${lastName || 'N/A'})` : ''}`);
+
   const phone = data.customerPhone || data.callerPhone;
   if (phone) {
-    lines.push(`📞 Customer Phone: ${phone}`);
+    lines.push(`📞 Phone Number: ${phone}`);
   }
 
   const validEmail = cleanAndNormalizeEmail(data.customerEmail);
@@ -3240,160 +3270,103 @@ function buildConsolidatedLeadDossier(data) {
     lines.push(`📧 Customer Email: ${validEmail.toLowerCase()}`);
   }
 
+  if (data.companyName && data.companyName !== 'N/A' && data.companyName !== 'Not Stated') {
+    lines.push(`🏢 Company / Organization: ${data.companyName}`);
+  }
+
   const decisionMaker = data.isHomeowner !== undefined
     ? (data.isHomeowner ? 'Confirmed Homeowner' : 'Representative')
-    : (data.isDecisionMaker !== undefined ? (data.isDecisionMaker ? 'Authorized Decision Maker' : 'Non-Decision Maker') : 'Homeowner / Authorized Decision Maker');
-  lines.push(`🔑 Decision Maker Status: ${decisionMaker}`);
+    : (data.isDecisionMaker !== undefined ? (data.isDecisionMaker ? 'Authorized Decision Maker' : 'Non-Decision Maker') : null);
+  if (decisionMaker) {
+    lines.push(`🔑 Decision Maker Status: ${decisionMaker}`);
+  }
 
-  const propType = data.propertyType || (data.projectScope?.toLowerCase().includes('commercial') ? 'Commercial' : 'Residential');
-  lines.push(`🏢 Property Type: ${propType}`);
+  const propType = data.propertyType || (data.projectScope?.toLowerCase().includes('commercial') ? 'Commercial' : null);
+  if (propType) {
+    lines.push(`🏢 Property Type: ${propType}`);
+  }
 
+  // Property & Parcel Specifications (ONLY if address provided!)
   const address = data.verifiedAddress || data.propertyAddress;
-  if (address && address !== 'Address on file' && address !== 'your property') {
-    lines.push(`📍 Verified Address: ${address}`);
+  const hasRealAddress = address && !['Address on file', 'your property', 'Not Stated', 'None'].includes(address);
+
+  if (hasRealAddress) {
+    lines.push(`\n📍 PROPERTY & PARCEL SPECIFICATIONS:`);
+    lines.push(`• Verified Address: ${address}`);
     if (data.rawAddress && data.rawAddress !== address) {
-      lines.push(`🗣️ Raw Spoken Address: ${data.rawAddress}`);
+      lines.push(`• Raw Spoken Address: ${data.rawAddress}`);
     }
-    lines.push(`🗺️ Google Maps Pin: https://maps.google.com/?q=${encodeURIComponent(address)}`);
-    const isConfirmed = data.addressConfirmed !== undefined ? data.addressConfirmed : true;
-    lines.push(`✅ Address Confirmed: ${isConfirmed ? 'true' : 'false'}`);
-  }
-
-  if (data.propertyName && data.propertyName !== 'Property on file' && !data.propertyName.includes('undefined')) {
-    lines.push(`🏷️ Property Name: ${data.propertyName}`);
-  }
-
-  if (data.parcelId && data.parcelId !== 'N/A' && data.parcelId !== 'Resolving') {
-    lines.push(`🏛️ County Parcel ID: ${data.parcelId}`);
-  }
-  if (data.yearBuilt && data.yearBuilt !== 'N/A' && data.yearBuilt !== 'Unknown') {
-    lines.push(`📅 Year Built: ${data.yearBuilt}`);
-  }
-  if (data.decadeBuilt && data.decadeBuilt !== 'N/A') {
-    lines.push(`⏳ Decade Built: ${data.decadeBuilt}`);
-  }
-  if (data.bldgSqft) {
-    lines.push(`📏 Interior Building Sqft: ${data.bldgSqft} sqft`);
-  }
-
-  const isPre1972 = data.isPre1972 || (data.yearBuilt && parseInt(data.yearBuilt, 10) < 1972);
-  if (isPre1972) {
-    lines.push(`⚠️ Pre-1972 Slat Deck Risk: HIGH RISK (Spaced 1x6/1x8 slat boards likely, violates modern IRC R905 nailing code on tear-off, $78.13/sheet re-deck recommended)`);
+    lines.push(`• Google Maps Pin: https://maps.google.com/?q=${encodeURIComponent(address)}`);
+    if (data.propertyName && !data.propertyName.includes('undefined')) {
+      lines.push(`• Property Shorthand: ${data.propertyName}`);
+    }
+    if (data.parcelId && !['N/A', 'Resolving', 'None'].includes(data.parcelId)) {
+      lines.push(`• County Parcel ID: ${data.parcelId}`);
+    }
+    if (data.yearBuilt && !['N/A', 'Unknown', 'None'].includes(data.yearBuilt)) {
+      lines.push(`• Year Built: ${data.yearBuilt}${data.decadeBuilt && data.decadeBuilt !== 'N/A' ? ` (${data.decadeBuilt})` : ''}`);
+    }
+    if (data.bldgSqft) {
+      lines.push(`• Building Sqft: ${data.bldgSqft} sqft`);
+    }
+    const isPre1972 = data.isPre1972 || (data.yearBuilt && parseInt(data.yearBuilt, 10) < 1972);
+    if (isPre1972) {
+      lines.push(`• Decking Substrate Risk: ⚠️ PRE-1972 SLAT BOARD RISK (Spaced 1x6/1x8 slat boards likely; $78.13/sheet re-decking recommended)`);
+    } else if (data.yearBuilt) {
+      lines.push(`• Decking Substrate Risk: 🛡️ Continuous Solid Sheathing Expected (OSB/Plywood)`);
+    }
+    if (data.roofGeometry || data.geometryType) {
+      lines.push(`• Roof Geometry: ${data.roofGeometry || data.geometryType}`);
+    }
   } else {
-    lines.push(`🛡️ Decking Substrate Risk: Continuous Solid Sheathing Expected (OSB/Plywood)`);
+    lines.push(`📍 Property Address: None Disclosed`);
   }
 
-  if (data.roofGeometry || data.geometryType) {
-    lines.push(`📐 Roof Geometry: ${data.roofGeometry || data.geometryType}`);
+  // Project Scope & Product Specifications
+  const hasScopeOrSpecs = data.projectScope || data.shingleLayers || data.solarStatus || data.gutterAreas || data.heatTraceAreas || data.materialPreference;
+  if (hasScopeOrSpecs) {
+    lines.push(`\n📦 PROJECT SCOPE & PRODUCT SPECIFICATIONS:`);
+    if (data.projectScope) lines.push(`• Project Scope: ${data.projectScope}`);
+    if (data.shingleLayers) lines.push(`• Shingle Layers: ${data.shingleLayers} (Asphalt strict no-layover standard)`);
+    if (data.solarStatus) lines.push(`• Solar Panels: ${data.solarStatus}${data.solarDetachParty ? ` (Detach: ${data.solarDetachParty})` : ''}`);
+    if (data.skylights_count) lines.push(`• Skylights: ${data.skylights_count}`);
+    if (data.swamp_cooler_removal) lines.push(`• Swamp Cooler Removal: ${data.swamp_cooler_removal}`);
+    if (data.satellite_removal) lines.push(`• Satellite Dish Removal: ${data.satellite_removal}`);
+    if (data.eaveIntake) lines.push(`• Eave Intake Ventilation: ${data.eaveIntake}`);
+    if (data.gutterAreas) lines.push(`• Gutter Scope & Runs: ${data.gutterAreas}`);
+    if (data.heatTraceAreas) lines.push(`• Winter Ice Dams & Valleys: ${data.heatTraceAreas}`);
+    lines.push(`• Product Lineup: ${data.materialPreference || 'Commercial Manufacturer Certified Baseline (Owens Corning Duration SureNail 130mph) | Upgrades: Duration Flex Class 4 / Woodcrest / TPO'}`);
+    if (data.leakSeverity || data.leakLocation) {
+      lines.push(`• Active Leak Details: Severity: ${data.leakSeverity || 'Reported'} | Location: ${data.leakLocation || 'Roof Envelope'}`);
+    }
+    if (data.emergencyFee) {
+      lines.push(`• Emergency Fee: $150 (100% Credited toward repair or replacement)`);
+    }
   }
 
-  if (data.isPre1990sCode) {
-    lines.push(`💨 Pre-1990s Soffit Code: true`);
+  // DISC & Customer Priorities
+  if (data.discProfile || data.primaryWarrantyPriority || data.weatherImpactPriority || data.timelinePriority) {
+    lines.push(`\n🎯 CONSULTATIVE VALUE DRIVERS & DISC:`);
+    if (data.discProfile) lines.push(`• DISC Quadrant: ${data.discProfile}`);
+    if (data.primaryWarrantyPriority) lines.push(`• Warranty Priority: ${data.primaryWarrantyPriority}`);
+    if (data.weatherImpactPriority) lines.push(`• Severe Weather / Impact: ${data.weatherImpactPriority}`);
+    if (data.timelinePriority) lines.push(`• Timeline / Schedule: ${data.timelinePriority}`);
   }
 
-  if (data.roofSquares && isPresent(data.roofSquares)) {
-    lines.push(`📐 Roof Squares: ${data.roofSquares}`);
-  }
-  if (data.facetCount && isPresent(data.facetCount)) {
-    lines.push(`🔢 Total Facet Count: ${data.facetCount}`);
-  }
-  if (data.pitchMatrix && isPresent(data.pitchMatrix)) {
-    lines.push(`📐 Pitch Matrix: ${data.pitchMatrix}`);
-  }
+  // Special Notes or Invoicing Details
+  if (data.invoiceNumber) lines.push(`📄 Invoice / Reference #: ${data.invoiceNumber}`);
+  if (data.messageText) lines.push(`💬 Spoken Message / Note: "${data.messageText}"`);
 
-  if (data.projectScope && isPresent(data.projectScope)) {
-    lines.push(`🏠 Project Scope: ${data.projectScope}`);
-  }
-  if (data.inspectionSlot && isPresent(data.inspectionSlot)) {
-    lines.push(`⏰ Inspection Window: ${data.inspectionSlot}`);
-  }
-  if (data.accessNotes && isPresent(data.accessNotes) && !data.accessNotes.toLowerCase().includes('not specified')) {
-    lines.push(`🔑 Property Access Notes: ${data.accessNotes}`);
-  }
+  // Archival Vault Links (Single Clean Section, Zero Repeated URLs!)
+  const safePhone = (data.customerPhone || data.callerPhone || 'Unknown').replace(/[^0-9+]/g, '');
+  const folderUrl = data.phoneFolderUrl || (safePhone ? `https://drive.google.com/drive/folders/${TWILIO_DRIVE_FOLDER_ID}` : null);
+  const transcriptUrl = data.transcriptDriveUrl || null;
+  const audioUrl = data.recordingUrl || data.callRecordingUrl || null;
 
-  if (data.solarStatus && isPresent(data.solarStatus)) {
-    lines.push(`☀️ Solar Panel Status: ${data.solarStatus}`);
-  }
-  if (data.solarDetachParty && isPresent(data.solarDetachParty)) {
-    lines.push(`🔧 Solar Detach Party: ${data.solarDetachParty}`);
-  }
-  if (data.skylights_count && isPresent(data.skylights_count)) {
-    lines.push(`🪟 Skylights Count: ${data.skylights_count}`);
-  }
-  if (data.swamp_cooler_removal && isPresent(data.swamp_cooler_removal)) {
-    lines.push(`❄️ Swamp Cooler Removal: ${data.swamp_cooler_removal}`);
-  }
-  if (data.satellite_removal && isPresent(data.satellite_removal)) {
-    lines.push(`📡 Satellite Dish Removal: ${data.satellite_removal}`);
-  }
-  if (data.removals && isPresent(data.removals) && !data.skylights_count && !data.swamp_cooler_removal && !data.satellite_removal) {
-    lines.push(`🗑️ Removals: ${data.removals}`);
-  }
-  if (data.shingleLayers && isPresent(data.shingleLayers)) {
-    lines.push(`🧱 Shingle Layers: ${data.shingleLayers}`);
-  }
-  if (data.eaveIntake && isPresent(data.eaveIntake)) {
-    lines.push(`💨 Eave Intake Ventilation: ${data.eaveIntake}`);
-  }
-  if (data.gutterAreas && isPresent(data.gutterAreas)) {
-    lines.push(`🌧️ Gutter Scope & Runs: ${data.gutterAreas}`);
-  }
-  if (data.heatTraceAreas && isPresent(data.heatTraceAreas)) {
-    lines.push(`❄️ Winter Ice Dams & Valleys: ${data.heatTraceAreas}`);
-  }
-
-  lines.push(`📦 Quoting Lineup Spec (Internal Catalog): ${data.materialPreference || 'Owens Corning Duration (Baseline) / Duration Flex (Class 4) / Woodcrest / TPO'}`);
-
-  if (data.leakSeverity || data.leakLocation) {
-    lines.push(`💧 Active Leak Details: Severity: ${data.leakSeverity || 'Reported'} | Location: ${data.leakLocation || 'Roof Envelope'}`);
-  }
-
-  if (data.discProfile && isPresent(data.discProfile)) {
-    lines.push(`🎯 DISC Personality Quadrant: ${data.discProfile}`);
-  }
-  if (data.primaryWarrantyPriority && isPresent(data.primaryWarrantyPriority)) {
-    lines.push(`🛡️ Lifespan & Warranty Priority: ${data.primaryWarrantyPriority}`);
-  }
-  if (data.weatherImpactPriority && isPresent(data.weatherImpactPriority)) {
-    lines.push(`🌪️ Hail & Impact Priority: ${data.weatherImpactPriority}`);
-  }
-  if (data.ventilationPriority && isPresent(data.ventilationPriority)) {
-    lines.push(`💨 Attic Ventilation & Ice Dam Priority: ${data.ventilationPriority}`);
-  }
-  if (data.aestheticPriority && isPresent(data.aestheticPriority)) {
-    lines.push(`🎨 Architectural Aesthetic Priority: ${data.aestheticPriority}`);
-  }
-  if (data.timelinePriority && isPresent(data.timelinePriority)) {
-    lines.push(`⏳ Project Schedule & Timing: ${data.timelinePriority}`);
-  }
-  if (data.customerPriority && isPresent(data.customerPriority) && !data.primaryWarrantyPriority) {
-    lines.push(`⭐ Customer Primary Priority: ${data.customerPriority}`);
-  }
-  if (data.quoteTier && isPresent(data.quoteTier)) {
-    lines.push(`📊 Quoting Tier: ${data.quoteTier}`);
-  }
-  if (data.emergencyFee && isPresent(data.emergencyFee)) {
-    lines.push(`💵 Emergency Mobilization Fee: $150 (100% Credited toward any repair or replacement)`);
-  }
-
-  // ============================================================================
-  // 3. CONVERSATIONAL TRANSCRIPT (GOOGLE DRIVE)
-  // ============================================================================
-  const transcriptLink = data.transcriptDriveUrl || data.transcriptUrl || data.driveTranscriptUrl || data.driveDossierUrl || (data.phoneFolderUrl) || null;
-  if (transcriptLink && isPresent(transcriptLink)) {
-    lines.push(`\n💬 CONVERSATIONAL TRANSCRIPT (GOOGLE DRIVE):\n📄 Transcript Link: ${transcriptLink}`);
-  } else if (data.customerPhone) {
-    const safePhone = (data.customerPhone || '').replace(/[^0-9+]/g, '');
-    lines.push(`\n💬 CONVERSATIONAL TRANSCRIPT (GOOGLE DRIVE):\n📄 Transcript Link: https://drive.google.com/drive/folders/${TWILIO_DRIVE_FOLDER_ID} (${safePhone})`);
-  }
-
-  // ============================================================================
-  // 4. CALL AUDIO RECORDING LINK
-  // ============================================================================
-  const audioLink = data.callRecordingUrl || data.recordingUrl || null;
-  if (audioLink && isPresent(audioLink)) {
-    lines.push(`\n🎙️ CALL AUDIO RECORDING:\n🔗 Audio Recording Link: ${audioLink}`);
-  }
+  lines.push(`\n📁 GOOGLE DRIVE ARCHIVAL VAULT:`);
+  if (folderUrl) lines.push(`• Phone Folder: ${folderUrl}`);
+  if (transcriptUrl) lines.push(`• Transcript Document: ${transcriptUrl}`);
+  if (audioUrl) lines.push(`• Audio Recording (.mp3): ${audioUrl}`);
 
   return lines.join('\n');
 }
@@ -3555,15 +3528,7 @@ async function executeInspectionBooking(params) {
       }).catch(e => console.warn('[Inspection Customer SMS Warning]', e.message));
     }
 
-    // 3. Post Single Consolidated Summary to Google Chat webhook & Leads Space
-    if (!isSimulatedCall) {
-      postGoogleChat(
-        consolidatedMichael,
-        '📅 RHIVE Inspection Scheduled'
-      );
-    } else {
-      console.log('[Simulation Safety Guard] Suppressed Google Chat dispatch for simulation.');
-    }
+    // Note: Inspection booking details are cached on the session and dispatched in the single authoritative post-call dossier
 
     return {
       success: true,
@@ -3708,17 +3673,28 @@ STRICT COGNITIVE LOAD RULE: ONLY ONE QUESTION PER TURN!
 - NEVER ask two or more questions in the same sentence or turn!
 - NEVER bundle caller name and phone number together! Ask for the name first, get the response, then ask for the cell phone number.
 
-ROOFING PRODUCT SPECIFICATIONS & EXPERTISE:
-- Owens Corning Duration (RHIVE Baseline Standard): Premium architectural shingle with patented SureNail woven fabric strip, 130 mph wind warranty, Class 3/4 tear resistance.
-- Owens Corning Duration FLEX: SBS Class 4 rubberized hail armor for maximum impact resistance (Strictly an optional upgrade; DO NOT push it!).
-- Owens Corning Oakridge: Entry-level / builder-grade architectural shingle (110 mph basic rating, standard fiberglass base, NO SureNail strip).
-  * If a caller asks about Oakridge or says they want performance or commercial grade shingles:
-    Explain with expertise: "Oakridge is Owens Corning's entry-level architectural shingle. At R-hive, our baseline standard is Owens Corning Duration with the patented SureNail strip rated for 130 mph Utah winds, or Duration FLEX, which is an SBS Class 4 rubberized hail armor. Your project specialist will bring physical shingle samples to your inspection so you can see and feel the difference."
-- Woodcrest & Woodmoor: Thick rustic craftsman and estate shake shingles.
-- Commercial Flat Roofs: High-performance single-ply membrane systems:
-  * Standard Commercial Package: 60-mil TPO (the industry standard commercial upgrade).
-  * Heavy-Duty Option: 80-mil TPO (maximum puncture, foot traffic, and hail resistance).
-  * Chemical & Grease Resistant Packages: 60-mil and 80-mil PVC (ideal for restaurants, kitchens, and harsh chemical exposure).
+1-WORD UTTERANCE & CLIPPED SPEECH COACHING:
+- Callers sometimes speak in clipped, 1-word fragments, mumbled phrases, or confusing terms (e.g., "wife person", "Couldn't for code enforcement", "quotes", "inspections").
+- When a caller speaks in clipped 1-word commands or unclear phrases, Honey warmly coaches them to speak naturally:
+  "You can speak naturally with me! Go ahead and tell me what you need taken care of, and I'll make sure it gets handled by the right person."
+
+ROOFING PRODUCT SPECIFICATIONS & EXPERTISE (COMMERCIAL MANUFACTURER CERTIFIED BASELINE):
+- BANNED CONCEPT: ZERO "Good, Better, Best" tiering! RHIVE does not install builder-grade or entry-level systems. All our roofing systems compare directly to or exceed competitors' "better and best" tiers as our standard baseline!
+- RHIVE Baseline Standard: Commercial Manufacturer Certified Roofing System (Owens Corning Duration architectural shingles with patented SureNail woven fabric strip, 130 mph wind warranty, Class 3/4 tear resistance, and TruDefinition colors).
+  * If a caller asks what shingles we use or asks about entry-level builder shingles (like Oakridge):
+    Explain with expertise: "At R-hive, our baseline standard is an Owens Corning Commercial Manufacturer Certified Roofing System with the patented SureNail woven fabric strip rated for 130 mph Utah winds. We do not install entry-level builder shingles because our baseline standard compares to or exceeds what competitors offer as their better and best options. Your project specialist will bring physical shingle samples to your inspection so you can see and feel the difference."
+- Material Upgrades (Optional Premium Upgrades — NEVER push!):
+  * Owens Corning Duration FLEX: SBS Class 4 rubberized hail armor for maximum impact resistance.
+  * Woodcrest & Woodmoor: Thick luxury architectural craftsman and estate shake shingles.
+  * Commercial Flat Roofs: High-performance single-ply membrane systems:
+    - Standard Commercial Package: 60-mil TPO (the industry standard commercial upgrade).
+    - Heavy-Duty Option: 80-mil TPO (maximum puncture, foot traffic, and hail resistance).
+    - Chemical & Grease Resistant Packages: 60-mil and 80-mil PVC (ideal for restaurants, kitchens, and harsh chemical exposure).
+- Roof System Accessories (Add-Ons):
+  * Seamless aluminum gutters and downspouts.
+  * Self-regulating heat trace de-icing systems for valleys and eaves.
+  * Snow retention brackets / snow guards.
+  * Solar panel detach & reset coordination.
 
 PRIMARY BUSINESS MODEL: REMOTE AERIAL MEASUREMENTS
 - For standard residential roof replacements: Our business model uses precision high-definition satellite and aerial measurements. We deliver guaranteed certified quotes directly to the homeowner without requiring an invasive, disruptive truck roll or on-site home visit!
@@ -3910,6 +3886,11 @@ CASE 5: WARM SCREENED TRANSFER & DYNAMIC INTENT CAPTURE:
   * Call "transfer_to_specialist" with callerName, companyName, invoiceNumber, propertyAddress, reason, departmentName, and targetSpecialist: 'michael'.
   * CRITICAL: DO NOT HANG UP! DO NOT CALL "hangup_call"! Allow the screened transfer to execute.
 
+- ABSOLUTE INVARIANT: ZERO TRANSFERS ON ESCALATED COMPLAINTS!
+  * If a caller is upset, complaining, or reporting an issue (yard/roadside signs, installation concerns, debris, delays, or billing disputes):
+  * NEVER transfer them to Michael, Kara, or anyone live! DO NOT call "transfer_to_specialist"!
+  * Live transfers of frustrated callers create friction in the field. Instead, Honey must take the complaint in warmly, empathetically, and professionally, gather all necessary information, reassure them that executive management personally investigates all feedback and will follow up with them later today, and conclude the call cleanly.
+
 - CONVERSATIONAL NOTE / MESSAGE TAKING:
   * If the caller asks to leave a note or message (e.g. "can I just leave a note?"):
     Honey says: "Great, go ahead and let me know what you want me to say to our team, and I'll send it right over!"
@@ -3925,12 +3906,64 @@ CASE 5: WARM SCREENED TRANSFER & DYNAMIC INTENT CAPTURE:
     - Honey confirms: "We have your strategic consultation locked in and sent an invite to your email! Our team will call your cell then!"
     - Advance to Mandatory 4-Step Closing Protocol.
 
+CASE 6: MUNICIPAL CODE ENFORCEMENT & REGULATORY VERIFICATION GATE:
+- When a caller claims to represent City / County Code Enforcement, Municipal Planning, Building Inspection, or any Government Regulatory body:
+- MANDATORY CREDENTIAL VERIFICATION GATE:
+  * In order to escalate or schedule any regulatory matters, our executive protocol requires complete verified officer credentials before taking any action.
+  * Honey politely explains:
+    "In order to escalate this matter to our executive compliance team and ensure we are speaking with verified municipal personnel, may I have your full name, officer ID or badge number, official government email, department email, and direct desk phone number?"
+  * Mandatory Fields to Gather:
+    1. Officer Full Name (First and Last)
+    2. Officer / Employee ID / Badge Number
+    3. Official Government Email Address (.gov or verified municipal domain)
+    4. Department / Division Email Address
+    5. Direct Desk Phone Number
+    6. Department / Main Office Phone Number
+    7. Specific Property Address or Subject of Notice
+- IF THE CALLER REFUSES OR CANNOT PROVIDE CREDENTIALS:
+  * Do NOT panic, do NOT admit fault, and do NOT create unverified compliance alarm tickets!
+  * Honey explains professionally:
+    "In order to escalate this matter to our executive compliance team and ensure we are speaking with verified municipal personnel, our company protocol requires your officer credentials. Without your verified officer ID, government email, and department contact, we cannot proceed with this call today. You are welcome to call back when you have those details available, or submit official correspondence to compliance@rhiveconstruction.com. Thank you, have a good day, goodbye!"
+  * Call "hangup_call" with reason: "unverified_code_enforcement" and goodbyePhrase: "Thank you, have a good day, goodbye!"
+- IF THE CALLER PROVIDES ALL VERIFIED CREDENTIALS:
+  * Gather the specific property address or permit in question.
+  * Honey confirms professionally:
+    "Thank you, Officer [LastName]. I have your credentials and inquiry logged for our executive compliance team. Our compliance director will review the file and contact your desk directly today. Thank you for your service to our community, goodbye!"
+  * Call "take_message" with callerName: "Officer [FullName] (ID: [OfficerID])", targetSpecialist: "michael", propertyAddress: [Address], customerPhone: [DeskPhone], messageText: "[VERIFIED MUNICIPAL INQUIRY] Dept: [DeptEmail] | Direct: [GovEmail] | Desk: [DeskPhone] | Main: [DeptPhone] | Inquiry: [Details]".
+  * Call "hangup_call".
+
+CASE 7: PUBLIC COMPLAINTS & FIELD MARKETING / YARD SIGN DE-ESCALATION (STRICT ZERO-TRANSFER PROTOCOL):
+- ABSOLUTE INVARIANT: ZERO TRANSFERS ON ESCALATED COMPLAINTS!
+  * NEVER transfer an escalated complaint to a live person! All complaints must be handled manually by executive leadership later that day after reviewing the details.
+- ROADSIDE SIGN & YARD SIGN COMPLAINTS:
+  * Step 1 (Empathetic De-escalation):
+    "I completely understand and apologize for any frustration that caused you. We definitely want to respect your neighborhood and property."
+  * Step 2 (Transparent Company Policy Explanation):
+    "R-HIVE contracts with a third-party field marketing service for temporary neighborhood awareness. Our strict policy only permits signs in neighborhoods where our crews have actively completed installations, on public grounds where signage is allowed, or for a temporary two-week window. We continuously monitor our signs, and if any have fallen or become a litter hazard, our team is dispatched to remove them immediately."
+  * Step 3 (Collect Exact Removal Location):
+    "What is the exact street address or cross-street intersection where that sign is located so our field route team can pick it up?"
+  * Step 4 (Immediate Pickup Commitment & Zero Fault Admission):
+    "Thank you for letting us know! I have dispatched our field route team to pick up and remove that sign today so it's completely cleared for you. Our management team will review the log later today as well. Thank you for bringing this to our attention, have a great day, goodbye!"
+  * Call "take_message" with callerName, propertyAddress: [Intersection/Address], customerPhone: [CallerPhone], targetSpecialist: "michael", messageText: "[SIGN REMOVAL REQUEST] Location: [Intersection/Address]. Caller reported sign issue. Dispatched route team for pickup. Management to review."
+  * Call "hangup_call".
+- GENERAL CUSTOMER / PROJECT COMPLAINTS (Workmanship, Delays, Billing Disputes):
+  * Step 1 (Empathetic Reception):
+    "I completely understand your concern, [FirstName], and I appreciate you bringing this to our attention."
+  * Step 2 (Information Gathering):
+    Gather: Full Name, Property Address, Contact Phone, and Specific Details of the issue.
+  * Step 3 (No Transfer — Management Manual Follow-up Later Today):
+    "I have documented your exact notes for our executive management team. Our leadership team personally reviews all project concerns and will reach out to you directly later today once they review your project file. Thank you for your patience, have a good day, goodbye!"
+  * Call "take_message" with callerName, propertyAddress, customerPhone, targetSpecialist: "michael", messageText: "[ESCALATED COMPLAINT - DO NOT TRANSFER] Details: [Details]. Management follow-up required today."
+  * Call "hangup_call".
+
 MANDATORY CONVERSATIONAL CLOSING & HANGUP PROTOCOL:
-When the primary outcome is locked in (certified quote verification dispatched, inspection scheduled, emergency tarping confirmed, or note taken):
+When the primary outcome is locked in (certified quote verification dispatched, inspection scheduled, emergency tarping confirmed, complaint/sign removal taken, municipal verification logged, or note taken):
 STEP 1: Quick recap & next steps (<15 words):
 - If Quote: "Your certified quote request is locked in, and your project design specialist will follow up with your custom proposals within 24 to 48 hours."
 - If Inspection/Emergency: "We have your inspection locked in for [window]. Our technician will text prior to arrival."
 - If Note/Message: "I've sent that message directly to our team."
+- If Sign Removal / Complaint: "I have dispatched our route team for pickup, and management will review today."
+- If Municipal Enforcement: "I have logged your officer credentials and our compliance director will contact your desk today."
 STEP 2: Final question check:
 - "Is there anything else I can assist you with today?"
 STEP 3: WARM SPOKEN FAREWELL & IMMEDIATE HANGUP TOOL CALL:
@@ -5052,11 +5085,8 @@ class CallSession {
           }
         }
 
-        // 4. Alert Google Chat with Single Consolidated Lead Dossier
-        postGoogleChat(
-          consolidatedQuote,
-          '📋 Certified Quote Dossier'
-        );
+        // 4. Quote dossier saved to sessionData; single authoritative card will be dispatched upon call completion.
+        console.log(`[CallSession ${this.callSid}] 📋 Certified quote state registered in sessionData. Will post single dossier on call completion.`);
 
         return {
           sent: true,
@@ -5105,7 +5135,7 @@ class CallSession {
         const targetPhone = args?.customerPhone || this.callerPhone;
         const alertMsg = '🚨 EMERGENCY LEAK DISPATCH:\n👤 ' + args.callerName + ' (' + targetPhone + ')\n📍 ' + args.propertyAddress + '\n💧 Details: ' + (args.leakDetails || 'Active leak') + '\n💵 Fee: $150 Credited Fee Acknowledged';
         sendCarrierSms(MICHAEL_CELL, alertMsg);
-        postGoogleChat(alertMsg.replace(/\n/g, '<br>'), '🚨 Active Leak Dispatch Triggered');
+        console.log(`[CallSession ${this.callSid}] 🚨 Active leak dispatch saved to sessionData. Will post single dossier on call completion.`);
         return {
           dispatched: true,
           crewStatus: 'Emergency response notification dispatched to Michael Robinson.'
@@ -5348,8 +5378,8 @@ class CallSession {
         const invoiceAudit = invoiceNumber ? `\n📄 Invoice: #${invoiceNumber}` : '';
         const intakeDossier = `📞 SECRETARY INTAKE TRANSFER:\n👤 Caller: ${callerName}${companyName ? ' (' + companyName + ')' : ''} (${this.callerPhone})\n📍 Property/Project: ${propertyAddress}${invoiceAudit}\n📋 Reason: ${reason}\n🏢 Department/Entity: ${targetEntity}\n➡️ Directing live call to: ${targetSpecialist} (${targetCell})`;
         
-        // Post qualified transfer to Google Chat for audit (carrier SMS omitted to prevent buzzing while phone rings)
-        postGoogleChat(intakeDossier.replace(/\n/g, '<br>'), '📞 Secretary Qualified Live Transfer');
+        // Qualified transfer logged; single authoritative lead dossier will be dispatched upon call completion.
+        console.log(`[CallSession ${this.callSid}] 📞 Secretary qualified transfer registered. Will post single dossier on call completion.`);
 
         // Physically bridge live call on Twilio carrier PSTN with warm whisper screening
         console.log('[CallSession ' + this.callSid + '] Bridging live screened PSTN call to ' + targetSpecialist + ' (' + targetEntity + ') at ' + targetCell + '...');
@@ -5425,8 +5455,14 @@ class CallSession {
           reason,
           project,
           preferredTimeSlot,
-          companyName
+          companyName,
+          skipChatAlert: true
         });
+
+        this.sessionData.isConsultation = true;
+        this.sessionData.consultationSpecialist = targetSpecialist;
+        this.sessionData.consultationSlot = bookRes.slotSpoken;
+        this.sessionData.consultationTitle = bookRes.eventTitle;
 
         return {
           scheduled: true,
@@ -5455,8 +5491,13 @@ class CallSession {
           targetSpecialist,
           targetEntity,
           departmentLabel,
-          senderTitle: this.sessionData.senderTitle
+          senderTitle: this.sessionData.senderTitle,
+          skipChatAlert: true
         });
+
+        this.sessionData.isTextRequested = true;
+        this.sessionData.textSpecialist = targetSpecialist;
+        this.sessionData.textReason = reason;
 
         return {
           textRequested: true,
@@ -5496,12 +5537,15 @@ class CallSession {
 
         console.log(`[CallSession ${this.callSid}] 📝 Conversational message captured for ${specialistName} (${targetEntity}): "${messageText}" from ${callerName} (${callerPhone})`);
 
+        const isComplaintOrMunicipal = /\[(COMPLAINT|SIGN REMOVAL|MUNICIPAL|UNVERIFIED)\]/i.test(messageText);
+
         // 1. Instant SMS to specialist's mobile cell
-        const noteMsg = `📝 NEW MESSAGE FOR ${specialistFirstName.toUpperCase()} (${departmentLabel}):\n👤 From: ${callerName} (${callerPhone})\n📍 Project: ${project}\n💬 Note: "${messageText}"\n⏰ Time: ${new Date().toLocaleTimeString('en-US', { timeZone: 'America/Denver' })}`;
+        const notePrefix = isComplaintOrMunicipal ? '🚨 HIGH-PRIORITY ALERT' : '📝 NEW MESSAGE';
+        const noteMsg = `${notePrefix} FOR ${specialistFirstName.toUpperCase()} (${departmentLabel}):\n👤 From: ${callerName} (${callerPhone})\n📍 Project: ${project}\n💬 Note: "${messageText}"\n⏰ Time: ${new Date().toLocaleTimeString('en-US', { timeZone: 'America/Denver' })}`;
         sendCarrierSms(specialistCell, noteMsg);
 
-        // 2. Instant interactive confirmation SMS to caller from specialist/department via JustCall
-        if (callerPhone && !callerPhone.startsWith('SIM_') && callerPhone !== 'Unknown') {
+        // 2. Instant interactive confirmation SMS to caller from specialist/department via JustCall (ONLY for standard inquiries, NEVER for complaints or municipal verification)
+        if (callerPhone && !callerPhone.startsWith('SIM_') && callerPhone !== 'Unknown' && !isComplaintOrMunicipal) {
           const directSms = `Hi ${callerName}, this is ${senderTitle}. Honey just forwarded me your message regarding: "${messageText}". You can either text me back right here to move forward, or let me know and I can give you a call back as soon as possible!`;
           sendMultiChannelSms({
             to: callerPhone,
@@ -5510,17 +5554,35 @@ class CallSession {
           }).catch(e => console.warn('[Message Note Customer SMS Warning]', e.message));
         }
 
-
-        // 3. Google Chat Card
-        postGoogleChat(
-          `<b>📝 Direct Note Taken for ${specialistFirstName} (${targetEntity})</b><br>👤 Caller: <b>${callerName}</b> (${callerPhone})<br>📍 Project: ${project}<br>🏢 Department: <b>${departmentLabel}</b><br>💬 Message: <i>"${escapeXml(messageText)}"</i>`,
-          '📝 RHIVE Direct Note Taken'
-        );
+        // 3. Register state in sessionData (single authoritative lead dossier dispatched upon call completion)
+        this.sessionData.isNoteTaken = true;
+        this.sessionData.callerName = callerName;
+        this.sessionData.customerName = callerName;
+        this.sessionData.customerPhone = callerPhone;
+        this.sessionData.verifiedAddress = project;
+        this.sessionData.messageText = messageText;
+        this.sessionData.targetSpecialist = specialistName;
+        this.sessionData.targetEntity = targetEntity;
+        this.sessionData.departmentLabel = departmentLabel;
+        if (isComplaintOrMunicipal) {
+          if (/MUNICIPAL|CODE ENFORCEMENT/i.test(messageText)) {
+            this.sessionData.isMunicipal = true;
+            this.sessionData.leadType = 'municipal_verification';
+          } else {
+            this.sessionData.isComplaint = true;
+            this.sessionData.leadType = 'escalated_complaint';
+          }
+        } else {
+          this.sessionData.leadType = 'note_taken';
+        }
+        console.log(`[CallSession ${this.callSid}] 📝 Message/note registered in sessionData. Will post single dossier on call completion.`);
 
         return {
           delivered: true,
           recipient: targetEntity,
-          confirmation: `Note has been delivered directly to ${targetEntity}. An interactive confirmation text was dispatched to the caller.`
+          confirmation: isComplaintOrMunicipal
+            ? `Note logged for ${targetEntity}. Executive management review required today.`
+            : `Note has been delivered directly to ${targetEntity}. An interactive confirmation text was dispatched to the caller.`
         };
       }
 

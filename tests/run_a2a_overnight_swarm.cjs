@@ -140,6 +140,47 @@ const SIMULATION_PERSONAS = [
       transferAck: 'Yes, please transfer me directly to Kara.',
       callbackFallback: 'If Kara is unavailable, please have her call Marcus back at 801-555-9876 regarding invoice 4102.'
     }
+  },
+  {
+    id: 'persona_e_unverified_sign_threat',
+    flowName: 'Persona E: Unverified Anonymous Sign Complaint / Threat (Credential Gate & De-escalation)',
+    discType: 'Angry Caller / Threat',
+    callerName: 'Anonymous Caller',
+    callerPhone: '+18015559111',
+    initialGoal: 'Caller claims to be from county code enforcement threatening to fine R-HIVE for roadside signs. Leaves no credentials. Tests Honey requesting credentials (full name, badge, .gov email, desk/dept phone), caller refusing, Honey empathetically de-escalating, capturing exact intersection (9000 S & Redwood Rd), committing route team pickup today, and executing clean hangup with zero live transfer.',
+    scriptedFacts: {
+      firstTurnUtterance: 'Couldn\'t for code enforcement. You guys have illegal signs all over the intersection of 9000 South and Redwood Road, and we\'re going to fine you if they\'re not down today.',
+      refusal: 'I don\'t have time to give you my badge number, just get someone on the phone who can pull those damn signs down!',
+      intersection: 'They are on the corner of 9000 South and Redwood Road by the gas station.',
+      closingAck: 'Fine, make sure your crew gets them today.'
+    }
+  },
+  {
+    id: 'persona_f_verified_municipal_officer',
+    flowName: 'Persona F: Verified Municipal Code Enforcement Officer (Credential Verification & Executive Logging)',
+    discType: 'Municipal Official',
+    callerName: 'Officer Bradley Miller',
+    callerPhone: '+18014682000',
+    initialGoal: 'Official Salt Lake County Code Enforcement Officer providing full credentials. Tests Honey capturing Officer Bradley Miller, Badge #CE-482, bradley.miller@slco.org, direct desk 801-468-2000, logging for executive compliance team callback today, and executing clean hangup with zero live transfer.',
+    scriptedFacts: {
+      firstTurnUtterance: 'Hello, this is Officer Bradley Miller with Salt Lake County Code Enforcement, badge CE-482. I\'m calling regarding temporary signage near 7800 South.',
+      credentials: 'My direct county email is bradley.miller@slco.org, department email is code@slco.org, desk phone is 801-468-2000 extension 4, department line is 801-468-2010.',
+      closingAck: 'Understood. I will expect a callback from your compliance director at my desk today. Thank you.'
+    }
+  },
+  {
+    id: 'persona_g_escalated_customer_complaint',
+    flowName: 'Persona G: Escalated Customer Complaint (Zero Transfer & Manual Executive Follow-up Today)',
+    discType: 'Aggressive / Demanding',
+    callerName: 'Gregory Vance',
+    callerPhone: '+18015557788',
+    initialGoal: 'Upset homeowner demanding to speak to the owner immediately about cleanup delay. Tests Honey de-escalating empathetically, capturing full name, address (1280 Highland Dr), phone, refusing live transfer per strict zero-transfer protocol, committing executive leadership manual review later today, and executing clean hangup.',
+    scriptedFacts: {
+      firstTurnUtterance: 'This is Gregory Vance at 1280 Highland Drive. Your roofing crew left nails all over my driveway yesterday, and I want to speak to Michael Robinson right now!',
+      transferDemand: 'I don\'t want to leave a message, put Michael on the phone right now!',
+      details: 'There are roofing nails on the asphalt and my wife got a flat tire. 1280 Highland Drive.',
+      closingAck: 'Alright, tell Michael to call me on my cell today.'
+    }
   }
 ];
 
@@ -340,19 +381,55 @@ async function runSingleFlowTest(persona, wsBaseUrl = 'ws://localhost:8996') {
               console.log(`   ✅ [KARA ROUTING VERIFIED] Honey routed subcontractor to Kara / main office callback.`);
             }
           }
+          if (persona.id === 'persona_e_unverified_sign_threat') {
+            if (cleanHoney.includes('credential') || cleanHoney.includes('name') || cleanHoney.includes('badge') || cleanHoney.includes('email') || cleanHoney.includes('officer') || cleanHoney.includes('protocol')) {
+              metrics.credentialGateTriggered = true;
+              console.log(`   ✅ [CREDENTIAL GATE VERIFIED] Honey challenged caller for official credentials.`);
+            }
+            if (cleanHoney.includes('route') || cleanHoney.includes('pickup') || cleanHoney.includes('remove') || cleanHoney.includes('today') || cleanHoney.includes('sign') || cleanHoney.includes('cleared')) {
+              metrics.signPickupCommitted = true;
+              console.log(`   ✅ [SIGN PICKUP VERIFIED] Honey committed route team pickup today.`);
+            }
+            if (metrics.toolsCalled.includes('transfer_to_specialist')) {
+              metrics.failureReasons.push('VIOLATION: Honey attempted live transfer on an escalated sign complaint!');
+            }
+          }
+          if (persona.id === 'persona_f_verified_municipal_officer') {
+            if (cleanHoney.includes('compliance') || cleanHoney.includes('desk') || cleanHoney.includes('director') || cleanHoney.includes('today') || cleanHoney.includes('logged') || cleanHoney.includes('credentials')) {
+              metrics.municipalFollowupCommitted = true;
+              console.log(`   ✅ [MUNICIPAL LOGGED] Honey logged credentials for compliance director follow-up today.`);
+            }
+            if (metrics.toolsCalled.includes('transfer_to_specialist')) {
+              metrics.failureReasons.push('VIOLATION: Honey attempted live transfer on a municipal code enforcement inquiry!');
+            }
+          }
+          if (persona.id === 'persona_g_escalated_customer_complaint') {
+            if (cleanHoney.includes('leadership') || cleanHoney.includes('management') || cleanHoney.includes('reach out') || cleanHoney.includes('review') || cleanHoney.includes('today') || cleanHoney.includes('later')) {
+              metrics.complaintDeescalated = true;
+              console.log(`   ✅ [COMPLAINT DE-ESCALATED] Honey logged complaint for executive management follow-up today.`);
+            }
+            if (metrics.toolsCalled.includes('transfer_to_specialist')) {
+              metrics.failureReasons.push('VIOLATION: Honey attempted live transfer on an escalated customer complaint!');
+            }
+          }
 
           // Termination conditions
           const hasCompletedOutcome = metrics.toolsCalled.includes('book_inspection') || 
                                        metrics.toolsCalled.includes('dispatch_emergency_crew') ||
                                        metrics.toolsCalled.includes('hangup_call') ||
+                                       metrics.toolsCalled.includes('take_message') ||
                                        metrics.toolsCalled.includes('transfer_to_specialist') ||
                                        metrics.remoteQuoteSteered ||
+                                       metrics.signPickupCommitted ||
+                                       metrics.municipalFollowupCommitted ||
+                                       metrics.complaintDeescalated ||
                                        metrics.subcontractorTransferRouted;
 
           if (turnCount >= maxTurns || 
               (hasCompletedOutcome && turnCount >= 3) ||
               cleanHoney.includes('have a wonderful day') || 
               cleanHoney.includes('have a great day') ||
+              cleanHoney.includes('have a good day') ||
               cleanHoney.includes('goodbye') ||
               cleanHoney.includes('texting you right now') ||
               cleanHoney.includes('transfer you right over')) {
