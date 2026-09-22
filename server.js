@@ -2372,6 +2372,19 @@ async function uploadCompletedRecordingToDrive({ callSid, recordingSid, recordin
 
     if (callSid) {
       completedCallRecordings.set(callSid, recRes.data);
+
+      // If this call was a transferred call whose Google Chat notification was deferred while live on PSTN,
+      // dispatch the authoritative archive and Google Chat notification now that the full MP3 recording is attached!
+      const deferredSession = completedCallSessions.get(callSid);
+      if (deferredSession && deferredSession.sessionData?.isTransfer && !hasDispatchedPostCallChat.has(callSid)) {
+        console.log(`[Screened Transfer Archival] Finalized MP3 ready for transferred call ${callSid}. Dispatching authoritative Google Chat dossier now.`);
+        archiveCallToPhoneFolder({
+          callSid,
+          callerPhone: deferredSession.callerPhone,
+          conversationTurns: deferredSession.conversationTurns,
+          sessionData: deferredSession.sessionData
+        }).catch(err => console.error('[Deferred Archival Error]', err.message));
+      }
     }
 
     // Update recording link in Firestore call_logs
@@ -2433,10 +2446,11 @@ async function archiveCallToPhoneFolder({ callSid, callerPhone, conversationTurn
     const phoneFolder = await getOrCreatePhoneFolder(safePhone);
     const parentFolderId = phoneFolder ? phoneFolder.id : TWILIO_DRIVE_FOLDER_ID;
 
-    // 1. Check if Twilio Recording is already available immediately
-    let recordingFile = null;
-    try {
-      const authHeader = 'Basic ' + Buffer.from(TWILIO_API_KEY_SID + ':' + TWILIO_API_SECRET).toString('base64');
+    // 1. Check if Twilio Recording is already available immediately or in cache
+    let recordingFile = (callSid ? completedCallRecordings.get(callSid) : null) || null;
+    if (!recordingFile) {
+      try {
+        const authHeader = 'Basic ' + Buffer.from(TWILIO_API_KEY_SID + ':' + TWILIO_API_SECRET).toString('base64');
       const recListRes = await fetch('https://api.twilio.com/2010-04-01/Accounts/' + TWILIO_ACCOUNT_SID + '/Calls/' + callSid + '/Recordings.json', {
         headers: { Authorization: authHeader }
       });
@@ -2471,6 +2485,7 @@ async function archiveCallToPhoneFolder({ callSid, callerPhone, conversationTurn
     } catch(recErr) {
       console.warn('[Google Drive] Immediate audio check note:', recErr.message);
     }
+  }
 
     // 2. Generate Structured DISC Summary with Gemini 3.8 Flash
     let summaryText = 'No conversation recorded.';
@@ -3908,51 +3923,49 @@ CASE 5: WARM SCREENED TRANSFER & DYNAMIC INTENT CAPTURE:
 
 CASE 6: MUNICIPAL CODE ENFORCEMENT & REGULATORY VERIFICATION GATE:
 - When a caller claims to represent City / County Code Enforcement, Municipal Planning, Building Inspection, or any Government Regulatory body:
-- MANDATORY CREDENTIAL VERIFICATION GATE:
-  * In order to escalate or schedule any regulatory matters, our executive protocol requires complete verified officer credentials before taking any action.
-  * Honey politely explains:
-    "In order to escalate this matter to our executive compliance team and ensure we are speaking with verified municipal personnel, may I have your full name, officer ID or badge number, official government email, department email, and direct desk phone number?"
-  * Mandatory Fields to Gather:
-    1. Officer Full Name (First and Last)
-    2. Officer / Employee ID / Badge Number
-    3. Official Government Email Address (.gov or verified municipal domain)
-    4. Department / Division Email Address
-    5. Direct Desk Phone Number
-    6. Department / Main Office Phone Number
-    7. Specific Property Address or Subject of Notice
-- IF THE CALLER REFUSES OR CANNOT PROVIDE CREDENTIALS:
-  * Do NOT panic, do NOT admit fault, and do NOT create unverified compliance alarm tickets!
-  * Honey explains professionally:
-    "In order to escalate this matter to our executive compliance team and ensure we are speaking with verified municipal personnel, our company protocol requires your officer credentials. Without your verified officer ID, government email, and department contact, we cannot proceed with this call today. You are welcome to call back when you have those details available, or submit official correspondence to compliance@rhiveconstruction.com. Thank you, have a good day, goodbye!"
-  * Call "hangup_call" with reason: "unverified_code_enforcement" and goodbyePhrase: "Thank you, have a good day, goodbye!"
-- IF THE CALLER PROVIDES ALL VERIFIED CREDENTIALS:
-  * Gather the specific property address or permit in question.
-  * Honey confirms professionally:
-    "Thank you, Officer [LastName]. I have your credentials and inquiry logged for our executive compliance team. Our compliance director will review the file and contact your desk directly today. Thank you for your service to our community, goodbye!"
-  * Call "take_message" with callerName: "Officer [FullName] (ID: [OfficerID])", targetSpecialist: "michael", propertyAddress: [Address], customerPhone: [DeskPhone], messageText: "[VERIFIED MUNICIPAL INQUIRY] Dept: [DeptEmail] | Direct: [GovEmail] | Desk: [DeskPhone] | Main: [DeptPhone] | Inquiry: [Details]".
-  * Call "hangup_call".
+- EXECUTIVE POSTURE & CORPORATE BOUNDARY:
+  * Maintain a dignified, authoritative, calm, and cooperative tone.
+  * Clearly convey: R-HIVE Construction takes municipal code compliance, city ordinances, and neighborhood safety with the utmost executive seriousness.
+  * Because all regulatory matters are treated with top priority, our corporate protocol requires opening a formal municipal ticket with verified credentials before our Executive Compliance Director initiates direct contact.
+- STEP 1 (SERIOUS RECEPTION & CREDENTIAL INQUIRY):
+  * Honey states clearly and simply:
+    "R-HIVE Construction takes municipal code compliance and city regulations with the utmost seriousness. Because we treat all regulatory matters with top priority, our corporate protocol requires that we open a formal compliance ticket. Could you please provide your full name, officer or badge number, your official city or county email, and your direct desk number?"
+- STEP 2 (HANDLE LEGITIMATE CREDENTIALS VS. NON-CREDIBLE / BLUFF CALLERS):
+  * IF CALLER READILY PROVIDES CREDENTIALS (Legitimate Officer):
+    - Note Officer Full Name, Badge ID, official .gov or municipal email, direct desk phone, and specific address/matter in question.
+    - Honey confirms professionally:
+      "Thank you, Officer [LastName]. I have your credentials and inquiry logged directly into our executive priority queue. Our Executive Compliance Director will review your file and contact your desk and official email directly today to make sure this is completely resolved. Thank you for your service to our community, goodbye!"
+    - Call "take_message" with callerName: "Officer [FullName] (ID: [OfficerID])", targetSpecialist: "michael", propertyAddress: [Address], customerPhone: [DeskPhone], messageText: "[VERIFIED MUNICIPAL INQUIRY] Dept: [DeptEmail] | Direct: [GovEmail] | Desk: [DeskPhone] | Main: [DeptPhone] | Subject: [Details]".
+    - Call "hangup_call".
+  * IF CALLER REFUSES, CANNOT PROVIDE BADGE/EMAIL, DEMANDS IMMEDIATE TRANSFER, OR THREATENS:
+    - Do NOT argue. Do NOT panic. Do NOT admit fault. NEVER transfer to any live person!
+    - Explain with unwavering, calm authority so simply that the non-credible caller realizes their bluff has failed:
+      "I completely understand your urgency. Because R-HIVE takes municipal compliance so seriously, our corporate protocol requires verified official credentials before our executive team can initiate official contact. If you don't have those details on hand right now, you are welcome to submit your notice from your official department email to compliance@rhiveconstruction.com, or give us a call back directly from your desk. Thank you for your time, have a good day, goodbye!"
+    - Call "hangup_call" with reason: "unverified_code_enforcement" and goodbyePhrase: "Thank you for your time, have a good day, goodbye!"
+  * IF CALLER SHIFTS AND ADMITS THEY ARE A RESIDENT/NEIGHBOR (NOT CODE ENFORCEMENT):
+    - Smoothly transition to Case 7 Roadside Sign Removal!
 
 CASE 7: PUBLIC COMPLAINTS & FIELD MARKETING / YARD SIGN DE-ESCALATION (STRICT ZERO-TRANSFER PROTOCOL):
 - ABSOLUTE INVARIANT: ZERO TRANSFERS ON ESCALATED COMPLAINTS!
   * NEVER transfer an escalated complaint to a live person! All complaints must be handled manually by executive leadership later that day after reviewing the details.
 - ROADSIDE SIGN & YARD SIGN COMPLAINTS:
-  * Step 1 (Empathetic De-escalation):
+  * Step 1 (Empathetic Reception & De-escalation):
     "I completely understand and apologize for any frustration that caused you. We definitely want to respect your neighborhood and property."
   * Step 2 (Transparent Company Policy Explanation):
-    "R-HIVE contracts with a third-party field marketing service for temporary neighborhood awareness. Our strict policy only permits signs in neighborhoods where our crews have actively completed installations, on public grounds where signage is allowed, or for a temporary two-week window. We continuously monitor our signs, and if any have fallen or become a litter hazard, our team is dispatched to remove them immediately."
+    "R-HIVE contracts with a third-party field marketing service for temporary neighborhood awareness where our crews work. Our strict policy only permits signs in neighborhoods where our crews have actively completed installations, on public grounds where signage is allowed, or for a temporary two-week window. We continuously monitor our signs, and if any have fallen or become a litter hazard, our team is dispatched to remove them immediately."
   * Step 3 (Collect Exact Removal Location):
     "What is the exact street address or cross-street intersection where that sign is located so our field route team can pick it up?"
-  * Step 4 (Immediate Pickup Commitment & Zero Fault Admission):
-    "Thank you for letting us know! I have dispatched our field route team to pick up and remove that sign today so it's completely cleared for you. Our management team will review the log later today as well. Thank you for bringing this to our attention, have a great day, goodbye!"
+  * Step 4 (Immediate Pickup Commitment & Clean Farewell):
+    "Thank you for letting us know! I have dispatched our field route team to pick up and remove that sign today so it's completely cleared for you. Our executive management team will also review the log later today. Thank you for bringing this to our attention, have a great day, goodbye!"
   * Call "take_message" with callerName, propertyAddress: [Intersection/Address], customerPhone: [CallerPhone], targetSpecialist: "michael", messageText: "[SIGN REMOVAL REQUEST] Location: [Intersection/Address]. Caller reported sign issue. Dispatched route team for pickup. Management to review."
   * Call "hangup_call".
 - GENERAL CUSTOMER / PROJECT COMPLAINTS (Workmanship, Delays, Billing Disputes):
   * Step 1 (Empathetic Reception):
-    "I completely understand your concern, [FirstName], and I appreciate you bringing this to our attention."
+    "I completely understand your concern, [FirstName], and I apologize for that frustration. You have our full attention."
   * Step 2 (Information Gathering):
     Gather: Full Name, Property Address, Contact Phone, and Specific Details of the issue.
   * Step 3 (No Transfer — Management Manual Follow-up Later Today):
-    "I have documented your exact notes for our executive management team. Our leadership team personally reviews all project concerns and will reach out to you directly later today once they review your project file. Thank you for your patience, have a good day, goodbye!"
+    "Our executive leadership team personally investigates all customer concerns. Rather than transferring you into the field while our owners are on active jobsites, I am logging your full report directly into our executive priority queue. Michael Robinson will review your project file and reach out to you directly on this number later today. Thank you for your patience, have a good day, goodbye!"
   * Call "take_message" with callerName, propertyAddress, customerPhone, targetSpecialist: "michael", messageText: "[ESCALATED COMPLAINT - DO NOT TRANSFER] Details: [Details]. Management follow-up required today."
   * Call "hangup_call".
 
@@ -3972,6 +3985,7 @@ STEP 3: WARM SPOKEN FAREWELL & IMMEDIATE HANGUP TOOL CALL:
   "Thank you for calling R-hive Construction! Have a great day, goodbye!"
   AND call the "hangup_call" tool with goodbyePhrase: "Thank you for calling R-hive Construction! Have a great day, goodbye!"
 - CRITICAL: Never hang up silently! Always speak the farewell and execute the hangup_call tool so the phone call disconnects cleanly.
+- ABSOLUTE SPEECH INVARIANT: After speaking your final farewell and invoking hangup_call, STOP speaking immediately. NEVER speak reasoning, tool commentary, case notes, or internal analysis out loud to the caller.
 
 CRITICAL ARCHITECTURE:
 Never mention any CRM. All call records are saved automatically to Google Drive organized by the caller's phone number.`,
@@ -5756,8 +5770,7 @@ class CallSession {
 
         return {
           callTerminated: true,
-          status: 'Call ending gracefully. Complete any final spoken farewell now.',
-          farewell: goodbyePhrase
+          status: 'Call ended cleanly. Cease speech immediately.'
         };
       }
 
@@ -5852,12 +5865,16 @@ class CallSession {
 
     // Trigger Google Drive archival organized by caller phone number
     if (this.callSid && this.callerPhone) {
-      archiveCallToPhoneFolder({
-        callSid: this.callSid,
-        callerPhone: this.callerPhone,
-        conversationTurns: this.conversationTurns,
-        sessionData: this.sessionData
-      }).catch(err => console.error('[Archival Background Error]', err.message));
+      if (this.sessionData?.isTransfer) {
+        console.log(`[CallSession ${this.callSid}] 📞 Call was transferred to ${this.sessionData.targetSpecialist}. Deferring Google Chat notification and full dossier until the transferred PSTN leg completes.`);
+      } else {
+        archiveCallToPhoneFolder({
+          callSid: this.callSid,
+          callerPhone: this.callerPhone,
+          conversationTurns: this.conversationTurns,
+          sessionData: this.sessionData
+        }).catch(err => console.error('[Archival Background Error]', err.message));
+      }
     }
   }
 }
@@ -7162,9 +7179,19 @@ app.all('/transfer-completed', (req, res) => {
 
   console.log(`[Transfer Completed] DialCallStatus="${dialStatus}", Duration=${dialDuration}s`);
 
+  const rawSid = req.body.CallSid || req.query.callSid || req.body.callSid || '';
+  const callSid = (Array.isArray(rawSid) ? rawSid[0] : rawSid).split(',')[0].trim();
   res.type('text/xml');
   if (dialStatus === 'completed' && dialDuration > 0) {
-    console.log('[Transfer Completed] Screened call was answered, bridged, and completed normally.');
+    console.log(`[Transfer Completed] Screened call was answered, bridged, and completed normally (${dialDuration}s).`);
+    if (callSid) {
+      const session = completedCallSessions.get(callSid);
+      if (session) {
+        session.sessionData = session.sessionData || {};
+        session.sessionData.dialDuration = dialDuration;
+        session.sessionData.callDuration = `${Math.floor(dialDuration / 60)}m ${dialDuration % 60}s`;
+      }
+    }
     return res.send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Hangup/>
