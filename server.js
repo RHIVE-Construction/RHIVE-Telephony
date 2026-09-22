@@ -6204,6 +6204,7 @@ Respond naturally with full executive poise, smiling warmth, and Wasatch Front r
 
       // 2. Real-Time Tool Calling
       if (msg.toolCall) {
+        this.hasPendingToolCall = true;
         console.log(`[WebVoiceSession ${this.sessionId}] Tool Call requested:`, msg.toolCall.functionCalls.map(f => f.name));
         const responses = [];
 
@@ -6230,8 +6231,10 @@ Respond naturally with full executive poise, smiling warmth, and Wasatch Front r
         }
 
         if (this.geminiSession && this.isGeminiReady) {
+          console.log(`[WebVoiceSession ${this.sessionId}] ↩️ Returning tool response to Gemini Live...`);
           await this.geminiSession.sendToolResponse({ functionResponses: responses });
         }
+        return;
       }
 
       // 3. Transcripts & Turn Latency Calculation (Option A)
@@ -6252,6 +6255,7 @@ Respond naturally with full executive poise, smiling warmth, and Wasatch Front r
       }
 
       if (msg.serverContent?.outputTranscription?.text) {
+        this.hasPendingToolCall = false;
         const text = msg.serverContent.outputTranscription.text;
         const lastTurn = this.conversationTurns[this.conversationTurns.length - 1];
         if (lastTurn && lastTurn.role === 'honey') {
@@ -6264,6 +6268,7 @@ Respond naturally with full executive poise, smiling warmth, and Wasatch Front r
 
       // 4. Audio streaming back to client (Direct 24kHz PCM) & text tokens
       if (msg.serverContent?.modelTurn?.parts) {
+        this.hasPendingToolCall = false;
         for (const part of msg.serverContent.modelTurn.parts) {
           if (part.text) {
             const text = part.text;
@@ -6287,6 +6292,10 @@ Respond naturally with full executive poise, smiling warmth, and Wasatch Front r
 
       // 5. Turn Complete Signal
       if (msg.serverContent?.turnComplete) {
+        if (this.hasPendingToolCall) {
+          // Suppress premature turnComplete accompanying tool request before vocal response
+          return;
+        }
         this.sendToClient({ event: 'turn_complete', role: 'honey', latencyMs });
         this.lastUserAudioTimestamp = null;
       }

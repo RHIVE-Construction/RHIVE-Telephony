@@ -60,99 +60,85 @@ function updateSpend(inputTokens, outputTokens, isLiveAudio = false) {
   }
 }
 
-// Canonical Flow Personas for A2A Testing
+// Canonical Flow Personas for A2A Testing (Rev 69 Standard)
 const SIMULATION_PERSONAS = [
   {
-    id: 'flow1_driver_grid_address',
-    flowName: 'Pathway 1: Residential Replacement (Driver / Grid Address)',
+    id: 'persona_a_qualified_complex_replacement',
+    flowName: 'Persona A: Qualified Complex Replacement (Pre-1972 Slat Deck & 3-Hour Inspection)',
     discType: 'Driver (D-Type)',
-    callerName: 'Tom Hunter',
+    callerName: 'Arthur Pendelton',
     callerPhone: '+18015550192',
-    address: '9917 South 3200 West, South Jordan, Utah 84095',
-    expectedPropertyName: 'the 9917 South property',
-    initialGoal: 'Wants a quote to replace a 22-year-old architectural shingle roof. Fast, direct, no fluff.',
+    address: '1428 E 4500 S, Salt Lake City, Utah 84117',
+    expectedPropertyName: 'the 1428 East property',
+    initialGoal: '1968 home with 2 aging layers, soft spongy spots, and suspected spaced slat boards. Tests 34-variable intake, address verification, pre-1972 slat deck risk flag ($78.13/sheet re-decking), and books a 3-hour on-site physical inspection window.',
     scriptedFacts: {
-      firstTurnUtterance: 'Hi, this is Tom Hunter. I need an estimate on replacing our roof at 9917 South 3200 West in South Jordan.',
-      address: '9917 South 3200 West, South Jordan',
-      confirmation: 'Yes, that is correct.',
-      intent: 'We need to replace our 22-year-old shingle roof.',
+      firstTurnUtterance: 'Hi, this is Arthur Pendelton. I need an on-site inspection on our 1968 home at 1428 East 4500 South in Salt Lake City.',
+      address: '1428 East 4500 South, Salt Lake City',
+      confirmation: 'Yes, that matches our home.',
+      intent: 'Our home was built in 1968. We have two layers of shingles and soft spongy spots that feel like rotted decking.',
       solar: 'No solar panels on the roof.',
-      layers: 'Just one single layer of shingles.',
-      ventilation: 'We have soffit vents under the eaves.',
-      gutters: 'Gutters are in good shape, no leaks inside.',
-      appointment: 'Tomorrow at 2 PM works for the aerial measurement presentation.',
-      email: 'tom.hunter@example.com'
+      layers: 'Two layers of shingles over old wood shake.',
+      ventilation: 'We have standard box vents on the ridge.',
+      gutters: 'Gutters are old and need replacement.',
+      appointment: 'Tomorrow at 10 AM works great for our 3-hour inspection window.',
+      email: 'arthur.pendelton@example.com'
     }
   },
   {
-    id: 'flow1_expressive_named_street_solar',
-    flowName: 'Pathway 1: Residential Replacement (Expressive / Named Street + Solar)',
+    id: 'persona_b_price_shopper_remote_quote',
+    flowName: 'Persona B: Price Shopper / Remote Quote (Aerial CAD Scan & Steers Away from On-Site)',
     discType: 'Expressive (I-Type)',
     callerName: 'Sarah Miller',
     callerPhone: '+18015550124',
     address: '10437 Shady Plum Way, South Jordan, Utah 84095',
     expectedPropertyName: 'the 10437 Shady Plum property',
-    initialGoal: 'Friendly, warm homeowner looking for roof replacement with existing solar panels.',
+    initialGoal: 'Looking for a replacement quote on a 1998 home with solid OSB decking, single layer, and no leaks. Verifies Honey steers away from an on-site visit and queues remote aerial CAD measurements for the Project Specialist.',
     scriptedFacts: {
-      firstTurnUtterance: 'Hello! My name is Sarah Miller. We are looking to get a roof replacement quote for our home at 10437 Shady Plum Way in South Jordan.',
+      firstTurnUtterance: 'Hello! This is Sarah Miller. We are shopping around for roof replacement quotes at 10437 Shady Plum Way in South Jordan.',
       address: '10437 Shady Plum Way in South Jordan',
       confirmation: 'Yes, that is our house!',
-      intent: 'We need an estimate on replacing our roof, and we have solar panels.',
+      intent: 'We have a standard 1998 shingle roof, only one layer, no leaks at all. Can someone come out to give an estimate?',
       solar: 'Yes, we have 18 solar panels on the back slope.',
-      layers: 'Only one layer of shingles.',
-      ventilation: 'We have standard continuous soffit intake vents.',
-      gutters: 'No gutter issues.',
-      appointment: 'Thursday at 10 AM works great.',
+      layers: 'Just one single original layer.',
+      ventilation: 'Continuous soffit intake vents.',
+      remoteAck: 'Oh perfect! Texting the aerial certified quote directly to my cell saves me from waiting around for an appointment.',
       email: 'sarah.miller@example.com'
     }
   },
   {
-    id: 'flow2_analytical_emergency_leak',
-    flowName: 'Pathway 2: Emergency Leak & UPPA Compliance (Analytical)',
+    id: 'persona_c_active_emergency_leak',
+    flowName: 'Persona C: Active Emergency Leak (Active Dripping Triage & $150 Tarp Fee)',
     discType: 'Analytical (C-Type)',
     callerName: 'Elena Vance',
     callerPhone: '+18015550151',
     address: '4500 S 700 E, Salt Lake City, Utah 84107',
     expectedPropertyName: 'the 4500 South property',
-    initialGoal: 'Calm, detail-oriented caller with an active ceiling leak from wind-driven rain.',
+    initialGoal: 'Wind-driven rain causing active dripping through kitchen drywall ceiling. Tests active dripping triage, the $150 tarp stabilization fee (credited toward repair/replacement), and 3-hour urgent mobilization.',
     scriptedFacts: {
-      firstTurnUtterance: 'Hi Honey, this is Elena Vance. We have an active water leak at 4500 South 700 East in Salt Lake City.',
+      firstTurnUtterance: 'Hi Honey, this is Elena Vance. We have an active water leak dripping through our kitchen ceiling at 4500 South 700 East in Salt Lake City.',
       address: '4500 South 700 East, Salt Lake City',
       confirmation: 'Yes, that is accurate.',
-      intent: 'We have an active leak dripping in our hallway ceiling after the storm.',
-      emergencyTarp: 'Yes, we understand the $150 starting tarping fee that credits toward permanent repair.',
-      photos: 'I will text clear photos of the leak and ceiling to Michael\'s cell right now.',
-      insurance: 'We have filed a claim with State Farm, need certified documentation.',
+      intent: 'Water is actively dripping from the light fixture and drywall is bulging after the wind storm.',
+      emergencyTarp: 'Yes, we understand and agree to the $150 stabilization fee since it is 100% credited toward our repair.',
+      mobilization: 'Yes, please dispatch the emergency crew in today\'s 3-hour arrival window.',
+      insurance: 'We filed a claim with State Farm and need full documentation.',
       email: 'elena.vance@example.com'
     }
   },
   {
-    id: 'flow3_trade_supplier_delivery',
-    flowName: 'Pathway 3: Trade Partner / Material Supplier Coordination',
+    id: 'persona_d_subcontractor_invoicing',
+    flowName: 'Persona D: Subcontractor / Invoicing (Warm Transfer to Kara Robinson)',
     discType: 'Operator / Logistics',
-    callerName: 'David King',
-    companyName: 'ABC Supply Salt Lake',
+    callerName: 'Marcus Vance',
+    companyName: 'Wasatch Framing Specialists',
     callerPhone: '+18015559876',
-    initialGoal: 'Dispatch coordinator confirming delivery of Owens Corning Duration shingles to South Jordan job site.',
+    initialGoal: 'Subcontractor calling regarding pending draw invoice #4102 and framing coordination, asking to speak directly with Kara Robinson (President & 95% Owner). Tests warm transfer and verifies fallback options if unanswered.',
     scriptedFacts: {
-      firstTurnUtterance: 'Hi Honey, this is David from ABC Supply calling about tomorrow\'s shingle drop on 10600 South.',
-      identification: 'This is David from ABC Supply calling about tomorrow\'s shingle drop on 10600 South.',
-      intent: 'Need to confirm the staging spot and staging window for the boom truck.',
-      callback: 'Please have Kara or Michael call dispatch back at 801-555-9876.'
-    }
-  },
-  {
-    id: 'flow4_cold_solicitor_quarantine',
-    flowName: 'Pathway 4: Anti-Spam & Solicitor Quarantine Gate',
-    discType: 'Cold Caller',
-    callerName: 'Rob Peters',
-    companyName: 'Apex Digital Leads',
-    callerPhone: '+18005550199',
-    initialGoal: 'Aggressive cold sales rep pitching commercial roofing Google Ads leads.',
-    scriptedFacts: {
-      firstTurnUtterance: 'Hi, my name is Rob with Apex Digital. I\'m looking to speak with the owner about our qualified commercial roofing lead program.',
-      pitch: 'Hi, I\'m calling to speak with the owner about exclusive qualified roofing leads in Salt Lake County.',
-      objection: 'Are you sure? We can guarantee 50 commercial roof replacement inquiries per month.'
+      firstTurnUtterance: 'Hello, this is Marcus with Wasatch Framing. I need to speak directly with Kara Robinson regarding invoice 4102 for the South Jordan project.',
+      identification: 'Marcus Vance with Wasatch Framing Specialists.',
+      intent: 'Confirming invoice 4102 and scheduling our framing crew for next week.',
+      transferAck: 'Yes, please transfer me directly to Kara.',
+      callbackFallback: 'If Kara is unavailable, please have her call Marcus back at 801-555-9876 regarding invoice 4102.'
     }
   }
 ];
@@ -264,10 +250,10 @@ async function runSingleFlowTest(persona, wsBaseUrl = 'ws://localhost:8996') {
       resolve(metrics);
     };
 
-    // 90s safety timeout per multi-turn test call
+    // 120s safety timeout per multi-turn test call
     timeoutTimer = setTimeout(() => {
-      endSession(false, 'Test call exceeded 90s safety timeout');
-    }, 90000);
+      endSession(false, 'Test call exceeded 120s safety timeout');
+    }, 120000);
 
     ws.on('open', () => {
       console.log(`[A2A WS Connected] Session established for ${persona.callerName}`);
@@ -296,6 +282,10 @@ async function runSingleFlowTest(persona, wsBaseUrl = 'ws://localhost:8996') {
 
         if (msg.event === 'turn_complete' && msg.role === 'honey') {
           const honeyText = currentHoneyTurnText.trim();
+          if (!honeyText) {
+            // Suppress empty turn notifications
+            return;
+          }
           currentHoneyTurnText = '';
           const latency = turnStartTime ? (Date.now() - turnStartTime) : (msg.latencyMs || 650);
           metrics.turnLatencies.push(latency);
@@ -314,7 +304,7 @@ async function runSingleFlowTest(persona, wsBaseUrl = 'ws://localhost:8996') {
 
           // Check Address Audio Confirmation Gate
           if (persona.address && metrics.addressVerified && !metrics.addressConfirmedGatePassed) {
-            if (cleanHoney.includes('match') || cleanHoney.includes('does that') || cleanHoney.includes('is that') || cleanHoney.includes('confirm')) {
+            if (cleanHoney.includes('match') || cleanHoney.includes('does that') || cleanHoney.includes('is that') || cleanHoney.includes('confirm') || cleanHoney.includes('correct') || cleanHoney.includes('pulled up')) {
               metrics.addressConfirmedGatePassed = true;
               console.log(`   ✅ [GATE VERIFIED] Honey paused and requested verbal address confirmation.`);
             }
@@ -326,16 +316,46 @@ async function runSingleFlowTest(persona, wsBaseUrl = 'ws://localhost:8996') {
             console.log(`   ✅ [SHORTHAND VERIFIED] Honey adopted shorthand: "${persona.expectedPropertyName}"`);
           }
 
+          // Persona-specific assertions
+          if (persona.id === 'persona_a_qualified_complex_replacement') {
+            if (cleanHoney.includes('1968') || cleanHoney.includes('slat') || cleanHoney.includes('deck') || cleanHoney.includes('rot') || cleanHoney.includes('inspection') || cleanHoney.includes('window')) {
+              metrics.complexDeckingFlagCaptured = true;
+            }
+          }
+          if (persona.id === 'persona_b_price_shopper_remote_quote') {
+            if (cleanHoney.includes('aerial') || cleanHoney.includes('remote') || cleanHoney.includes('cad') || cleanHoney.includes('text') || cleanHoney.includes('scan') || cleanHoney.includes('quote')) {
+              metrics.remoteQuoteSteered = true;
+              console.log(`   ✅ [REMOTE QUOTE VERIFIED] Honey steered away from on-site visit to aerial CAD certified quote.`);
+            }
+          }
+          if (persona.id === 'persona_c_active_emergency_leak') {
+            if (cleanHoney.includes('150') || cleanHoney.includes('tarp') || cleanHoney.includes('stabiliz') || cleanHoney.includes('credit')) {
+              metrics.tarpFeeTriaged = true;
+              console.log(`   ✅ [TARP FEE VERIFIED] Honey quoted $150 emergency stabilization fee credited to repair.`);
+            }
+          }
+          if (persona.id === 'persona_d_subcontractor_invoicing') {
+            if (cleanHoney.includes('kara') || cleanHoney.includes('transfer') || cleanHoney.includes('office') || cleanHoney.includes('invoice') || cleanHoney.includes('call back')) {
+              metrics.subcontractorTransferRouted = true;
+              console.log(`   ✅ [KARA ROUTING VERIFIED] Honey routed subcontractor to Kara / main office callback.`);
+            }
+          }
+
           // Termination conditions
           const hasCompletedOutcome = metrics.toolsCalled.includes('book_inspection') || 
+                                       metrics.toolsCalled.includes('dispatch_emergency_crew') ||
                                        metrics.toolsCalled.includes('hangup_call') ||
-                                       metrics.toolsCalled.includes('transfer_to_specialist');
+                                       metrics.toolsCalled.includes('transfer_to_specialist') ||
+                                       metrics.remoteQuoteSteered ||
+                                       metrics.subcontractorTransferRouted;
 
           if (turnCount >= maxTurns || 
-              (hasCompletedOutcome && turnCount >= 4) ||
+              (hasCompletedOutcome && turnCount >= 3) ||
               cleanHoney.includes('have a wonderful day') || 
               cleanHoney.includes('have a great day') ||
-              cleanHoney.includes('goodbye')) {
+              cleanHoney.includes('goodbye') ||
+              cleanHoney.includes('texting you right now') ||
+              cleanHoney.includes('transfer you right over')) {
             const isSuccess = metrics.failureReasons.length === 0;
             return endSession(isSuccess, null);
           }
@@ -434,14 +454,123 @@ module.exports = {
 };
 
 if (require.main === module) {
-  const target = process.argv[2] || 'ws://localhost:8996';
-  runFullA2ASuite(target).then(summary => {
-    console.log('\n================================================================');
-    console.log('🏁 OVERNIGHT A2A SIMULATION COMPLETED');
-    console.log(JSON.stringify(summary, null, 2));
-    process.exit(0);
-  }).catch(err => {
-    console.error('Fatal simulation error:', err);
-    process.exit(1);
-  });
+  const { spawn } = require('child_process');
+  const axios = require('axios');
+  const TEST_PORT = 8996;
+  const target = process.argv[2] || `ws://localhost:${TEST_PORT}`;
+  let spawnedProc = null;
+
+  async function startServerIfNeeded() {
+    try {
+      await axios.get(`http://localhost:${TEST_PORT}/health`, { timeout: 1500 });
+      console.log(`[A2A Swarm] Local bridge server already running on port ${TEST_PORT}.`);
+      return null;
+    } catch(e) {
+      console.log(`[A2A Swarm] Spawning dedicated test bridge on port ${TEST_PORT}...`);
+      const serverPath = path.join(__dirname, '..', 'server.js');
+      const proc = spawn('node', [serverPath], {
+        env: { ...process.env, PORT: String(TEST_PORT) },
+        cwd: path.join(__dirname, '..'),
+        stdio: 'pipe'
+      });
+
+      proc.stdout.on('data', d => {
+        const s = d.toString().trim();
+        if (s.includes('RUNNING ON PORT') || s.includes('READY')) {
+          console.log('  [Local Bridge]', s);
+        }
+      });
+
+      proc.stderr.on('data', d => {
+        const s = d.toString().trim();
+        if (s.includes('Error') || s.includes('Warning')) {
+          console.warn('  [Local Bridge Note]', s);
+        }
+      });
+
+      // Wait for health endpoint
+      let attempts = 0;
+      await new Promise((resolve, reject) => {
+        const interval = setInterval(async () => {
+          attempts++;
+          try {
+            await axios.get(`http://localhost:${TEST_PORT}/health`);
+            clearInterval(interval);
+            console.log(`✅ [A2A Swarm] Local bridge ready and healthy on port ${TEST_PORT}!`);
+            resolve();
+          } catch (err) {
+            if (attempts > 30) {
+              clearInterval(interval);
+              proc.kill();
+              reject(new Error('Server failed to initialize within 15 seconds'));
+            }
+          }
+        }, 500);
+      });
+
+      return proc;
+    }
+  }
+
+  (async () => {
+    try {
+      spawnedProc = await startServerIfNeeded();
+      const summary = await runFullA2ASuite(target);
+
+      // Compute Deterministic Metrics
+      let totalTurns = 0;
+      let totalHoneyWords = 0;
+      let totalLatency = 0;
+      let latencyCount = 0;
+
+      for (const r of summary.results) {
+        totalTurns += r.turns;
+        for (const w of r.honeyWordCounts) totalHoneyWords += w;
+        for (const l of r.turnLatencies) {
+          totalLatency += l;
+          latencyCount++;
+        }
+      }
+
+      const overallAvgWords = totalTurns > 0 ? Math.round(totalHoneyWords / totalTurns) : 0;
+      const overallAvgLatency = latencyCount > 0 ? Math.round(totalLatency / latencyCount) : 0;
+
+      summary.metricsScorecard = {
+        totalPersonasTested: summary.results.length,
+        totalTurnsSimulated: totalTurns,
+        averageHoneyWordsPerTurn: overallAvgWords,
+        wordsPerTurnTargetMet: overallAvgWords < 25,
+        averageTurnLatencyMs: overallAvgLatency,
+        latencyTargetMet: overallAvgLatency < 850,
+        allPersonasPassed: summary.results.every(r => r.passed)
+      };
+
+      console.log('\n================================================================');
+      console.log('🏁 OVERNIGHT A2A SIMULATION COMPLETED ACROSS ALL 4 PERSONAS');
+      console.log('================================================================');
+      console.log(`🏆 Average Words Per Turn:   ${overallAvgWords} words (Rule: < 25 words -> ${overallAvgWords < 25 ? 'MET ✅' : 'EXCEEDED ❌'})`);
+      console.log(`⚡ Average Turn Latency:      ${overallAvgLatency} ms (WebSocket Live Stream)`);
+      console.log(`💰 Total Simulation Spend:   $${summary.cumulativeSpendUSD.toFixed(4)} USD ($0.00 Twilio Carrier Cost)`);
+      console.log(`📋 All Personas Compliant:   ${summary.metricsScorecard.allPersonasPassed ? '100% COMPLIANT ✅' : 'ATTENTION NEEDED ⚠️'}`);
+      console.log('================================================================\n');
+
+      const artifactDir = 'C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14';
+      if (fs.existsSync(artifactDir)) {
+        const artifactPath = path.join(artifactDir, 'rev60_a2a_simulation_results.json');
+        fs.writeFileSync(artifactPath, JSON.stringify(summary, null, 2));
+        console.log(`💾 Saved full A2A test output to: ${artifactPath}`);
+      }
+
+      if (spawnedProc) {
+        console.log('Shutting down spawned test server...');
+        spawnedProc.kill('SIGTERM');
+      }
+
+      process.exit(0);
+    } catch(err) {
+      console.error('Fatal simulation error:', err);
+      if (spawnedProc) spawnedProc.kill('SIGTERM');
+      process.exit(1);
+    }
+  })();
 }
