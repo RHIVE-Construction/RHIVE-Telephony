@@ -105,8 +105,9 @@ if (fs.existsSync(DRIVE_KEY_FILE)) {
   console.warn('[Google Drive] Key file not found at:', DRIVE_KEY_FILE);
 }
 
-// Google Chat Client (JustCall Leads Space: spaces/AAQABQzOXI0)
+// Google Chat Client (JustCall Leads Space: spaces/AAQABQzOXI0, Thread: RgYVSFhm94o)
 const LEADS_CHAT_SPACE = process.env.LEADS_CHAT_SPACE || 'spaces/AAQABQzOXI0';
+const LEADS_CHAT_THREAD = process.env.LEADS_CHAT_THREAD || 'spaces/AAQABQzOXI0/threads/RgYVSFhm94o';
 let chatClient = null;
 
 function getGoogleChatClient() {
@@ -2196,26 +2197,31 @@ async function postGoogleChat(text, title = '📞 RHIVE Live Voice Call', button
         });
       }
 
-      await axios.post(GOOGLE_CHAT_WEBHOOK, {
+      const webhookUrl = GOOGLE_CHAT_WEBHOOK.includes('threadKey')
+        ? GOOGLE_CHAT_WEBHOOK
+        : (GOOGLE_CHAT_WEBHOOK + (GOOGLE_CHAT_WEBHOOK.includes('?') ? '&' : '?') + 'threadKey=RgYVSFhm94o');
+
+      await axios.post(webhookUrl, {
+        thread: { threadKey: 'RgYVSFhm94o' },
         cardsV2: [{
           cardId: 'voice-call-' + Date.now(),
           card: {
             header: {
               title: title,
-              subtitle: 'Gemini 3.1 Flash Live Speech-to-Speech Engine',
+              subtitle: 'Gemini 3.8 Live Speech-to-Speech Engine',
               imageUrl: 'https://fonts.gstatic.com/s/i/short-term/release/googlestyles/call/default/24px.svg'
             },
             sections: [{ widgets: cardWidgets }]
           }
         }]
       }, { timeout: 8000 });
-      console.log('[Google Chat] Webhook dispatch succeeded');
+      console.log('[Google Chat] Webhook dispatch succeeded (thread: RgYVSFhm94o)');
     } catch(e) {
       console.warn('[Google Chat] Webhook notification failed:', e.message);
     }
   }
 
-  // 2. Direct API Dispatch to "JustCall Leads" Space (spaces/AAQABQzOXI0)
+  // 2. Direct API Dispatch to "JustCall Leads" Space & Thread (spaces/AAQABQzOXI0/threads/RgYVSFhm94o)
   try {
     const chat = getGoogleChatClient();
     if (chat) {
@@ -2231,9 +2237,13 @@ async function postGoogleChat(text, title = '📞 RHIVE Live Voice Call', button
 
       await chat.spaces.messages.create({
         parent: LEADS_CHAT_SPACE,
-        requestBody: { text: payloadText }
+        messageReplyOption: 'REPLY_MESSAGE_FALLBACK_TO_NEW_THREAD',
+        requestBody: {
+          text: payloadText,
+          thread: { name: LEADS_CHAT_THREAD }
+        }
       });
-      console.log(`[Google Chat] Dispatched live lead alert to ${LEADS_CHAT_SPACE}`);
+      console.log(`[Google Chat] Dispatched live lead alert to ${LEADS_CHAT_SPACE} (thread: ${LEADS_CHAT_THREAD})`);
     }
   } catch(apiErr) {
     console.warn('[Google Chat API Dispatch Note]', apiErr.message);
@@ -2551,21 +2561,24 @@ async function archiveCallToPhoneFolder({ callSid, callerPhone, conversationTurn
     });
     console.log('[Google Drive] Saved summary dossier to ' + safePhone + ' folder: ' + docRes.data.name);
 
-    // 4. Alert Google Chat with Direct Drive Folder Link
-    const isPre1972Call = sessionData.yearBuilt && sessionData.yearBuilt < 1972;
+    // 4. Build Comprehensive Lead Dossier & Alert Google Chat + Staff SMS
+    const fullLeadDossier = buildConsolidatedLeadDossier({
+      ...sessionData,
+      callSid,
+      customerPhone: callerPhone,
+      phoneFolderUrl: phoneFolder?.webViewLink,
+      transcriptDriveUrl: docRes.data.webViewLink,
+      recordingUrl: recordingFile ? recordingFile.webViewLink : (sessionData.callRecordingUrl || sessionData.recordingUrl || null),
+      callSummary: summaryText
+    });
+
     postGoogleChat(
-      '<b>📞 Call Completed & Archived to Google Drive!</b><br>' +
-      '👤 Caller: <b>' + (sessionData?.callerName || sessionData?.customerName || 'Customer') + '</b> (' + callerPhone + ')<br>' +
-      '📍 Address: ' + (sessionData.verifiedAddress || 'Not Stated') + '<br>' +
-      '🏛️ Parcel: ' + (sessionData.parcelId || 'N/A') + ' | Built: ' + (sessionData.yearBuilt || 'N/A') + ' (' + (sessionData.decadeBuilt || 'N/A') + ')<br>' +
-      (isPre1972Call ? '⚠️ <b>DECK RISK:</b> Pre-1972 spaced slat board decking under shake/shingles ($78.13/sheet re-deck)<br>' : '') +
-      '⏰ Inspection: ' + (sessionData.inspectionSlot || 'None Scheduled') + '<br>' +
-      (sessionData.materialPreference ? '🏠 Material: ' + sessionData.materialPreference + '<br>' : '') +
-      (sessionData.discProfile ? '🎯 DISC: <b>' + sessionData.discProfile + '</b><br>' : '') +
-      '📁 Drive Folder: <a href="' + phoneFolder?.webViewLink + '">' + safePhone + '</a>',
-      '📁 Call Dossier Archived to Google Drive',
+      fullLeadDossier.replace(/\n/g, '<br>'),
+      '📞 RHIVE Call Completed & Lead Archived',
       phoneFolder?.webViewLink
     );
+
+    sendExecutiveSummarySms(fullLeadDossier).catch(e => console.warn('[Aftercall Executive SMS Error]', e.message));
 
     // 5. Persist Call Log & Session to Firestore CRM (call_logs & twilio_voice_sessions)
     recordCallLogToFirestore({
@@ -3206,11 +3219,18 @@ function buildConsolidatedLeadDossier(data) {
   // ============================================================================
   // 2. EVERY FIELD COLLECTED (34-VARIABLE INTAKE MATRIX)
   // ============================================================================
-  const name = data.callerName || data.customerName;
-  const phone = data.customerPhone || data.callerPhone;
-  if (name && name !== 'Unknown Caller' && name !== 'Homeowner' && name !== 'there') {
-    lines.push(`👤 Customer Name: ${name}`);
+  const rawName = (data.callerName || data.customerName || '').trim();
+  let firstName = data.firstName;
+  let lastName = data.lastName;
+  if (!firstName && rawName && rawName !== 'Unknown Caller' && rawName !== 'Homeowner' && rawName !== 'there') {
+    const parts = rawName.split(/\s+/);
+    firstName = parts[0];
+    lastName = parts.slice(1).join(' ');
   }
+  if (firstName) {
+    lines.push(`👤 Customer Name: ${firstName}${lastName ? ' ' + lastName : ''} (First: ${firstName} | Last: ${lastName || 'N/A'})`);
+  }
+  const phone = data.customerPhone || data.callerPhone;
   if (phone) {
     lines.push(`📞 Customer Phone: ${phone}`);
   }
@@ -3220,11 +3240,21 @@ function buildConsolidatedLeadDossier(data) {
     lines.push(`📧 Customer Email: ${validEmail.toLowerCase()}`);
   }
 
+  const decisionMaker = data.isHomeowner !== undefined
+    ? (data.isHomeowner ? 'Confirmed Homeowner' : 'Representative')
+    : (data.isDecisionMaker !== undefined ? (data.isDecisionMaker ? 'Authorized Decision Maker' : 'Non-Decision Maker') : 'Homeowner / Authorized Decision Maker');
+  lines.push(`🔑 Decision Maker Status: ${decisionMaker}`);
+
   const propType = data.propertyType || (data.projectScope?.toLowerCase().includes('commercial') ? 'Commercial' : 'Residential');
   lines.push(`🏢 Property Type: ${propType}`);
 
-  if (data.propertyAddress && data.propertyAddress !== 'Address on file' && data.propertyAddress !== 'your property') {
-    lines.push(`📍 Property Address: ${data.propertyAddress}`);
+  const address = data.verifiedAddress || data.propertyAddress;
+  if (address && address !== 'Address on file' && address !== 'your property') {
+    lines.push(`📍 Verified Address: ${address}`);
+    if (data.rawAddress && data.rawAddress !== address) {
+      lines.push(`🗣️ Raw Spoken Address: ${data.rawAddress}`);
+    }
+    lines.push(`🗺️ Google Maps Pin: https://maps.google.com/?q=${encodeURIComponent(address)}`);
     const isConfirmed = data.addressConfirmed !== undefined ? data.addressConfirmed : true;
     lines.push(`✅ Address Confirmed: ${isConfirmed ? 'true' : 'false'}`);
   }
@@ -3248,7 +3278,13 @@ function buildConsolidatedLeadDossier(data) {
 
   const isPre1972 = data.isPre1972 || (data.yearBuilt && parseInt(data.yearBuilt, 10) < 1972);
   if (isPre1972) {
-    lines.push(`⚠️ Pre-1972 Slat Deck Risk: true (Spaced 1x6/1x8 slat decking, $78.13/sheet re-deck)`);
+    lines.push(`⚠️ Pre-1972 Slat Deck Risk: HIGH RISK (Spaced 1x6/1x8 slat boards likely, violates modern IRC R905 nailing code on tear-off, $78.13/sheet re-deck recommended)`);
+  } else {
+    lines.push(`🛡️ Decking Substrate Risk: Continuous Solid Sheathing Expected (OSB/Plywood)`);
+  }
+
+  if (data.roofGeometry || data.geometryType) {
+    lines.push(`📐 Roof Geometry: ${data.roofGeometry || data.geometryType}`);
   }
 
   if (data.isPre1990sCode) {
@@ -3305,8 +3341,11 @@ function buildConsolidatedLeadDossier(data) {
   if (data.heatTraceAreas && isPresent(data.heatTraceAreas)) {
     lines.push(`❄️ Winter Ice Dams & Valleys: ${data.heatTraceAreas}`);
   }
-  if (data.materialPreference && isPresent(data.materialPreference)) {
-    lines.push(`🏠 Primary Material Selection: ${data.materialPreference}`);
+
+  lines.push(`🏠 Primary Material Selection: ${data.materialPreference || 'Owens Corning Duration / Duration Flex'}`);
+
+  if (data.leakSeverity || data.leakLocation) {
+    lines.push(`💧 Active Leak Details: Severity: ${data.leakSeverity || 'Reported'} | Location: ${data.leakLocation || 'Roof Envelope'}`);
   }
 
   if (data.discProfile && isPresent(data.discProfile)) {
@@ -3319,7 +3358,7 @@ function buildConsolidatedLeadDossier(data) {
     lines.push(`📊 Quoting Tier: ${data.quoteTier}`);
   }
   if (data.emergencyFee && isPresent(data.emergencyFee)) {
-    lines.push(`💵 Emergency Mobilization Fee: ${data.emergencyFee}`);
+    lines.push(`💵 Emergency Mobilization Fee: $150 (100% Credited toward any repair or replacement)`);
   }
 
   // ============================================================================
@@ -3491,9 +3530,9 @@ async function executeInspectionBooking(params) {
     }
 
     if (targetPhone && !isSimulatedCall) {
-      const emailNotice = validCustomerEmail ? ' A calendar invite has been sent to your email.' : '';
-      const cleanCustomerName = (callerName && callerName !== 'Homeowner' && callerName !== 'there' && callerName !== 'Unknown Caller') ? ' ' + callerName : '';
-      const smsCustomer = 'RHIVE: Hi' + cleanCustomerName + ', your roof inspection at ' + propertyAddress + ' is confirmed for ' + inspectionSlot + '.' + emailNotice + ' We will text you 15 mins before arrival. Questions? Text or call 801-449-1451.';
+      const firstName = params.firstName || (callerName && callerName !== 'Homeowner' && callerName !== 'there' && callerName !== 'Unknown Caller' ? callerName.split(' ')[0] : '');
+      const cleanCustomerName = firstName ? ' ' + firstName : '';
+      const smsCustomer = 'RHIVE: Hi' + cleanCustomerName + ', your roof inspection at ' + propertyAddress + ' is confirmed for ' + inspectionSlot + '.' + emailNotice + ' Our technician will text prior to arrival. Questions? Text or call 801-449-1451.';
       sendMultiChannelSms({
         to: targetPhone,
         body: smsCustomer,
@@ -3516,8 +3555,8 @@ async function executeInspectionBooking(params) {
       inspectionSlot,
       startISO,
       endISO,
-      duration: '2 Hours',
-      message: 'Inspection booked for a 2-hour window in RHIVE Project Inspections calendar.'
+      duration: '3 Hours',
+      message: 'Inspection booked for a 3-hour window in RHIVE Project Inspections calendar.'
     };
   } catch(e) {
     console.error('[Execute Booking Error]', e.message);
