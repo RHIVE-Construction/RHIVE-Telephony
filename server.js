@@ -3342,7 +3342,7 @@ function buildConsolidatedLeadDossier(data) {
     lines.push(`❄️ Winter Ice Dams & Valleys: ${data.heatTraceAreas}`);
   }
 
-  lines.push(`🏠 Primary Material Selection: ${data.materialPreference || 'Owens Corning Duration / Duration Flex'}`);
+  lines.push(`📦 Quoting Lineup Spec (Internal Catalog): ${data.materialPreference || 'Owens Corning Duration (Baseline) / Duration Flex (Class 4) / Woodcrest / TPO'}`);
 
   if (data.leakSeverity || data.leakLocation) {
     lines.push(`💧 Active Leak Details: Severity: ${data.leakSeverity || 'Reported'} | Location: ${data.leakLocation || 'Roof Envelope'}`);
@@ -3351,7 +3351,22 @@ function buildConsolidatedLeadDossier(data) {
   if (data.discProfile && isPresent(data.discProfile)) {
     lines.push(`🎯 DISC Personality Quadrant: ${data.discProfile}`);
   }
-  if (data.customerPriority && isPresent(data.customerPriority)) {
+  if (data.primaryWarrantyPriority && isPresent(data.primaryWarrantyPriority)) {
+    lines.push(`🛡️ Lifespan & Warranty Priority: ${data.primaryWarrantyPriority}`);
+  }
+  if (data.weatherImpactPriority && isPresent(data.weatherImpactPriority)) {
+    lines.push(`🌪️ Hail & Impact Priority: ${data.weatherImpactPriority}`);
+  }
+  if (data.ventilationPriority && isPresent(data.ventilationPriority)) {
+    lines.push(`💨 Attic Ventilation & Ice Dam Priority: ${data.ventilationPriority}`);
+  }
+  if (data.aestheticPriority && isPresent(data.aestheticPriority)) {
+    lines.push(`🎨 Architectural Aesthetic Priority: ${data.aestheticPriority}`);
+  }
+  if (data.timelinePriority && isPresent(data.timelinePriority)) {
+    lines.push(`⏳ Project Schedule & Timing: ${data.timelinePriority}`);
+  }
+  if (data.customerPriority && isPresent(data.customerPriority) && !data.primaryWarrantyPriority) {
     lines.push(`⭐ Customer Primary Priority: ${data.customerPriority}`);
   }
   if (data.quoteTier && isPresent(data.quoteTier)) {
@@ -3826,9 +3841,9 @@ CASE 4: ROOF REPAIR (DISCRETE 1-QUESTION SEQUENCE):
   * If YES (Active Leak / Dripping):
     - Tarping Escalation Check:
       If preliminary property attributes or Solar data indicate steep pitch (>= 8/12) OR complex roof (> 20 facets):
-      "With preliminary aerial measurements of your roof showing steep slopes (or several facets), there is an increased chance your tarp mitigation will be more than the standard starting fee of $150—our crew will evaluate safe tie-off on site. Standard mobilization starts at $150+, which is 100% credited toward your permanent repair. Can we get our rapid crew scheduled for you right now?"
+      "With preliminary aerial measurements showing steep slopes or complex facets, our crew evaluates safe tie-off on site. Standard emergency mobilization is one hundred fifty dollars, and that entire amount is one hundred percent credited straight toward your permanent repair or replacement with us—so you're not paying a dime extra for emergency protection. Can we get our rapid stabilization crew scheduled for you right now?"
       Otherwise:
-      "For the [propertyName], standard emergency mobilization starts at $150+, which is 100% credited toward your permanent repair. If there are multiple leak spots or steep pitch, the crew assesses that upfront. May I lock in the dispatch window?"
+      "I completely understand, [FirstName]—water actively coming through the ceiling is stressful, and our first priority is getting out there today to stop that leak before it causes major sheetrock or flooring damage. Our technician will tarp and seal the penetration right away. Standard emergency mobilization is one hundred fifty dollars, and that entire amount is one hundred percent credited straight toward your permanent roof repair or replacement with us—so you're not paying a dime extra for emergency protection. We have our emergency truck available in your area between 11 and 2, or 1 and 4 this afternoon. Which window gives you the most peace of mind today?"
     - (If upcoming storm detected, mention storm urgency to schedule immediately).
     - If agreed: Call "dispatch_emergency_crew" -> Advance to Mandatory Closing Protocol.
   * If NO (Not actively dripping): Advance to Step 4B.
@@ -3863,7 +3878,8 @@ CASE 5: WARM SCREENED TRANSFER & DYNAMIC INTENT CAPTURE:
     - If the caller stated their name, DO NOT ask "May I have your name?".
     - If the caller stated their invoice number, DO NOT ask "What invoice is this regarding?".
     - If the caller provided their name and purpose/invoice in their opening turn:
-      Acknowledge warmly: "Got it, [First Name]! Let me pull up invoice [Number] and transfer your call to our accounting department right now."
+      If they specifically asked for Kara Robinson by name, acknowledge warmly: "Got it, [First Name]! Let me transfer you directly to Kara Robinson right now."
+      Otherwise: "Got it, [First Name]! Let me transfer your call to our accounting department right now."
       IMMEDIATELY call "transfer_to_specialist" with callerName, invoiceNumber, reason, departmentName, and targetSpecialist: "kara".
       DO NOT ask them to repeat their information!
   * ONLY ASK FOR MISSING FIELDS:
@@ -3913,7 +3929,7 @@ MANDATORY CONVERSATIONAL CLOSING & HANGUP PROTOCOL:
 When the primary outcome is locked in (certified quote verification dispatched, inspection scheduled, emergency tarping confirmed, or note taken):
 STEP 1: Quick recap & next steps (<15 words):
 - If Quote: "Your certified quote request is locked in, and your project design specialist will follow up with your custom proposals within 24 to 48 hours."
-- If Inspection/Emergency: "We have your inspection locked in for [window]. Your specialist will text their exact ETA 15 minutes before arrival."
+- If Inspection/Emergency: "We have your inspection locked in for [window]. Our technician will text prior to arrival."
 - If Note/Message: "I've sent that message directly to our team."
 STEP 2: Final question check:
 - "Is there anything else I can assist you with today?"
