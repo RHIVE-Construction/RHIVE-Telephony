@@ -6730,11 +6730,14 @@ app.get('/api/verify-info', async (req, res) => {
         name: entry.callerName || '',
         email: entry.email || '',
         phone: entry.phone || '',
+        propertyType: entry.propertyType || '',
         projectScope: entry.projectScope || '',
-        roofType: entry.roofType || '',
         solarStatus: entry.solarStatus || '',
         skylights: entry.skylights || '',
-        roofAge: entry.roofAge || '',
+        equipmentRemoval: entry.equipmentRemoval || '',
+        shingleLayers: entry.shingleLayers || '',
+        gutterScope: entry.gutterScope || '',
+        iceDams: entry.iceDams || '',
         priority: entry.priority || ''
       });
     }
@@ -6750,11 +6753,14 @@ app.get('/api/verify-info', async (req, res) => {
             name: d.callerName || '',
             email: d.verifiedEmail || d.email || '',
             phone: d.phone || '',
+            propertyType: d.propertyType || '',
             projectScope: d.projectScope || '',
-            roofType: d.roofType || '',
             solarStatus: d.solarStatus || '',
             skylights: d.skylights || '',
-            roofAge: d.roofAge || '',
+            equipmentRemoval: d.equipmentRemoval || '',
+            shingleLayers: d.shingleLayers || '',
+            gutterScope: d.gutterScope || '',
+            iceDams: d.iceDams || '',
             priority: d.priority || ''
           });
         }
@@ -6780,8 +6786,8 @@ app.post('/api/verify-email', async (req, res) => {
   try {
     const { 
       token, phone, email, priority, callerName, 
-      projectScope, roofType, solarStatus, skylights, 
-      roofAge, gutters, notes 
+      propertyType, projectScope, solarStatus, skylights, 
+      equipmentRemoval, shingleLayers, gutterScope, iceDams, notes 
     } = req.body || {};
     const key = String(phone || token || '').replace(/[^0-9]/g, '');
 
@@ -6799,14 +6805,16 @@ app.post('/api/verify-email', async (req, res) => {
       const entry = pendingVerifications.get(key);
       entry.verified = true;
       entry.verifiedEmail = email;
-      entry.priority = priority || 'Fast Installation';
+      entry.priority = priority || 'Max Warranty';
       if (callerName) entry.callerName = callerName;
+      if (propertyType) entry.propertyType = propertyType;
       if (projectScope) entry.projectScope = projectScope;
-      if (roofType) entry.roofType = roofType;
       if (solarStatus) entry.solarStatus = solarStatus;
       if (skylights) entry.skylights = skylights;
-      if (roofAge) entry.roofAge = roofAge;
-      if (gutters) entry.gutters = gutters;
+      if (equipmentRemoval) entry.equipmentRemoval = equipmentRemoval;
+      if (shingleLayers) entry.shingleLayers = shingleLayers;
+      if (gutterScope) entry.gutterScope = gutterScope;
+      if (iceDams) entry.iceDams = iceDams;
       if (notes) entry.notes = notes;
 
       customerName = entry.callerName || customerName || '';
@@ -6829,13 +6837,15 @@ app.post('/api/verify-email', async (req, res) => {
             verified: true,
             verifiedEmail: email,
             callerName: customerName,
-            priority: priority || 'Fast Installation',
+            priority: priority || 'Max Warranty',
+            propertyType: propertyType || 'Residential Home',
             projectScope: projectScope || 'Full Roof Replacement',
-            roofType: roofType || 'Pitched Shingles',
             solarStatus: solarStatus || 'No Solar',
-            skylights: skylights || 'None',
-            roofAge: roofAge || '10-15 Years',
-            gutters: gutters || 'Existing Gutters Good',
+            skylights: skylights || 'No Skylights',
+            equipmentRemoval: equipmentRemoval || 'Everything Staying',
+            shingleLayers: shingleLayers || '1 Layer (Single Layer)',
+            gutterScope: gutterScope || 'Existing Gutters OK',
+            iceDams: iceDams || 'No Ice Dam Issues',
             notes: notes || '',
             verifiedAt: new Date(),
             updatedAt: new Date()
@@ -6846,9 +6856,9 @@ app.post('/api/verify-email', async (req, res) => {
           await db.collection('call_logs').doc(callSid).set({
             customerEmail: email,
             customerName: customerName,
-            customerPriority: priority || 'Fast Installation',
+            customerPriority: priority || 'Max Warranty',
+            propertyType: propertyType || 'Residential Home',
             projectScope: projectScope || 'Full Roof Replacement',
-            roofType: roofType || 'Pitched Shingles',
             solarStatus: solarStatus || 'No Solar',
             isVerified: true,
             verifiedAt: new Date()
@@ -6863,13 +6873,15 @@ app.post('/api/verify-email', async (req, res) => {
     if (chatMessageName) {
       let patchedDossier = lastDossier || '';
       const intakeSummary = `\n📋 *CUSTOMER DIGITAL INTAKE SPECS:*\n` +
-        `• Project Scope: ${projectScope || 'Full Roof Replacement'}\n` +
-        `• Roof Profile: ${roofType || 'Pitched Shingles'}\n` +
+        `• Property Classification: ${propertyType || 'Residential Home'}\n` +
+        `• Primary Scope: ${projectScope || 'Full Roof Replacement'}\n` +
         `• Solar Panels: ${solarStatus || 'No Solar'}\n` +
-        `• Skylights / Additions: ${skylights || 'None'}\n` +
-        `• Roof Age: ${roofAge || '10-15 Years'}\n` +
-        `• Gutters & Drainage: ${gutters || 'Existing Gutters Good'}\n` +
-        `• Selected Priority: ${priority || 'Fast Installation'}` +
+        `• Skylights: ${skylights || 'No Skylights'}\n` +
+        `• Old Equipment: ${equipmentRemoval || 'Everything Staying'}\n` +
+        `• Existing Layers: ${shingleLayers || '1 Layer (Single Layer)'}\n` +
+        `• Gutters & Drainage: ${gutterScope || 'Existing Gutters OK'}\n` +
+        `• Winter Ice Dams: ${iceDams || 'No Ice Dam Issues'}\n` +
+        `• Selected Priority: ${priority || 'Max Warranty'}` +
         (notes ? `\n• Special Notes: ${notes}` : '');
 
       if (patchedDossier) {
@@ -6895,9 +6907,14 @@ app.post('/api/verify-email', async (req, res) => {
     return res.json({ 
       success: true, 
       email, 
-      priority: priority || 'Fast Installation', 
+      priority: priority || 'Max Warranty', 
+      propertyType: propertyType || 'Residential Home',
       projectScope: projectScope || 'Full Roof Replacement',
-      roofType: roofType || 'Pitched Shingles',
+      solarStatus: solarStatus || 'No Solar',
+      skylights: skylights || 'No Skylights',
+      equipmentRemoval: equipmentRemoval || 'Everything Staying',
+      gutterScope: gutterScope || 'Existing Gutters OK',
+      iceDams: iceDams || 'No Ice Dam Issues',
       optionA: true 
     });
   } catch (err) {

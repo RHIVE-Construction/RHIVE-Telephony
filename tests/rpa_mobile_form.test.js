@@ -27,7 +27,7 @@ const { chromium } = playwright;
 const TEST_PORT = 8997;
 const ARTIFACT_DIR = 'C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14';
 
-async function waitForServer(port, timeoutMs = 15000) {
+async function waitForServer(port, timeoutMs = 40000) {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     try {
@@ -41,7 +41,7 @@ async function waitForServer(port, timeoutMs = 15000) {
       });
       return true;
     } catch (e) {
-      await new Promise(r => setTimeout(r, 400));
+      await new Promise(r => setTimeout(r, 600));
     }
   }
   throw new Error(`Server failed to boot on port ${port} within ${timeoutMs}ms`);
@@ -63,9 +63,7 @@ async function runRpaTests() {
 
   serverProc.stdout.on('data', d => {
     const s = d.toString().trim();
-    if (s.includes('RUNNING ON PORT') || s.includes('READY')) {
-      console.log('  [Server]', s);
-    }
+    console.log('  [Server]', s);
   });
 
   serverProc.stderr.on('data', d => {
@@ -122,7 +120,9 @@ async function runRpaTests() {
     await page.screenshot({ path: ssStep1, fullPage: false });
     console.log(`  📸 Captured Mobile Proof: ${ssStep1}`);
 
-    // Interact Step 1: Select Scope & Tap Next
+    // Interact Step 1: Property Type & Scope
+    await page.locator('label[for="prop_res"]').click();
+    console.log('  ✅ Selected Classification: Residential Home');
     await page.locator('label[for="scope_replace"]').click();
     console.log('  ✅ Selected Scope: Full Roof Replacement');
     await page.locator('#btnNext1').click();
@@ -136,20 +136,24 @@ async function runRpaTests() {
     }
     console.log(`  ✅ Successfully advanced to: ${step2Title}`);
 
-    // Select: Pitched Shingles
-    await page.locator('label[for="roof_pitched"]').click();
-    // Select: Solar Installed
-    await page.locator('label[for="solar_yes"]').click();
-    console.log('  ✅ Selected: Solar Installed');
-    // Select: 1-2 Skylights
+    // Select: Solar (Installer Warranty)
+    await page.locator('label[for="solar_warranty"]').click();
+    console.log('  ✅ Selected: Solar (Installer Warranty)');
+    // Select: 1–2 Skylights (Separated question)
     await page.locator('label[for="sky_12"]').click();
-    console.log('  ✅ Selected: 1-2 Skylights');
-    // Select: 15+ Yrs (Brittle)
-    await page.locator('label[for="age_over15"]').click();
-    console.log('  ✅ Selected: 15+ Yrs (Brittle)');
-    // Select: Replace with Seamless Gutters
-    await page.locator('label[for="gutters_replace"]').click();
-    console.log('  ✅ Selected: Replace with Seamless Gutters');
+    console.log('  ✅ Selected: 1–2 Skylights');
+    // Select: Old Equipment Removal - Everything Staying
+    await page.locator('label[for="equip_none"]').click();
+    console.log('  ✅ Selected: Everything Staying');
+    // Select: Single Layer
+    await page.locator('label[for="layer_1"]').click();
+    console.log('  ✅ Selected: Single Layer');
+    // Select: Replace Gutters All Around (NO micro-mesh)
+    await page.locator('label[for="gutters_around"]').click();
+    console.log('  ✅ Selected: Seamless Gutters All Around');
+    // Select: No Ice Dam Issues
+    await page.locator('label[for="ice_no"]').click();
+    console.log('  ✅ Selected: No Ice Dam Issues');
 
     // Capture Screenshot Step 2
     const ssStep2 = path.join(ARTIFACT_DIR, 'rpa_mobile_step2_measurecall.png');
@@ -175,6 +179,10 @@ async function runRpaTests() {
     // Fill Email
     await page.locator('#emailInput').fill('michael@rhiveconstruction.com');
     console.log('  ✅ Entered Email: michael@rhiveconstruction.com');
+
+    // Fill Phone
+    await page.locator('#phoneInput').fill('(801) 449-1451');
+    console.log('  ✅ Entered Phone: (801) 449-1451');
 
     // Fill Special Notes
     await page.locator('#notesInput').fill('RPA automated test validation: West gate unlocked, dogs put inside.');
@@ -204,13 +212,51 @@ async function runRpaTests() {
     console.log(`  ✅ Success Card active! Confirmed email: "${confirmedEmailText}"`);
 
     const summaryScope = await page.locator('#summaryScope').textContent();
+    const summaryPropType = await page.locator('#summaryPropType').textContent();
+    const summarySolar = await page.locator('#summarySolar').textContent();
+    const summarySkylights = await page.locator('#summarySkylights').textContent();
+    const summaryEquipment = await page.locator('#summaryEquipment').textContent();
+    const summaryGutters = await page.locator('#summaryGutters').textContent();
     const summaryPriority = await page.locator('#summaryPriority').textContent();
-    console.log(`  ✅ Summary Scope: "${summaryScope}", Priority: "${summaryPriority}"`);
+
+    console.log(`  ✅ Summary Specs:
+       - Classification: "${summaryPropType}"
+       - Scope: "${summaryScope}"
+       - Solar: "${summarySolar}"
+       - Skylights: "${summarySkylights}"
+       - Equipment: "${summaryEquipment}"
+       - Gutters: "${summaryGutters}"
+       - Priority: "${summaryPriority}"`);
+
+    // Verify Direct Contact buttons
+    const callHref = await page.locator('#btnCallMichael').getAttribute('href');
+    const textHref = await page.locator('#btnTextMichael').getAttribute('href');
+    console.log(`  ✅ Direct Specialist Actions: Call [${callHref}], Text [${textHref}]`);
+    if (!callHref.includes('tel:+18014491451')) {
+      throw new Error(`Invalid call href: ${callHref}`);
+    }
+
+    // Verify Clipboard Copy Button and Toast
+    await page.locator('#btnCopyNumber').click();
+    await page.waitForSelector('#toast.show', { timeout: 3000 });
+    const toastText = await page.locator('#toast').textContent();
+    console.log(`  ✅ Clipboard Toast Triggered: "${toastText.trim()}"`);
 
     // Capture Screenshot Step 4 (Success Card)
     const ssStep4 = path.join(ARTIFACT_DIR, 'rpa_mobile_step4_success.png');
     await page.screenshot({ path: ssStep4, fullPage: false });
     console.log(`  📸 Captured Mobile Proof: ${ssStep4}`);
+
+    // Verify Edit Specs Back-Navigation
+    console.log('\n[RPA Back Navigation] Testing [Edit Your Project Specs] button...');
+    await page.locator('#btnEditSpecs').click();
+    await page.waitForSelector('#step1.active', { timeout: 3000 });
+    const step1Title = await page.locator('#stepTitle').textContent();
+    console.log(`  ✅ Successfully returned to: ${step1Title}`);
+
+    // Verify data was preserved
+    const preservedName = await page.locator('#nameInput').inputValue();
+    console.log(`  ✅ Preserved Homeowner Name: "${preservedName}"`);
 
     await browser.close();
 

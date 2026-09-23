@@ -7,7 +7,7 @@
   <link rel="icon" href="/rhive-logo-white.png?v=2">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --primary: #08137C;
@@ -189,19 +189,89 @@
       margin-bottom: 18px;
     }
 
-    .form-label {
-      display: block;
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--text);
+    /* Form Label with Info Hover Tooltip */
+    .form-label-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
       margin-bottom: 8px;
     }
 
-    .form-hint {
+    .form-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.2;
+    }
+
+    .info-tooltip {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .tooltip-icon {
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      background: #E2E8F0;
+      color: #64748B;
       font-size: 11px;
-      color: var(--text-muted);
-      margin-top: 4px;
-      display: block;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+
+    .info-tooltip:hover .tooltip-icon,
+    .info-tooltip.active .tooltip-icon {
+      background: var(--accent);
+      color: #FFFFFF;
+    }
+
+    .tooltip-box {
+      visibility: hidden;
+      opacity: 0;
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #0F172A;
+      color: #FFFFFF;
+      text-align: left;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 11.5px;
+      font-weight: 500;
+      line-height: 1.4;
+      white-space: normal;
+      width: 240px;
+      z-index: 100;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+      transition: opacity 0.2s, visibility 0.2s;
+      pointer-events: none;
+    }
+
+    .tooltip-box::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -5px;
+      border-width: 5px;
+      border-style: solid;
+      border-color: #0F172A transparent transparent transparent;
+    }
+
+    .info-tooltip:hover .tooltip-box,
+    .info-tooltip:focus .tooltip-box,
+    .info-tooltip.active .tooltip-box {
+      visibility: visible;
+      opacity: 1;
     }
 
     .input-field {
@@ -399,54 +469,217 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Success Card */
+    /* ==========================================================================
+       1000% OPTIMIZED SUCCESS SCREEN (SALES & MARKETING CLOSING ENGINE)
+       ========================================================================== */
     .success-card {
       display: none;
+      padding: 24px 18px;
       text-align: center;
-      padding: 28px 18px;
     }
 
-    .success-icon {
-      width: 56px;
-      height: 56px;
-      background: #ECFDF5;
-      border-radius: 50%;
-      color: var(--success);
+    .success-header-badge {
       display: inline-flex;
       align-items: center;
-      justify-content: center;
-      font-size: 26px;
+      gap: 8px;
+      background: #ECFDF5;
+      color: #065F46;
+      border: 1px solid #A7F3D0;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
       margin-bottom: 12px;
-      border: 2px solid #A7F3D0;
     }
 
-    .specs-summary-box {
+    .success-pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3);
+      animation: pulseGreen 1.8s infinite;
+    }
+
+    @keyframes pulseGreen {
+      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
+      70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    /* What Happens Next Roadmap */
+    .roadmap-box {
       background: #F8FAFC;
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 12px 14px;
+      border-radius: 10px;
+      padding: 14px 16px;
       margin: 16px 0;
       text-align: left;
-      font-size: 13px;
-      line-height: 1.6;
     }
 
-    .specs-summary-box .spec-row {
+    .roadmap-title {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--primary);
+      margin-bottom: 12px;
+    }
+
+    .roadmap-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      position: relative;
+      margin-bottom: 14px;
+    }
+
+    .roadmap-step:last-child {
+      margin-bottom: 0;
+    }
+
+    .roadmap-step:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      top: 24px;
+      left: 11px;
+      width: 2px;
+      height: calc(100% - 10px);
+      background: #CBD5E1;
+    }
+
+    .roadmap-step.completed:not(:last-child)::after {
+      background: var(--success);
+    }
+
+    .step-dot {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #E2E8F0;
+      color: #64748B;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      z-index: 1;
+    }
+
+    .roadmap-step.completed .step-dot {
+      background: #10B981;
+      color: #FFFFFF;
+    }
+
+    .roadmap-step.in-progress .step-dot {
+      background: #EFF6FF;
+      color: var(--primary);
+      border: 2px solid var(--primary);
+    }
+
+    .step-info {
+      flex: 1;
+    }
+
+    .step-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.3;
+    }
+
+    .step-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.35;
+      margin-top: 1px;
+    }
+
+    /* Specs Summary Capsule */
+    .specs-summary-box {
+      background: #FFFFFF;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      margin: 16px 0;
+      text-align: left;
+    }
+
+    .specs-summary-header {
       display: flex;
       justify-content: space-between;
-      border-bottom: 1px dashed var(--border);
-      padding: 4px 0;
+      align-items: center;
+      margin-bottom: 8px;
     }
 
-    .specs-summary-box .spec-row:last-child {
+    .specs-summary-title {
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--primary);
+      letter-spacing: 0.05em;
+    }
+
+    .spec-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 6px;
+      font-size: 12.5px;
+    }
+
+    .spec-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 0;
+      border-bottom: 1px dashed #E2E8F0;
+    }
+
+    .spec-row:last-child {
       border-bottom: none;
     }
 
+    .spec-label {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .spec-val {
+      font-weight: 700;
+      color: var(--text);
+      text-align: right;
+    }
+
+    /* Edit Specs Button */
+    .btn-edit-specs {
+      width: 100%;
+      height: 40px;
+      background: #F1F5F9;
+      color: var(--primary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 10px;
+      transition: all 0.15s ease;
+    }
+
+    .btn-edit-specs:hover {
+      background: #E2E8F0;
+    }
+
+    /* Direct Specialist Contact Module */
     .contact-card {
       background: #F8FAFC;
-      border: 1px solid #E2E8F0;
-      border-radius: 8px;
-      padding: 14px;
+      border: 1.5px solid #E2E8F0;
+      border-radius: 10px;
+      padding: 16px 14px;
       margin: 16px 0;
       text-align: left;
     }
@@ -456,30 +689,141 @@
       color: var(--accent);
       text-transform: uppercase;
       font-weight: 800;
-      letter-spacing: 0.05em;
-      margin-bottom: 4px;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
     }
 
-    .contact-card p {
-      font-size: 13px;
-      color: var(--text);
-      margin-bottom: 2px;
-    }
-
-    .call-btn {
-      display: inline-flex;
+    .specialist-header {
+      display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 8px;
-      width: 100%;
-      height: 46px;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .specialist-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
       background: var(--primary);
       color: #FFFFFF;
-      text-decoration: none;
+      font-weight: 800;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px rgba(8, 19, 124, 0.25);
+      border: 2px solid #FFFFFF;
+      flex-shrink: 0;
+    }
+
+    .specialist-name {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1.2;
+    }
+
+    .specialist-role {
+      font-size: 12px;
+      color: var(--accent);
+      font-weight: 600;
+      line-height: 1.3;
+    }
+
+    .specialist-meta {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .contact-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .action-btn {
+      height: 44px;
       border-radius: 8px;
       font-weight: 700;
-      font-size: 14px;
-      margin-top: 10px;
+      font-size: 13px;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+
+    .action-btn.call-action {
+      background: var(--primary);
+      color: #FFFFFF;
+      box-shadow: 0 2px 8px rgba(8, 19, 124, 0.2);
+    }
+
+    .action-btn.call-action:hover {
+      background: var(--primary-light);
+    }
+
+    .action-btn.text-action {
+      background: #FFFFFF;
+      color: var(--accent);
+      border: 1.5px solid var(--accent);
+    }
+
+    .action-btn.text-action:hover {
+      background: #FFF5FA;
+    }
+
+    .copy-number-btn {
+      width: 100%;
+      height: 34px;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+
+    .copy-number-btn:hover {
+      color: var(--text);
+      text-decoration: underline;
+    }
+
+    /* Floating Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #0F172A;
+      color: #FFFFFF;
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      font-weight: 600;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 9999;
+      opacity: 0;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: none;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
     }
   </style>
 </head>
@@ -501,7 +845,7 @@
     <!-- Stepper Progress Header -->
     <div class="stepper-container" id="stepperContainer">
       <div class="stepper-header">
-        <span class="step-title" id="stepTitle">Step 1: Scope & Property</span>
+        <span class="step-title" id="stepTitle">Step 1: Property & Scope</span>
         <span class="step-counter" id="stepCounter">1 of 3</span>
       </div>
       <div class="progress-bar">
@@ -517,39 +861,69 @@
       </div>
 
       <form id="verifyForm">
-        <!-- ================= STEP 1: SCOPE & CONTACT ================= -->
+        <!-- ================= STEP 1: PROPERTY TYPE & SCOPE ================= -->
         <div class="step-section active" id="step1">
-          <h1 class="card-title">Project Scope & Contact</h1>
-          <p class="card-subtitle">Confirm what we are taking care of on your roof today so our estimating team can pull the correct aerial CAD scans.</p>
+          <h1 class="card-title">Property Type & Primary Scope</h1>
+          <p class="card-subtitle">Tell us about your property so Michael Robinson configures the correct aerial CAD resolution and code analysis.</p>
 
           <div class="form-group">
-            <label class="form-label" for="nameInput">Homeowner / Contact Name</label>
-            <input 
-              type="text" 
-              id="nameInput" 
-              name="callerName" 
-              class="input-field" 
-              placeholder="e.g. Michael Robinson" 
-              autocomplete="name"
-            >
+            <div class="form-label-wrap">
+              <label class="form-label">Property Classification</label>
+              <div class="info-tooltip" tabindex="0">
+                <span class="tooltip-icon">i</span>
+                <span class="tooltip-box">Determines whether residential architectural shingle or commercial membrane specifications apply to your building.</span>
+              </div>
+            </div>
+            <div class="quantum-pill-group">
+              <div class="quantum-pill">
+                <input type="radio" id="prop_res" name="propertyType" value="Residential Home" checked>
+                <label for="prop_res">
+                  <span class="icon">🏡</span>
+                  <span>Residential Home</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="prop_comm" name="propertyType" value="Commercial Property">
+                <label for="prop_comm">
+                  <span class="icon">🏢</span>
+                  <span>Commercial / Flat</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+            </div>
           </div>
 
           <div class="form-group">
-            <label class="form-label">Primary Project Scope</label>
+            <div class="form-label-wrap">
+              <label class="form-label">Primary Project Need</label>
+              <div class="info-tooltip" tabindex="0">
+                <span class="tooltip-icon">i</span>
+                <span class="tooltip-box">Matches Honey's voice triage. Wind/hail storm claims require specialized UPPA insurance documentation.</span>
+              </div>
+            </div>
             <div class="quantum-pill-group stacked">
               <div class="quantum-pill">
                 <input type="radio" id="scope_replace" name="projectScope" value="Full Roof Replacement" checked>
                 <label for="scope_replace">
                   <span class="icon">🏠</span>
-                  <span><strong>Full Roof Replacement</strong> — Complete tear-off & precision installation</span>
+                  <span><strong>Full Roof Replacement</strong> — Aging roof, complete tear-off & precision install</span>
                   <span class="indicator"></span>
                 </label>
               </div>
               <div class="quantum-pill">
-                <input type="radio" id="scope_repair" name="projectScope" value="Roof Repair / Leak">
+                <input type="radio" id="scope_storm" name="projectScope" value="Storm Damage / Insurance">
+                <label for="scope_storm">
+                  <span class="icon">🌪️</span>
+                  <span><strong>Storm Damage / Insurance</strong> — Wind, hail, or storm damage inspection</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="scope_repair" name="projectScope" value="Active Leak / Spot Repair">
                 <label for="scope_repair">
-                  <span class="icon">🔧</span>
-                  <span><strong>Roof Repair / Leak</strong> — Spot repair, flashing, or missing shingles</span>
+                  <span class="icon">💧</span>
+                  <span><strong>Active Leak / Spot Repair</strong> — Rapid leak fix, emergency tarping, or flashing</span>
                   <span class="indicator"></span>
                 </label>
               </div>
@@ -561,94 +935,96 @@
                   <span class="indicator"></span>
                 </label>
               </div>
-              <div class="quantum-pill">
-                <input type="radio" id="scope_commercial" name="projectScope" value="Commercial / Flat Membrane">
-                <label for="scope_commercial">
-                  <span class="icon">🏢</span>
-                  <span><strong>Commercial / Flat Roof</strong> — TPO, PVC, or parapet membrane</span>
-                  <span class="indicator"></span>
-                </label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div class="form-label-wrap">
+              <label class="form-label" for="nameInput">Homeowner / Contact Name</label>
+              <div class="info-tooltip" tabindex="0">
+                <span class="tooltip-icon">i</span>
+                <span class="tooltip-box">Name on the certified proposal and municipal building permits.</span>
               </div>
             </div>
+            <input 
+              type="text" 
+              id="nameInput" 
+              name="callerName" 
+              class="input-field" 
+              placeholder="e.g. Michael Robinson" 
+              autocomplete="name"
+            >
           </div>
 
           <div class="btn-row">
             <button type="button" class="btn-primary" id="btnNext1" style="flex:1;">
-              <span>Continue to Roof Details</span> ➔
+              <span>Continue to Roof Anatomy</span> ➔
             </button>
           </div>
         </div>
 
-        <!-- ================= STEP 2: ROOF DETAILS (MEASURECALL) ================= -->
+        <!-- ================= STEP 2: ROOF ANATOMY (MEASURECALL) ================= -->
         <div class="step-section" id="step2">
           <h2 class="card-title">Roof Details (MeasureCall)</h2>
-          <p class="card-subtitle">These quick attributes allow our team to match satellite aerial CAD scans to your exact structure.</p>
+          <p class="card-subtitle">These attributes match Honey's voice questions so our project designer can calibrate satellite scans accurately.</p>
 
+          <!-- Question: Solar Panels -->
           <div class="form-group">
-            <label class="form-label">Roof Profile & Slope</label>
-            <div class="quantum-pill-group">
-              <div class="quantum-pill">
-                <input type="radio" id="roof_pitched" name="roofType" value="Pitched Shingles" checked>
-                <label for="roof_pitched">
-                  <span class="icon">📐</span>
-                  <span>Pitched Shingles</span>
-                  <span class="indicator"></span>
-                </label>
-              </div>
-              <div class="quantum-pill">
-                <input type="radio" id="roof_flat" name="roofType" value="Flat / Low Slope (TPO)">
-                <label for="roof_flat">
-                  <span class="icon">⬛</span>
-                  <span>Flat / Low Slope</span>
-                  <span class="indicator"></span>
-                </label>
-              </div>
-              <div class="quantum-pill">
-                <input type="radio" id="roof_metal" name="roofType" value="Metal / Specialty">
-                <label for="roof_metal">
-                  <span class="icon">🏰</span>
-                  <span>Metal / Specialty</span>
-                  <span class="indicator"></span>
-                </label>
-              </div>
-              <div class="quantum-pill">
-                <input type="radio" id="roof_mixed" name="roofType" value="Mixed Shingle & Flat">
-                <label for="roof_mixed">
-                  <span class="icon">🔀</span>
-                  <span>Mixed Planes</span>
-                  <span class="indicator"></span>
-                </label>
+            <div class="form-label-wrap">
+              <label class="form-label">Solar Panels on Roof?</label>
+              <div class="info-tooltip" tabindex="0">
+                <span class="tooltip-icon">i</span>
+                <span class="tooltip-box">If panels are under active installer warranty, your solar provider handles detach & reset. Otherwise RHIVE coordinates it.</span>
               </div>
             </div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Solar Panels on Roof?</label>
-            <div class="quantum-pill-group">
+            <div class="quantum-pill-group stacked">
               <div class="quantum-pill">
                 <input type="radio" id="solar_no" name="solarStatus" value="No Solar" checked>
                 <label for="solar_no">
                   <span class="icon">☀️</span>
-                  <span>No Solar Panels</span>
+                  <span><strong>No Solar Panels</strong> — Clear roof surface</span>
                   <span class="indicator"></span>
                 </label>
               </div>
               <div class="quantum-pill">
-                <input type="radio" id="solar_yes" name="solarStatus" value="Solar Present (Detach/Reset)">
-                <label for="solar_yes">
+                <input type="radio" id="solar_warranty" name="solarStatus" value="Solar (Installer Warranty)">
+                <label for="solar_warranty">
                   <span class="icon">⚡</span>
-                  <span>Solar Installed</span>
+                  <span><strong>Solar (Installer Warranty)</strong> — Detached by solar company</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="solar_rhive" name="solarStatus" value="Solar (RHIVE Detach & Reset)">
+                <label for="solar_rhive">
+                  <span class="icon">🔧</span>
+                  <span><strong>Solar (RHIVE Detach & Reset)</strong> — RHIVE certified crew handles</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="solar_planning" name="solarStatus" value="Planning Solar Soon">
+                <label for="solar_planning">
+                  <span class="icon">🔋</span>
+                  <span><strong>Planning Solar Soon</strong> — Engineer roof layout for solar</span>
                   <span class="indicator"></span>
                 </label>
               </div>
             </div>
           </div>
 
+          <!-- Question: Skylights (Separate from Equipment Removal) -->
           <div class="form-group">
-            <label class="form-label">Skylights or Penetrations?</label>
+            <div class="form-label-wrap">
+              <label class="form-label">Skylights on Roof?</label>
+              <div class="info-tooltip" tabindex="0">
+                <span class="tooltip-icon">i</span>
+                <span class="tooltip-box">Skylights require custom ice and water shield flashing collars installed during roof replacement.</span>
+              </div>
+            </div>
             <div class="quantum-pill-group">
               <div class="quantum-pill">
-                <input type="radio" id="sky_none" name="skylights" value="None" checked>
+                <input type="radio" id="sky_none" name="skylights" value="No Skylights" checked>
                 <label for="sky_none">
                   <span class="icon">🪟</span>
                   <span>No Skylights</span>
@@ -656,62 +1032,106 @@
                 </label>
               </div>
               <div class="quantum-pill">
-                <input type="radio" id="sky_12" name="skylights" value="1-2 Skylights">
+                <input type="radio" id="sky_12" name="skylights" value="1–2 Skylights">
                 <label for="sky_12">
-                  <span class="icon">☀️</span>
+                  <span class="icon">🌤️</span>
                   <span>1–2 Skylights</span>
                   <span class="indicator"></span>
                 </label>
               </div>
-              <div class="quantum-pill">
+              <div class="quantum-pill" style="grid-column: span 2;">
                 <input type="radio" id="sky_3p" name="skylights" value="3+ Skylights">
                 <label for="sky_3p">
                   <span class="icon">✨</span>
-                  <span>3+ Skylights</span>
-                  <span class="indicator"></span>
-                </label>
-              </div>
-              <div class="quantum-pill">
-                <input type="radio" id="sky_cooler" name="skylights" value="Swamp Cooler Removal">
-                <label for="sky_cooler">
-                  <span class="icon">❄️</span>
-                  <span>Swamp Cooler</span>
+                  <span>3 or More Skylights</span>
                   <span class="indicator"></span>
                 </label>
               </div>
             </div>
           </div>
 
+          <!-- Question: Obsolete Equipment Removal (Separate Group) -->
           <div class="form-group">
-            <label class="form-label">Approximate Roof Age</label>
+            <div class="form-label-wrap">
+              <label class="form-label">Old Equipment Removal?</label>
+              <div class="info-tooltip" tabindex="0">
+                <span class="tooltip-icon">i</span>
+                <span class="tooltip-box">We safely decommission, deck over, and shingle over old evaporative coolers and remove obsolete satellite dishes.</span>
+              </div>
+            </div>
             <div class="quantum-pill-group">
               <div class="quantum-pill">
-                <input type="radio" id="age_under10" name="roofAge" value="Under 10 Years">
-                <label for="age_under10">
-                  <span class="icon">🟢</span>
-                  <span>&lt; 10 Years</span>
+                <input type="radio" id="equip_none" name="equipmentRemoval" value="Everything Staying" checked>
+                <label for="equip_none">
+                  <span class="icon">✅</span>
+                  <span>Everything Staying</span>
                   <span class="indicator"></span>
                 </label>
               </div>
               <div class="quantum-pill">
-                <input type="radio" id="age_1015" name="roofAge" value="10-15 Years" checked>
-                <label for="age_1015">
-                  <span class="icon">🟡</span>
-                  <span>10–15 Years</span>
+                <input type="radio" id="equip_cooler" name="equipmentRemoval" value="Remove Swamp Cooler">
+                <label for="equip_cooler">
+                  <span class="icon">❄️</span>
+                  <span>Remove Swamp Cooler</span>
                   <span class="indicator"></span>
                 </label>
               </div>
               <div class="quantum-pill">
-                <input type="radio" id="age_over15" name="roofAge" value="15+ Years (Brittle)">
-                <label for="age_over15">
-                  <span class="icon">🔴</span>
-                  <span>15+ Yrs (Brittle)</span>
+                <input type="radio" id="equip_dish" name="equipmentRemoval" value="Remove Satellite Dish">
+                <label for="equip_dish">
+                  <span class="icon">📡</span>
+                  <span>Remove Satellite Dish</span>
                   <span class="indicator"></span>
                 </label>
               </div>
               <div class="quantum-pill">
-                <input type="radio" id="age_unsure" name="roofAge" value="Unsure / County Tax Roll">
-                <label for="age_unsure">
+                <input type="radio" id="equip_both" name="equipmentRemoval" value="Remove Cooler & Dish">
+                <label for="equip_both">
+                  <span class="icon">🔄</span>
+                  <span>Remove Both</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Question: Existing Roof Layers -->
+          <div class="form-group">
+            <div class="form-label-wrap">
+              <label class="form-label">Existing Roof Layers</label>
+              <div class="info-tooltip" tabindex="0">
+                <span class="tooltip-icon">i</span>
+                <span class="tooltip-box">Utah building code limits roofs to 2 layers. 3+ layers or cedar shake underneath requires full decking evaluation.</span>
+              </div>
+            </div>
+            <div class="quantum-pill-group">
+              <div class="quantum-pill">
+                <input type="radio" id="layer_1" name="shingleLayers" value="1 Layer (Single Layer)" checked>
+                <label for="layer_1">
+                  <span class="icon">1️⃣</span>
+                  <span>Single Layer</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="layer_2" name="shingleLayers" value="2 Layers (Roofed Over)">
+                <label for="layer_2">
+                  <span class="icon">2️⃣</span>
+                  <span>2 Layers</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="layer_3" name="shingleLayers" value="3+ Layers (Shake/Historic)">
+                <label for="layer_3">
+                  <span class="icon">🔢</span>
+                  <span>3+ Layers</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="layer_unsure" name="shingleLayers" value="Not Sure">
+                <label for="layer_unsure">
                   <span class="icon">❓</span>
                   <span>Not Sure</span>
                   <span class="indicator"></span>
@@ -720,30 +1140,82 @@
             </div>
           </div>
 
+          <!-- Question: Gutters (Exact Voice Question, ZERO Micro-Mesh) -->
           <div class="form-group">
-            <label class="form-label">Gutters & Drainage</label>
+            <div class="form-label-wrap">
+              <label class="form-label">Gutters & Downspouts</label>
+              <div class="info-tooltip" tabindex="0">
+                <span class="tooltip-icon">i</span>
+                <span class="tooltip-box">New seamless aluminum gutters extruded on-site to match your new roof and fascia trim colors.</span>
+              </div>
+            </div>
             <div class="quantum-pill-group stacked">
               <div class="quantum-pill">
-                <input type="radio" id="gutters_good" name="gutters" value="Existing Gutters Good" checked>
+                <input type="radio" id="gutters_good" name="gutterScope" value="Existing Gutters OK" checked>
                 <label for="gutters_good">
                   <span class="icon">✔️</span>
-                  <span>Existing gutters in good condition</span>
+                  <span><strong>Existing Gutters OK</strong> — Keep existing gutters in place</span>
                   <span class="indicator"></span>
                 </label>
               </div>
               <div class="quantum-pill">
-                <input type="radio" id="gutters_replace" name="gutters" value="Replace with Seamless Gutters">
-                <label for="gutters_replace">
-                  <span class="icon">🌧️</span>
-                  <span>Replace with new seamless aluminum gutters</span>
+                <input type="radio" id="gutters_around" name="gutterScope" value="Replace All Around">
+                <label for="gutters_around">
+                  <span class="icon">🔄</span>
+                  <span><strong>Replace All Around</strong> — Seamless gutters around entire roof</span>
                   <span class="indicator"></span>
                 </label>
               </div>
               <div class="quantum-pill">
-                <input type="radio" id="gutters_guards" name="gutters" value="Add Gutter Guards / Covers">
-                <label for="gutters_guards">
-                  <span class="icon">🛡️</span>
-                  <span>Add micro-mesh gutter protection guards</span>
+                <input type="radio" id="gutters_front" name="gutterScope" value="Replace Front Only">
+                <label for="gutters_front">
+                  <span class="icon">🏠</span>
+                  <span><strong>Front Only</strong> — New seamless gutters on front roofline</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="gutters_back" name="gutterScope" value="Replace Back Only">
+                <label for="gutters_back">
+                  <span class="icon">🏡</span>
+                  <span><strong>Back Only</strong> — New seamless gutters on back roofline</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Question: Winter Ice Dams & Hotspots (Honey Voice Question 6) -->
+          <div class="form-group">
+            <div class="form-label-wrap">
+              <label class="form-label">Winter Ice Dams & Icicles</label>
+              <div class="info-tooltip" tabindex="0">
+                <span class="tooltip-icon">i</span>
+                <span class="tooltip-box">During heavy Utah snows, ice dams can force meltwater under shingles. Self-regulating heat trace cables solve this.</span>
+              </div>
+            </div>
+            <div class="quantum-pill-group stacked">
+              <div class="quantum-pill">
+                <input type="radio" id="ice_no" name="iceDams" value="No Ice Dam Issues" checked>
+                <label for="ice_no">
+                  <span class="icon">❄️</span>
+                  <span><strong>No Ice Dam Issues</strong> — Normal snowmelt drainage</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="ice_heavy" name="iceDams" value="Heavy Ice Dams / Icicles">
+                <label for="ice_heavy">
+                  <span class="icon">⚠️</span>
+                  <span><strong>Heavy Ice Dams / Large Icicles</strong> — Over walkways or in roof valleys</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="ice_heat" name="iceDams" value="Request Heat Trace Option">
+                <label for="ice_heat">
+                  <span class="icon">⚡</span>
+                  <span><strong>Include Self-Regulating Heat Trace</strong> — De-icing cables for valleys</span>
                   <span class="indicator"></span>
                 </label>
               </div>
@@ -763,13 +1235,19 @@
         <!-- ================= STEP 3: PRIORITIES & DELIVERY ================= -->
         <div class="step-section" id="step3">
           <h2 class="card-title">Proposal Delivery & Priority</h2>
-          <p class="card-subtitle">Choose your primary focus so Michael Robinson configures the ideal project proposal package for your home.</p>
+          <p class="card-subtitle">Choose your primary focus so Michael Robinson configures the ideal proposal package for your home.</p>
 
           <div class="form-group">
-            <label class="form-label">Preferred Project Priority</label>
+            <div class="form-label-wrap">
+              <label class="form-label">Preferred Project Priority</label>
+              <div class="info-tooltip" tabindex="0">
+                <span class="tooltip-icon">i</span>
+                <span class="tooltip-box">Tells the project specialist whether to prioritize urgent install scheduling, 50-year warranty, curb appeal, or engineering specs.</span>
+              </div>
+            </div>
             <div class="quantum-pill-group">
               <div class="quantum-pill">
-                <input type="radio" id="prio1" name="priority" value="Fast Installation" checked>
+                <input type="radio" id="prio1" name="priority" value="Fast Installation">
                 <label for="prio1">
                   <span class="icon">🚀</span>
                   <span>Fast Schedule</span>
@@ -777,7 +1255,7 @@
                 </label>
               </div>
               <div class="quantum-pill">
-                <input type="radio" id="prio2" name="priority" value="Max Warranty">
+                <input type="radio" id="prio2" name="priority" value="Max Warranty" checked>
                 <label for="prio2">
                   <span class="icon">🛡️</span>
                   <span>Max Warranty</span>
@@ -795,7 +1273,7 @@
               <div class="quantum-pill">
                 <input type="radio" id="prio4" name="priority" value="Technical Specs">
                 <label for="prio4">
-                  <span class="icon">📐</span>
+                  <span class="icon">📊</span>
                   <span>Tech Specs</span>
                   <span class="indicator"></span>
                 </label>
@@ -804,7 +1282,13 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="emailInput">Preferred Email for Aerial CAD Proposal *</label>
+            <div class="form-label-wrap">
+              <label class="form-label" for="emailInput">Email Address *</label>
+              <div class="info-tooltip" tabindex="0">
+                <span class="tooltip-icon">i</span>
+                <span class="tooltip-box">Where your project design specialist will send your project details, aerial scans, and itemized proposal.</span>
+              </div>
+            </div>
             <input 
               type="email" 
               id="emailInput" 
@@ -814,11 +1298,16 @@
               required
               autocomplete="email"
             >
-            <span class="form-hint">Your 3D CAD aerial scan & itemized proposal will be sent here.</span>
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="phoneInput">Direct Mobile Phone for 15-Min ETA</label>
+            <div class="form-label-wrap">
+              <label class="form-label" for="phoneInput">Mobile Phone</label>
+              <div class="info-tooltip" tabindex="0">
+                <span class="tooltip-icon">i</span>
+                <span class="tooltip-box">For quick text verification and scheduling updates directly from Michael Robinson.</span>
+              </div>
+            </div>
             <input 
               type="tel" 
               id="phoneInput" 
@@ -830,12 +1319,18 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="notesInput">Special Notes / Gate Codes / Access Details</label>
+            <div class="form-label-wrap">
+              <label class="form-label" for="notesInput">Special Notes / Property Access</label>
+              <div class="info-tooltip" tabindex="0">
+                <span class="tooltip-icon">i</span>
+                <span class="tooltip-box">Any helpful notes for the designer—such as gate latch codes, dogs, steep driveways, or specific roof concerns.</span>
+              </div>
+            </div>
             <textarea 
               id="notesInput" 
               name="notes" 
               class="input-field" 
-              placeholder="e.g. Dogs in backyard, gate latch code is 1234, ladder access on west side..."
+              placeholder="e.g. Gate code is 1234, dogs in backyard, ladder access on west side..."
             ></textarea>
           </div>
 
@@ -851,37 +1346,131 @@
       </form>
     </main>
 
-    <!-- ================= SUCCESS CARD ================= -->
+    <!-- ================= 1000% OPTIMIZED SUCCESS CARD ================= -->
     <div class="card success-card" id="successCard">
-      <div class="success-icon">✓</div>
-      <h2 class="card-title" style="color: var(--success); font-size: 21px;">Proposal Channel Locked In!</h2>
-      <p class="card-subtitle">Thank you! Your custom 3D aerial proposal package will be delivered directly to <strong id="confirmedEmail">your email</strong> within 24 to 48 hours.</p>
-
-      <div class="specs-summary-box" id="specsSummaryBox">
-        <div class="spec-row"><span>📍 Property:</span> <strong id="summaryAddress">Utah Property</strong></div>
-        <div class="spec-row"><span>🏠 Scope:</span> <strong id="summaryScope">Roof Replacement</strong></div>
-        <div class="spec-row"><span>📐 Roof Profile:</span> <strong id="summaryRoofType">Pitched Shingles</strong></div>
-        <div class="spec-row"><span>🎯 Priority:</span> <strong id="summaryPriority">Fast Schedule</strong></div>
+      <div class="success-header-badge">
+        <span class="success-pulse"></span>
+        <span>PROPOSAL CHANNEL LOCKED IN</span>
       </div>
 
+      <h2 class="card-title" style="color: var(--primary); font-size: 21px; margin-bottom: 6px;">
+        Proposal Successfully Initialized!
+      </h2>
+      <p class="card-subtitle" style="margin-bottom: 14px;">
+        Thank you! Your project design specialist, <strong>Michael Robinson</strong>, has received your specifications and is formulating your certified proposal package.
+      </p>
+
+      <!-- Dynamic 3-Phase Roadmap -->
+      <div class="roadmap-box">
+        <div class="roadmap-title">What Happens Next</div>
+        <div class="roadmap-step completed">
+          <div class="step-dot">✓</div>
+          <div class="step-info">
+            <div class="step-name">Project Intake & Telemetry Locked</div>
+            <div class="step-desc">Your property specs are recorded on our secure server.</div>
+          </div>
+        </div>
+        <div class="roadmap-step in-progress">
+          <div class="step-dot">🛰️</div>
+          <div class="step-info">
+            <div class="step-name">High-Resolution Aerial CAD Scan</div>
+            <div class="step-desc">Extracting 3D satellite geometry, roof facets, and pitch.</div>
+          </div>
+        </div>
+        <div class="roadmap-step pending">
+          <div class="step-dot">📄</div>
+          <div class="step-info">
+            <div class="step-name">Certified Proposal Delivery</div>
+            <div class="step-desc">Delivered to <strong id="confirmedEmail">your email</strong> within 24 to 48 hours.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Specs Summary Capsule -->
+      <div class="specs-summary-box" id="specsSummaryBox">
+        <div class="specs-summary-header">
+          <span class="specs-summary-title">Configured Project Specs</span>
+        </div>
+        <div class="spec-grid">
+          <div class="spec-row">
+            <span class="spec-label">📍 Property</span>
+            <span class="spec-val" id="summaryAddress">Utah Property</span>
+          </div>
+          <div class="spec-row">
+            <span class="spec-label">🏢 Classification</span>
+            <span class="spec-val" id="summaryPropType">Residential Home</span>
+          </div>
+          <div class="spec-row">
+            <span class="spec-label">🏠 Primary Scope</span>
+            <span class="spec-val" id="summaryScope">Full Roof Replacement</span>
+          </div>
+          <div class="spec-row">
+            <span class="spec-label">⚡ Solar Status</span>
+            <span class="spec-val" id="summarySolar">No Solar</span>
+          </div>
+          <div class="spec-row">
+            <span class="spec-label">🪟 Skylights</span>
+            <span class="spec-val" id="summarySkylights">No Skylights</span>
+          </div>
+          <div class="spec-row">
+            <span class="spec-label">❄️ Old Equipment</span>
+            <span class="spec-val" id="summaryEquipment">Everything Staying</span>
+          </div>
+          <div class="spec-row">
+            <span class="spec-label">💧 Gutters</span>
+            <span class="spec-val" id="summaryGutters">Existing Gutters OK</span>
+          </div>
+          <div class="spec-row">
+            <span class="spec-label">🎯 Focus Priority</span>
+            <span class="spec-val" id="summaryPriority">Max Warranty</span>
+          </div>
+        </div>
+
+        <!-- Edit Button so customer can easily return and adjust specs -->
+        <button type="button" class="btn-edit-specs" id="btnEditSpecs">
+          <span>✏️ Edit or Update Your Project Specs</span>
+        </button>
+      </div>
+
+      <!-- Direct Specialist Contact Module -->
       <div class="contact-card">
         <h4>Direct Specialist Contact</h4>
-        <p><strong>Michael Robinson</strong> — Project Design Specialist</p>
-        <p>Phone: <strong>(801) 449-1451</strong></p>
-        <p>Email: <strong>office@rhiveconstruction.com</strong></p>
-        <a href="tel:8014491451" class="call-btn">📞 Call or Text Michael Directly</a>
+        <div class="specialist-header">
+          <div class="specialist-avatar">MR</div>
+          <div>
+            <div class="specialist-name">Michael Robinson</div>
+            <div class="specialist-role">Project Design Specialist</div>
+            <div class="specialist-meta">(801) 449-1451 • office@rhiveconstruction.com</div>
+          </div>
+        </div>
+        <div class="contact-actions">
+          <a href="tel:+18014491451" class="action-btn call-action" id="btnCallMichael">
+            <span>📞 Call Directly</span>
+          </a>
+          <a href="sms:+18014491451?body=Hi%20Michael,%20I%20just%20submitted%20my%20roof%20project%20specs" class="action-btn text-action" id="btnTextMichael">
+            <span>💬 Text Michael</span>
+          </a>
+        </div>
+        <button type="button" class="copy-number-btn" id="btnCopyNumber">
+          <span>📋 Copy (801) 449-1451 to Clipboard</span>
+        </button>
       </div>
 
-      <p class="trust-footer">You may close this window. Your information is locked in on our server.</p>
+      <p class="trust-footer" style="margin-top: 12px;">You may safely close this window. Your quote request is queued with our estimating team.</p>
     </div>
 
     <!-- Trust Footer Matching rhiveconstruction.com -->
     <footer class="trust-footer">
-      <div><strong>R-HIVE Construction LLC</strong> | Licensed & Insured Utah General Contractor</div>
+      <div><strong>R-HIVE Construction LLC</strong> | Licensed & Insured Utah General Contractor #11538356-5501</div>
       <div style="margin-top: 4px; color: var(--text-muted);">
         Utah's Premier Tech-Forward Roofing Contractor • Lifetime No-Leak Workmanship Guarantee
       </div>
     </footer>
+  </div>
+
+  <!-- Floating Toast Notification -->
+  <div class="toast" id="toast">
+    <span id="toastText">Copied to clipboard!</span>
   </div>
 
   <script>
@@ -897,6 +1486,7 @@
     const phoneInput = document.getElementById('phoneInput');
     const notesInput = document.getElementById('notesInput');
     const formCard = document.getElementById('formCard');
+    const stepperContainer = document.getElementById('stepperContainer');
     const successCard = document.getElementById('successCard');
     const confirmedEmail = document.getElementById('confirmedEmail');
     const submitBtn = document.getElementById('submitBtn');
@@ -919,12 +1509,12 @@
 
       if (step === 1) {
         step1.classList.add('active');
-        stepTitle.textContent = 'Step 1: Scope & Property';
+        stepTitle.textContent = 'Step 1: Property & Scope';
         stepCounter.textContent = '1 of 3';
         progressFill.style.width = '33.33%';
       } else if (step === 2) {
         step2.classList.add('active');
-        stepTitle.textContent = 'Step 2: Roof Details (MeasureCall)';
+        stepTitle.textContent = 'Step 2: Roof Anatomy (MeasureCall)';
         stepCounter.textContent = '2 of 3';
         progressFill.style.width = '66.66%';
       } else if (step === 3) {
@@ -940,6 +1530,47 @@
     document.getElementById('btnBack2').addEventListener('click', () => goToStep(1));
     document.getElementById('btnNext2').addEventListener('click', () => goToStep(3));
     document.getElementById('btnBack3').addEventListener('click', () => goToStep(2));
+
+    // Edit button on success screen returns smoothly to form
+    document.getElementById('btnEditSpecs').addEventListener('click', () => {
+      successCard.style.display = 'none';
+      stepperContainer.style.display = 'block';
+      formCard.style.display = 'block';
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span>Update & Lock In Proposal</span> ➔';
+      goToStep(1);
+    });
+
+    // Mobile info tooltip toggle on tap
+    document.querySelectorAll('.info-tooltip').forEach(tip => {
+      tip.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const wasActive = tip.classList.contains('active');
+        document.querySelectorAll('.info-tooltip').forEach(t => t.classList.remove('active'));
+        if (!wasActive) tip.classList.add('active');
+      });
+    });
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.info-tooltip').forEach(t => t.classList.remove('active'));
+    });
+
+    // Toast helper
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const toastText = document.getElementById('toastText');
+      toastText.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2800);
+    }
+
+    // Direct phone copy button
+    document.getElementById('btnCopyNumber').addEventListener('click', () => {
+      navigator.clipboard.writeText('801-449-1451').then(() => {
+        showToast('📋 Copied (801) 449-1451 to clipboard!');
+      }).catch(() => {
+        showToast('Direct line: (801) 449-1451');
+      });
+    });
 
     // Pre-populate fields from query params
     if (addressParam) {
@@ -971,12 +1602,12 @@
           if (data.phone && !phoneInput.value) {
             phoneInput.value = data.phone;
           }
-          if (data.projectScope) {
-            const el = document.querySelector(`input[name="projectScope"][value="${data.projectScope}"]`);
+          if (data.propertyType) {
+            const el = document.querySelector(`input[name="propertyType"][value="${data.propertyType}"]`);
             if (el) el.checked = true;
           }
-          if (data.roofType) {
-            const el = document.querySelector(`input[name="roofType"][value="${data.roofType}"]`);
+          if (data.projectScope) {
+            const el = document.querySelector(`input[name="projectScope"][value="${data.projectScope}"]`);
             if (el) el.checked = true;
           }
           if (data.priority) {
@@ -999,13 +1630,15 @@
       const phone = phoneInput.value.trim() || phoneParam;
       const notes = notesInput.value.trim();
 
+      const propertyType = document.querySelector('input[name="propertyType"]:checked')?.value || 'Residential Home';
       const projectScope = document.querySelector('input[name="projectScope"]:checked')?.value || 'Full Roof Replacement';
-      const roofType = document.querySelector('input[name="roofType"]:checked')?.value || 'Pitched Shingles';
       const solarStatus = document.querySelector('input[name="solarStatus"]:checked')?.value || 'No Solar';
-      const skylights = document.querySelector('input[name="skylights"]:checked')?.value || 'None';
-      const roofAge = document.querySelector('input[name="roofAge"]:checked')?.value || '10-15 Years';
-      const gutters = document.querySelector('input[name="gutters"]:checked')?.value || 'Existing Gutters Good';
-      const priority = document.querySelector('input[name="priority"]:checked')?.value || 'Fast Installation';
+      const skylights = document.querySelector('input[name="skylights"]:checked')?.value || 'No Skylights';
+      const equipmentRemoval = document.querySelector('input[name="equipmentRemoval"]:checked')?.value || 'Everything Staying';
+      const shingleLayers = document.querySelector('input[name="shingleLayers"]:checked')?.value || '1 Layer (Single Layer)';
+      const gutterScope = document.querySelector('input[name="gutterScope"]:checked')?.value || 'Existing Gutters OK';
+      const iceDams = document.querySelector('input[name="iceDams"]:checked')?.value || 'No Ice Dam Issues';
+      const priority = document.querySelector('input[name="priority"]:checked')?.value || 'Max Warranty';
 
       if (!email || !email.includes('@')) {
         alert('Please enter a valid email address.');
@@ -1026,12 +1659,14 @@
             phone,
             email,
             callerName,
+            propertyType,
             projectScope,
-            roofType,
             solarStatus,
             skylights,
-            roofAge,
-            gutters,
+            equipmentRemoval,
+            shingleLayers,
+            gutterScope,
+            iceDams,
             priority,
             notes
           })
@@ -1039,29 +1674,33 @@
 
         const data = await res.json();
         if (res.ok && data.success) {
-          showSuccess(email, projectScope, roofType, priority);
+          showSuccess(email, propertyType, projectScope, solarStatus, skylights, equipmentRemoval, gutterScope, priority);
         } else {
-          alert(data.error || 'Failed to submit verification. Please try again or text Michael directly at 801-449-1451.');
+          alert(data.error || 'Failed to submit verification. Please try again or text Michael directly at (801) 449-1451.');
           submitBtn.disabled = false;
           submitBtn.innerHTML = '<span>Confirm & Lock In Proposal</span> ➔';
         }
       } catch (err) {
         console.error('Submit error:', err);
-        // Optimistic success if offline or network glitch
-        showSuccess(email, projectScope, roofType, priority);
+        // Optimistic fallback on network drop
+        showSuccess(email, propertyType, projectScope, solarStatus, skylights, equipmentRemoval, gutterScope, priority);
       }
     });
 
-    function showSuccess(email, scope, roof, prio) {
+    function showSuccess(email, propType, scope, solar, sky, equip, gutters, prio) {
       formCard.style.display = 'none';
-      document.getElementById('stepperContainer').style.display = 'none';
+      stepperContainer.style.display = 'none';
       successCard.style.display = 'block';
       confirmedEmail.textContent = email;
 
       document.getElementById('summaryAddress').textContent = displayAddress.textContent || 'Utah Property';
-      document.getElementById('summaryScope').textContent = scope;
-      document.getElementById('summaryRoofType').textContent = roof;
-      document.getElementById('summaryPriority').textContent = prio;
+      document.getElementById('summaryPropType').textContent = propType || 'Residential Home';
+      document.getElementById('summaryScope').textContent = scope || 'Full Roof Replacement';
+      document.getElementById('summarySolar').textContent = solar || 'No Solar';
+      document.getElementById('summarySkylights').textContent = sky || 'No Skylights';
+      document.getElementById('summaryEquipment').textContent = equip || 'Everything Staying';
+      document.getElementById('summaryGutters').textContent = gutters || 'Existing Gutters OK';
+      document.getElementById('summaryPriority').textContent = prio || 'Max Warranty';
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   </script>
