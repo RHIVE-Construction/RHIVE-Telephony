@@ -2377,7 +2377,32 @@ async function uploadCompletedRecordingToDrive({ callSid, recordingSid, recordin
       // dispatch the authoritative archive and Google Chat notification now that the full MP3 recording is attached!
       const deferredSession = completedCallSessions.get(callSid);
       if (deferredSession && deferredSession.sessionData?.isTransfer && !hasDispatchedPostCallChat.has(callSid)) {
-        console.log(`[Screened Transfer Archival] Finalized MP3 ready for transferred call ${callSid}. Dispatching authoritative Google Chat dossier now.`);
+        console.log(`[Screened Transfer Archival] Finalized MP3 ready for transferred call ${callSid}. Running Option 2 Gemini audio transcription pass...`);
+        try {
+          const genAiRes = await ai.models.generateContent({
+            model: 'gemini-3.5-flash',
+            contents: [
+              {
+                inlineData: {
+                  mimeType: 'audio/mp3',
+                  data: buffer.toString('base64')
+                }
+              },
+              {
+                text: 'Transcribe this entire phone call verbatim with speaker labels (Honey AI, Caller, Transferred Specialist Michael or Kara). ' +
+                      'Then provide an Executive Post-Transfer Call Brief highlighting: 1. Key customer requests, 2. Human specialist discussion & agreements, 3. Price quotes or scope discussed, 4. Agreed action items.'
+              }
+            ]
+          });
+          const fullAudioAnalysis = genAiRes.text || genAiRes.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (fullAudioAnalysis) {
+            console.log(`[Option 2 Audio Analysis] Generated ${fullAudioAnalysis.length} chars of complete call transcription/brief.`);
+            deferredSession.sessionData.fullCallAudioAnalysis = fullAudioAnalysis;
+          }
+        } catch(audioAnalysisErr) {
+          console.warn('[Option 2 Audio Analysis Error]', audioAnalysisErr.message);
+        }
+
         archiveCallToPhoneFolder({
           callSid,
           callerPhone: deferredSession.callerPhone,
@@ -2554,6 +2579,10 @@ async function archiveCallToPhoneFolder({ callSid, callerPhone, conversationTurn
       summaryText = 'Summary generation fallback:\nCaller: ' + callerPhone + '\nAddress: ' + (sessionData.verifiedAddress || 'None') + '\nSlot: ' + (sessionData.inspectionSlot || 'None');
     }
 
+    if (sessionData.fullCallAudioAnalysis) {
+      summaryText += '\n\n---\n### 🎙️ Complete Post-Transfer Call Audio Brief & Transcript\n' + sessionData.fullCallAudioAnalysis;
+    }
+
     // 3. Upload Summary & Verbatim Transcript (.md) into Phone Folder
     const fullDocument = '# RHIVE TELEPHONY INTAKE DOSSIER\n' +
       '**Caller Phone:** ' + callerPhone + '  \n' +
@@ -2562,7 +2591,8 @@ async function archiveCallToPhoneFolder({ callSid, callerPhone, conversationTurn
       '**Recording Link:** ' + (recordingFile ? recordingFile.webViewLink : 'None available') + '  \n' +
       '**IVR Route:** Option ' + (sessionData.selection || '1') + ' (' + (sessionData.selectionLabel || 'Roof Estimate') + ')  \n' +
       '**Ambient Tone:** ' + (sessionData.ambientMode || 'Office') + '  \n\n' +
-      '---\n' + summaryText + '\n\n---\n## Verbatim Conversational Transcript\n' + transcriptText + '\n';
+      '---\n' + summaryText + '\n\n---\n## Verbatim Conversational Transcript\n' + transcriptText + '\n' +
+      (sessionData.fullCallAudioAnalysis ? '\n\n---\n## Complete Post-Transfer Full Call Analysis\n' + sessionData.fullCallAudioAnalysis + '\n' : '');
 
     const summaryStream = Readable.from([fullDocument]);
     const docRes = await driveClient.files.create({
@@ -3956,17 +3986,19 @@ CASE 7: PUBLIC COMPLAINTS & FIELD MARKETING / YARD SIGN DE-ESCALATION (STRICT ZE
   * Step 3 (Collect Exact Removal Location):
     "What is the exact street address or cross-street intersection where that sign is located so our field route team can pick it up?"
   * Step 4 (Immediate Pickup Commitment & Clean Farewell):
-    "Thank you for letting us know! I have dispatched our field route team to pick up and remove that sign today so it's completely cleared for you. Our executive management team will also review the log later today. Thank you for bringing this to our attention, have a great day, goodbye!"
-  * Call "take_message" with callerName, propertyAddress: [Intersection/Address], customerPhone: [CallerPhone], targetSpecialist: "michael", messageText: "[SIGN REMOVAL REQUEST] Location: [Intersection/Address]. Caller reported sign issue. Dispatched route team for pickup. Management to review."
+    "Thank you for letting us know! I have dispatched our field route team to pick up and remove that sign today so it's completely cleared for you. Our executive team monitors all sign removal logs by email. If there are any updates, our management team will follow up via email. Thank you for bringing this to our attention, have a great day, goodbye!"
+  * Call "take_message" with callerName, propertyAddress: [Intersection/Address], customerPhone: [CallerPhone], targetSpecialist: "michael", messageText: "[SIGN REMOVAL REQUEST] Location: [Intersection/Address]. Caller reported sign issue. Dispatched route team for pickup. Executive email review."
   * Call "hangup_call".
 - GENERAL CUSTOMER / PROJECT COMPLAINTS (Workmanship, Delays, Billing Disputes):
   * Step 1 (Empathetic Reception):
     "I completely understand your concern, [FirstName], and I apologize for that frustration. You have our full attention."
   * Step 2 (Information Gathering):
-    Gather: Full Name, Property Address, Contact Phone, and Specific Details of the issue.
-  * Step 3 (No Transfer — Management Manual Follow-up Later Today):
-    "Our executive leadership team personally investigates all customer concerns. Rather than transferring you into the field while our owners are on active jobsites, I am logging your full report directly into our executive priority queue. Michael Robinson will review your project file and reach out to you directly on this number later today. Thank you for your patience, have a good day, goodbye!"
-  * Call "take_message" with callerName, propertyAddress, customerPhone, targetSpecialist: "michael", messageText: "[ESCALATED COMPLAINT - DO NOT TRANSFER] Details: [Details]. Management follow-up required today."
+    Gather: Full Name, Property Address, Contact Phone, Best Email Address, and Specific Details of the issue.
+  * Step 3 (No Transfer — Management Manual Email Review & Follow-up):
+    "Our executive leadership team personally reviews all inquiries and project files by email. Rather than transferring you into the field while our owners are on active jobsites, I am logging your full report directly into our executive priority queue. Michael Robinson and our leadership team will review your file and follow up with you directly by email once the details are reviewed. What is the best email address for our executive team to reach you?"
+  * Step 4 (Clean Confirmation & Farewell):
+    "Thank you, I have logged your notes and email for Michael Robinson and our management team. Thank you for your patience, have a good day, goodbye!"
+  * Call "take_message" with callerName, propertyAddress, customerPhone, customerEmail: [Email], targetSpecialist: "michael", messageText: "[ESCALATED COMPLAINT - DO NOT TRANSFER] Email: [Email] | Details: [Details]. Management email follow-up required."
   * Call "hangup_call".
 
 MANDATORY CONVERSATIONAL CLOSING & HANGUP PROTOCOL:
