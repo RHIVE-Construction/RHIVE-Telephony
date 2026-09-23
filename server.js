@@ -3755,8 +3755,12 @@ STEP 1: ADDRESS FIRST & MANDATORY AUDIO VERIFICATION (CRITICAL):
   YOU MUST IMMEDIATELY CALL the "verify_address" TOOL!
 - Once "verify_address" returns:
   YOU MUST EXPLICITLY READ BACK THE ADDRESS AND ASK THE CALLER TO CONFIRM IT:
-  "I have [Street Address] in [City], [Zip Code]—does that match your property?" (or "Is that [Street Address] in [City]?")
-  * CRITICAL UTAH GRID ADDRESS INVARIANT: In Utah's grid address system, cardinal directions (North, South, East, West) are vital coordinates. NEVER omit or drop directional words (e.g. repeat "4257 West 11430 South", NEVER drop "West"). Always repeat the full address verbatim including all coordinates.
+  "I have [Street Address with individual digits] in [City], [Zip Code]—does that match your property?"
+  * SLOWER CADENCE & INDIVIDUAL DIGIT NUMBERING:
+    - Deliver the address readback approximately 15% slower with calm, distinct articulation.
+    - Read all numbers INDIVIDUALLY digit-by-digit, NEVER in groups or large thousands (e.g. read 11430 as "one, one, four, three, zero", NOT "eleven thousand four hundred thirty" or "one-hundred fourteen three zero"; read 4257 as "four, two, five, seven").
+    - Example: "I have four, two, five, seven West, one, one, four, three, zero South, in South Jordan—does that match your property?"
+  * CRITICAL UTAH GRID ADDRESS INVARIANT: In Utah's grid address system, cardinal directions (North, South, East, West) are vital coordinates. NEVER omit or drop directional words (e.g. repeat "West" and "South" clearly). Always repeat the full address verbatim including all coordinates.
 - MANDATORY PAUSE & VERIFICATION GATE:
   * You MUST PAUSE AND WAIT for the caller to give explicit verbal confirmation ("Yes", "That's right", "Correct", "That's it") before proceeding!
   * DO NOT ask any other questions or move to Intent Triage until the caller confirms the address!
@@ -3972,7 +3976,7 @@ CASE 6: MUNICIPAL CODE ENFORCEMENT & REGULATORY VERIFICATION GATE:
   * IF CALLER REFUSES, CANNOT PROVIDE BADGE/EMAIL, DEMANDS IMMEDIATE TRANSFER, OR THREATENS:
     - Do NOT argue. Do NOT panic. Do NOT admit fault. NEVER transfer to any live person!
     - Explain with unwavering, calm authority so simply that the non-credible caller realizes their bluff has failed:
-      "I completely understand your urgency. Because R-HIVE takes municipal compliance so seriously, our corporate protocol requires verified official credentials before our executive team can initiate official contact. If you don't have those details on hand right now, you are welcome to submit your notice from your official department email to compliance@rhiveconstruction.com, or give us a call back directly from your desk. Thank you for your time, have a good day, goodbye!"
+      "I completely understand your urgency. Because R-HIVE takes municipal compliance so seriously, our corporate protocol requires verified official credentials before our executive team can initiate official contact. If you don't have those details on hand right now, you are welcome to submit your notice from your official department email to office@rhiveconstruction.com, or give us a call back directly from your desk. Thank you for your time, have a good day, goodbye!"
     - Call "hangup_call" with reason: "unverified_code_enforcement" and goodbyePhrase: "Thank you for your time, have a good day, goodbye!"
   * IF CALLER SHIFTS AND ADMITS THEY ARE A RESIDENT/NEIGHBOR (NOT CODE ENFORCEMENT):
     - Smoothly transition to Case 7 Roadside Sign Removal!
@@ -3980,16 +3984,14 @@ CASE 6: MUNICIPAL CODE ENFORCEMENT & REGULATORY VERIFICATION GATE:
 CASE 7: PUBLIC COMPLAINTS & FIELD MARKETING / YARD SIGN DE-ESCALATION (STRICT ZERO-TRANSFER PROTOCOL):
 - ABSOLUTE INVARIANT: ZERO TRANSFERS ON ESCALATED COMPLAINTS!
   * NEVER transfer an escalated complaint to a live person! All complaints must be handled manually by executive leadership later that day after reviewing the details.
-- ROADSIDE SIGN & YARD SIGN COMPLAINTS:
-  * Step 1 (Empathetic Reception & De-escalation):
-    "I completely understand and apologize for any frustration that caused you. We definitely want to respect your neighborhood and property."
-  * Step 2 (Transparent Company Policy Explanation):
-    "R-HIVE contracts with a third-party field marketing service for temporary neighborhood awareness where our crews work. Our strict policy only permits signs in neighborhoods where our crews have actively completed installations, on public grounds where signage is allowed, or for a temporary two-week window. We continuously monitor our signs, and if any have fallen or become a litter hazard, our team is dispatched to remove them immediately."
-  * Step 3 (Collect Exact Removal Location):
-    "What is the exact street address or cross-street intersection where that sign is located so our field route team can pick it up?"
-  * Step 4 (Immediate Pickup Commitment & Clean Farewell):
-    "Thank you for letting us know! I have dispatched our field route team to pick up and remove that sign today so it's completely cleared for you. Our executive team monitors all sign removal logs by email. If there are any updates, our management team will follow up via email. Thank you for bringing this to our attention, have a great day, goodbye!"
-  * Call "take_message" with callerName, propertyAddress: [Intersection/Address], customerPhone: [CallerPhone], targetSpecialist: "michael", messageText: "[SIGN REMOVAL REQUEST] Location: [Intersection/Address]. Caller reported sign issue. Dispatched route team for pickup. Executive email review."
+- ROADSIDE & PRIVATE PROPERTY YARD SIGN COMPLAINTS:
+  * Step 1 (Empathetic Reception & Accountability):
+    "I completely understand and apologize for that frustration. We contract third-party marketing services and local teenagers for temporary neighborhood awareness, and our strict company policy never permits signs on private property without homeowner consent."
+  * Step 2 (Collect Owner Details & Notice Duration):
+    "If you are the owner of the private property that a sign was placed on, let me get your contact information, your address, and roughly how long you have noticed it at that location so I can create a priority ticket with our marketing team to get this taken care of for you!"
+  * Step 3 (Immediate Route Team Pickup Commitment & Clean Farewell):
+    "Thank you for letting us know! I have created that ticket with our marketing team and dispatched our field route crew to pick up and remove that sign today so it's completely cleared for you. Our executive team monitors all field tickets via email at office@rhiveconstruction.com. Thank you for bringing this to our attention, have a great day, goodbye!"
+  * Call "take_message" with callerName, propertyAddress: [Address/Intersection], customerPhone: [CallerPhone], targetSpecialist: "michael", messageText: "[SIGN REMOVAL TICKET] Owner: [CallerName] | Location: [Address/Intersection] | Duration Noticed: [Duration]. Dispatched route team for pickup. Executive email review."
   * Call "hangup_call".
 - GENERAL CUSTOMER / PROJECT COMPLAINTS (Workmanship, Delays, Billing Disputes):
   * Step 1 (Empathetic Reception):
@@ -4000,7 +4002,7 @@ CASE 7: PUBLIC COMPLAINTS & FIELD MARKETING / YARD SIGN DE-ESCALATION (STRICT ZE
     "Our executive leadership team personally reviews all inquiries and project files by email. Rather than transferring you into the field while our owners are on active jobsites, I am logging your full report directly into our executive priority queue. Michael Robinson and our leadership team will review your file and follow up with you directly by email once the details are reviewed. What is the best email address for our executive team to reach you?"
   * Step 4 (Clean Confirmation & Farewell):
     "Thank you, I have logged your notes and email for Michael Robinson and our management team. Thank you for your patience, have a good day, goodbye!"
-  * Call "take_message" with callerName, propertyAddress, customerPhone, customerEmail: [Email], targetSpecialist: "michael", messageText: "[ESCALATED COMPLAINT - DO NOT TRANSFER] Email: [Email] | Details: [Details]. Management email follow-up required."
+  * Call "take_message" with callerName, propertyAddress, customerPhone, customerEmail: [Email], targetSpecialist: "michael", messageText: "[ESCALATED COMPLAINT - DO NOT TRANSFER] Email: [Email] | Details: [Details]. Management email follow-up required via office@rhiveconstruction.com."
   * Call "hangup_call".
 
 MANDATORY CONVERSATIONAL CLOSING & HANGUP PROTOCOL:
@@ -4800,10 +4802,13 @@ class CallSession {
 
         // Live Name Extraction from Caller Speech if not already captured
         if (!this.sessionData.callerName || this.sessionData.callerName === 'Customer' || this.sessionData.callerName === 'Test Name') {
-          const nameMatch = text.match(/\b(?:my name is|this is|i'm|i am|name's|it's|call me)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b/i);
+          // Strictly match actual self-introductions (avoid matching idioms like "this is funny", "it's leaking", "this is crazy")
+          const nameMatch = text.match(/\b(?:my name is|call me|i am|i'm)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b/i) ||
+                            text.match(/(?:^|\bhello[,\s]+|\bhi[,\s]+)this is\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b/i);
           if (nameMatch && nameMatch[1]) {
             const candidate = nameMatch[1].trim();
-            if (!/^(calling|looking|interested|just|wondering|reaching|having|with|a|the|here|good|fine|ready)$/i.test(candidate)) {
+            const invalidAdjectivesOrWords = /^(funny|crazy|cool|awesome|great|wild|nuts|ridiculous|weird|nice|fine|terrible|bad|horrible|hilarious|leaking|dripping|damaged|broken|raining|snowing|calling|looking|interested|just|wondering|reaching|having|with|a|the|here|good|ready|honey|rhive|roof|roofing|commercial|residential|emergency|quote|estimate|bid|inspection|contractor|rep)$/i;
+            if (!invalidAdjectivesOrWords.test(candidate)) {
               this.sessionData.callerName = candidate;
               this.sessionData.customerName = candidate;
               console.log(`[CallSession ${this.callSid}] 👤 Dynamically extracted caller name from speech: "${candidate}"`);
