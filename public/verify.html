@@ -4,32 +4,34 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>R-HIVE Construction | Project Quote Intake & Verification</title>
+  <link rel="icon" href="/rhive-logo-white.png?v=2">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
   <style>
     :root {
       --primary: #08137C;
       --primary-light: #1624a6;
       --accent: #ec028b;
       --accent-hover: #d0027a;
+      --accent-glow: rgba(236, 2, 139, 0.25);
       --bg: #FFFFFF;
       --surface: #F8FAFC;
       --card-bg: #FFFFFF;
       --border: #E2E8F0;
-      --border-focus: #08137C;
+      --border-focus: #ec028b;
       --text: #0F172A;
       --text-muted: #64748B;
       --success: #10B981;
       --radius: 12px;
-      --shadow: 0 4px 20px -2px rgba(8, 19, 124, 0.08), 0 2px 6px -1px rgba(8, 19, 124, 0.04);
+      --shadow: 0 4px 20px -2px rgba(8, 19, 124, 0.06), 0 2px 6px -1px rgba(8, 19, 124, 0.04);
     }
 
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       -webkit-tap-highlight-color: transparent;
     }
 
@@ -40,84 +42,71 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 16px 12px 40px;
+      padding: 16px 14px 40px;
     }
 
     .container {
       width: 100%;
-      max-width: 520px;
+      max-width: 500px;
     }
 
+    /* Brand Header Matching rhiveconstruction.com */
     .brand-header {
       text-align: center;
       margin-bottom: 16px;
-    }
-
-    .brand-logo {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 6px;
-    }
-
-    .brand-mark {
-      width: 42px;
-      height: 42px;
-      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-      border-radius: 10px;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      color: #FFFFFF;
-      font-weight: 800;
-      font-size: 22px;
-      letter-spacing: -0.5px;
-      box-shadow: 0 4px 12px rgba(8, 19, 124, 0.25);
     }
 
-    .brand-name {
-      font-size: 21px;
-      font-weight: 800;
-      color: var(--primary);
-      letter-spacing: -0.5px;
-    }
-
-    .brand-name span {
-      color: var(--accent);
-    }
-
-    .badge-pill {
+    .brand-logo-wrap {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      background: #F1F5F9;
-      border: 1px solid var(--border);
-      padding: 4px 12px;
-      border-radius: 9999px;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 6px;
+      text-decoration: none;
+    }
+
+    .brand-logo-img {
+      height: 38px;
+      width: auto;
+      object-fit: contain;
+      filter: drop-shadow(0 0 6px rgba(236, 2, 139, 0.35));
+    }
+
+    .brand-tagline {
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
       color: var(--primary);
-      margin-top: 4px;
+      margin-top: 2px;
+    }
+
+    .brand-tagline span {
+      color: var(--accent);
     }
 
     /* Stepper Progress Bar */
     .stepper-container {
-      margin-bottom: 16px;
+      margin-bottom: 14px;
       background: #F8FAFC;
       border: 1px solid var(--border);
       border-radius: 10px;
-      padding: 12px 14px;
+      padding: 10px 14px;
     }
 
     .stepper-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
 
     .step-title {
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       color: var(--primary);
       text-transform: uppercase;
@@ -125,13 +114,13 @@
     }
 
     .step-counter {
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       color: var(--accent);
     }
 
     .progress-bar {
-      height: 6px;
+      height: 5px;
       background: #E2E8F0;
       border-radius: 999px;
       overflow: hidden;
@@ -156,11 +145,12 @@
     }
 
     .card-title {
-      font-size: 19px;
+      font-size: 18px;
       font-weight: 800;
       color: var(--primary);
       margin-bottom: 4px;
-      line-height: 1.3;
+      letter-spacing: -0.02em;
+      line-height: 1.25;
     }
 
     .card-subtitle {
@@ -180,11 +170,11 @@
     }
 
     .project-label {
-      font-size: 11px;
+      font-size: 10px;
       text-transform: uppercase;
-      font-weight: 700;
+      font-weight: 800;
       color: var(--accent);
-      letter-spacing: 0.5px;
+      letter-spacing: 0.08em;
       margin-bottom: 2px;
     }
 
@@ -228,8 +218,8 @@
     }
 
     .input-field:focus {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(8, 19, 124, 0.12);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(236, 2, 139, 0.15);
     }
 
     textarea.input-field {
@@ -287,11 +277,11 @@
     }
 
     .quantum-pill input[type="radio"]:checked + label {
-      background: #F0F4FF;
-      border-color: var(--primary);
+      background: #FFF5FA;
+      border-color: var(--accent);
       color: var(--primary);
       font-weight: 700;
-      box-shadow: 0 2px 8px rgba(8, 19, 124, 0.15);
+      box-shadow: 0 0 10px rgba(236, 2, 139, 0.2);
     }
 
     .quantum-pill input[type="radio"]:checked + label .indicator {
@@ -318,11 +308,11 @@
 
     .btn-secondary {
       flex: 1;
-      height: 50px;
+      height: 48px;
       background: #F1F5F9;
       color: var(--text);
       border: 1px solid var(--border);
-      border-radius: 10px;
+      border-radius: 8px;
       font-size: 14px;
       font-weight: 700;
       cursor: pointer;
@@ -339,16 +329,16 @@
 
     .btn-primary {
       flex: 2;
-      height: 50px;
+      height: 48px;
       background: var(--primary);
       color: #FFFFFF;
       border: none;
-      border-radius: 10px;
+      border-radius: 8px;
       font-size: 15px;
       font-weight: 700;
       cursor: pointer;
       transition: background-color 0.15s ease, transform 0.1s ease;
-      box-shadow: 0 4px 12px rgba(8, 19, 124, 0.25);
+      box-shadow: 0 4px 12px rgba(8, 19, 124, 0.2);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -361,12 +351,12 @@
 
     .submit-btn {
       width: 100%;
-      height: 52px;
+      height: 50px;
       background: var(--accent);
       color: #FFFFFF;
       border: none;
-      border-radius: 10px;
-      font-size: 16px;
+      border-radius: 8px;
+      font-size: 15px;
       font-weight: 800;
       cursor: pointer;
       transition: background-color 0.15s ease, transform 0.1s ease;
@@ -389,25 +379,12 @@
 
     .trust-footer {
       text-align: center;
-      margin-top: 16px;
+      margin-top: 14px;
       font-size: 11px;
       color: var(--text-muted);
       line-height: 1.5;
     }
 
-    .trust-badges {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 8px;
-      font-weight: 600;
-      color: var(--primary);
-      font-size: 11px;
-    }
-
-    /* Step containers */
     .step-section {
       display: none;
     }
@@ -426,20 +403,20 @@
     .success-card {
       display: none;
       text-align: center;
-      padding: 30px 18px;
+      padding: 28px 18px;
     }
 
     .success-icon {
-      width: 60px;
-      height: 60px;
+      width: 56px;
+      height: 56px;
       background: #ECFDF5;
       border-radius: 50%;
       color: var(--success);
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 28px;
-      margin-bottom: 14px;
+      font-size: 26px;
+      margin-bottom: 12px;
       border: 2px solid #A7F3D0;
     }
 
@@ -468,17 +445,18 @@
     .contact-card {
       background: #F8FAFC;
       border: 1px solid #E2E8F0;
-      border-radius: 10px;
+      border-radius: 8px;
       padding: 14px;
       margin: 16px 0;
       text-align: left;
     }
 
     .contact-card h4 {
-      font-size: 12px;
+      font-size: 11px;
       color: var(--accent);
       text-transform: uppercase;
       font-weight: 800;
+      letter-spacing: 0.05em;
       margin-bottom: 4px;
     }
 
@@ -494,7 +472,7 @@
       justify-content: center;
       gap: 8px;
       width: 100%;
-      height: 48px;
+      height: 46px;
       background: var(--primary);
       color: #FFFFFF;
       text-decoration: none;
@@ -507,15 +485,17 @@
 </head>
 <body>
   <div class="container">
-    <!-- Brand Header -->
+    <!-- Brand Header (Official R-HIVE Company Branding) -->
     <header class="brand-header">
-      <div class="brand-logo">
-        <div class="brand-mark">R</div>
-        <div class="brand-name">R-HIVE <span>CONSTRUCTION</span></div>
+      <div class="brand-logo-wrap">
+        <img 
+          src="/rhive-logo-black.png" 
+          alt="R-HIVE Construction" 
+          class="brand-logo-img"
+          onerror="this.onerror=null; this.src='https://i.imgur.com/t0VcSgJ.png';"
+        />
       </div>
-      <div>
-        <span class="badge-pill">🛡️ Owens Corning Certified Commercial Baseline</span>
-      </div>
+      <div class="brand-tagline">R-HIVE <span>CONSTRUCTION</span> • UTAH ROOFING</div>
     </header>
 
     <!-- Stepper Progress Header -->
@@ -540,7 +520,7 @@
         <!-- ================= STEP 1: SCOPE & CONTACT ================= -->
         <div class="step-section active" id="step1">
           <h1 class="card-title">Project Scope & Contact</h1>
-          <p class="card-subtitle">Confirm what we are taking care of on your roof today so our engineering team pulls the right aerial CAD scans.</p>
+          <p class="card-subtitle">Confirm what we are taking care of on your roof today so our estimating team can pull the correct aerial CAD scans.</p>
 
           <div class="form-group">
             <label class="form-label" for="nameInput">Homeowner / Contact Name</label>
@@ -555,13 +535,13 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">What is the primary scope of your project?</label>
+            <label class="form-label">Primary Project Scope</label>
             <div class="quantum-pill-group stacked">
               <div class="quantum-pill">
                 <input type="radio" id="scope_replace" name="projectScope" value="Full Roof Replacement" checked>
                 <label for="scope_replace">
                   <span class="icon">🏠</span>
-                  <span><strong>Full Roof Replacement</strong> — Complete tear-off & precision install</span>
+                  <span><strong>Full Roof Replacement</strong> — Complete tear-off & precision installation</span>
                   <span class="indicator"></span>
                 </label>
               </div>
@@ -577,7 +557,7 @@
                 <input type="radio" id="scope_video" name="projectScope" value="15-Min Remote Video Call">
                 <label for="scope_video">
                   <span class="icon">📱</span>
-                  <span><strong>15-Min Remote Video Call</strong> — Inspect live via phone video</span>
+                  <span><strong>15-Min Remote Video Call</strong> — Inspect live via homeowner smartphone</span>
                   <span class="indicator"></span>
                 </label>
               </div>
@@ -783,7 +763,7 @@
         <!-- ================= STEP 3: PRIORITIES & DELIVERY ================= -->
         <div class="step-section" id="step3">
           <h2 class="card-title">Proposal Delivery & Priority</h2>
-          <p class="card-subtitle">Choose your primary focus so Michael Robinson configures the ideal Owens Corning package for your home.</p>
+          <p class="card-subtitle">Choose your primary focus so Michael Robinson configures the ideal project proposal package for your home.</p>
 
           <div class="form-group">
             <label class="form-label">Preferred Project Priority</label>
@@ -834,7 +814,7 @@
               required
               autocomplete="email"
             >
-            <span class="form-hint">Your 3D CAD aerial scan & itemized quote will be sent here.</span>
+            <span class="form-hint">Your 3D CAD aerial scan & itemized proposal will be sent here.</span>
           </div>
 
           <div class="form-group">
@@ -895,15 +875,11 @@
       <p class="trust-footer">You may close this window. Your information is locked in on our server.</p>
     </div>
 
-    <!-- Trust Footer -->
+    <!-- Trust Footer Matching rhiveconstruction.com -->
     <footer class="trust-footer">
-      <div>R-HIVE Construction LLC | Licensed & Insured Utah General Contractor</div>
-      <div class="trust-badges">
-        <span>🏆 Owens Corning SureNail</span>
-        <span>•</span>
-        <span>⚡ 130 MPH Wind Warranty</span>
-        <span>•</span>
-        <span>⭐ Class 4 Hail</span>
+      <div><strong>R-HIVE Construction LLC</strong> | Licensed & Insured Utah General Contractor</div>
+      <div style="margin-top: 4px; color: var(--text-muted);">
+        Utah's Premier Tech-Forward Roofing Contractor • Lifetime No-Leak Workmanship Guarantee
       </div>
     </footer>
   </div>

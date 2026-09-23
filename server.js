@@ -1427,10 +1427,14 @@ async function sendExecutiveSummarySms(body) {
     return { status: 'simulated_suppressed' };
   }
   try {
+    let cleanBody = body || '';
+    if (cleanBody.length > 1500) {
+      cleanBody = cleanBody.substring(0, 1470) + '...\n[Full lead in Google Drive]';
+    }
     const res = await sendJustCallSms({
       fromNumber: JUSTCALL_HUNNI_INTAKE,
       toNumber: JUSTCALL_MAIN_NUMBER,
-      body: body
+      body: cleanBody
     });
     console.log('[Executive Summary SMS] Populated on Main Line feed (435-417-6637):', res?.status || 'sent');
     return res;
@@ -1444,10 +1448,14 @@ async function sendJustCallSms({ fromNumber, toNumber, body }) {
   try {
     const from = fromNumber || JUSTCALL_MAIN_NUMBER;
     const cleanTo = (toNumber || '').replace(/[^0-9+]/g, '');
+    let cleanBody = body || '';
+    if (cleanBody.length > 1550) {
+      cleanBody = cleanBody.substring(0, 1520) + '...';
+    }
     const res = await axios.post('https://api.justcall.io/v2.1/texts/new', {
       justcall_number: from,
       contact_number: cleanTo,
-      body: body
+      body: cleanBody
     }, {
       headers: {
         'Authorization': `${JUSTCALL_API_KEY}:${JUSTCALL_API_SECRET}`,
@@ -2959,11 +2967,53 @@ function formatShorthandPropertyName(addressStr, houseNumber, road) {
   return `the ${addressStr} property`;
 }
 
+function cleanUtahGrid(raw, houseNum, road, city, zip) {
+  const dirMap = { 
+    's': 'South', 'n': 'North', 'e': 'East', 'w': 'West', 
+    'south': 'South', 'north': 'North', 'east': 'East', 'west': 'West' 
+  };
+  
+  // Pattern 1: Double grid e.g. '9917 South 3200 West', '9917 s 3200 w', '4257 W 11430 S', '9917 South & 3200 West'
+  const doubleGrid = (raw || '').match(/(\d+)\s*([NSEW]|North|South|East|West)\.?\b(?:,\s*|\s+(?:and|&)\s+|\s+)(\d+)\s*([NSEW]|North|South|East|West)\.?\b/i);
+  if (doubleGrid) {
+    const d1 = dirMap[doubleGrid[2].toLowerCase()] || doubleGrid[2];
+    const d2 = dirMap[doubleGrid[4].toLowerCase()] || doubleGrid[4];
+    return `${doubleGrid[1]} ${d1} ${doubleGrid[3]} ${d2}, ${city}, UT ${zip}`;
+  }
+  
+  // Pattern 2: Single grid with named road e.g. '9917 South State Street'
+  const singleGridNamed = (raw || '').match(/(\d+)\s*([NSEW]|North|South|East|West)\.?\b\s+([A-Za-z0-9\s]+)/i);
+  if (singleGridNamed) {
+    const d1 = dirMap[singleGridNamed[2].toLowerCase()] || singleGridNamed[2];
+    let st = singleGridNamed[3].replace(/(,\s*Utah.*|,\s*UT.*)$/i, '').trim();
+    return `${singleGridNamed[1]} ${d1} ${st}, ${city}, UT ${zip}`;
+  }
+  
+  const leadNum = (raw || '').match(/^\d+/)?.[0] || houseNum || '';
+  const cleanRoad = road || raw;
+  return `${leadNum} ${cleanRoad}, ${city}, UT ${zip}`.replace(/\s+/g, ' ').trim();
+}
+
 async function resolveGisAddress(addressStr) {
-  let formattedAddress = addressStr + ', Utah';
-  let propertyName = formatShorthandPropertyName(addressStr, '', addressStr);
+  const knownCities = [
+    'South Jordan', 'West Jordan', 'Sandy', 'Draper', 'Riverton', 'Herriman', 
+    'Salt Lake City', 'Murray', 'Midvale', 'Taylorsville', 'West Valley City', 
+    'Cottonwood Heights', 'Holladay', 'Lehi', 'American Fork', 'Orem', 'Provo', 
+    'Pleasant Grove', 'Alpine', 'Highland', 'Saratoga Springs', 'Eagle Mountain', 
+    'Bountiful', 'Centerville', 'Farmington', 'Kaysville', 'Layton', 'Clearfield', 
+    'Ogden', 'Roy', 'Syracuse', 'Tooele', 'Park City', 'Heber City', 'St. George'
+  ];
   let city = 'West Jordan';
   let zip = '84088';
+  for (const c of knownCities) {
+    if (new RegExp('\\b' + c + '\\b', 'i').test(addressStr)) {
+      city = c;
+      break;
+    }
+  }
+
+  let formattedAddress = cleanUtahGrid(addressStr, '', addressStr, city, zip);
+  let propertyName = formatShorthandPropertyName(addressStr, '', addressStr);
   let lat = 40.6097;
   let lng = -111.9391;
   let weatherSummary = 'Clear skies, 81°F tomorrow with 0% rain';
@@ -2981,11 +3031,11 @@ async function resolveGisAddress(addressStr) {
       lat = parseFloat(item.lat);
       lng = parseFloat(item.lon);
       const addr = item.address || {};
-      city = addr.city || addr.town || addr.village || 'West Jordan';
-      zip = (addr.postcode || '84088').substring(0, 5);
+      city = addr.city || addr.town || addr.village || city;
+      zip = (addr.postcode || zip).substring(0, 5);
       const road = addr.road || addressStr;
       const houseNumber = addr.house_number || '';
-      formattedAddress = (houseNumber + ' ' + road + ', ' + city + ', UT ' + zip).trim();
+      formattedAddress = cleanUtahGrid(addressStr, houseNumber, road, city, zip);
       propertyName = formatShorthandPropertyName(addressStr, houseNumber, road);
     }
   } catch(e) {
@@ -3867,11 +3917,17 @@ STEP 1: ADDRESS FIRST & MANDATORY AUDIO VERIFICATION (CRITICAL):
 - Once "verify_address" returns:
   YOU MUST EXPLICITLY READ BACK THE ADDRESS AND ASK THE CALLER TO CONFIRM IT:
   "I have [Street Address with individual digits] in [City], [Zip Code]—does that match your property?"
-  * SLOWER CADENCE & INDIVIDUAL DIGIT NUMBERING:
-    - Deliver the address readback approximately 15% slower with calm, distinct articulation.
-    - Read all numbers INDIVIDUALLY digit-by-digit, NEVER in groups or large thousands (e.g. read 11430 as "one, one, four, three, zero", NOT "eleven thousand four hundred thirty" or "one-hundred fourteen three zero"; read 4257 as "four, two, five, seven").
-    - Example: "I have four, two, five, seven West, one, one, four, three, zero South, in South Jordan—does that match your property?"
-  * CRITICAL UTAH GRID ADDRESS INVARIANT: In Utah's grid address system, cardinal directions (North, South, East, West) are vital coordinates. NEVER omit or drop directional words (e.g. repeat "West" and "South" clearly). Always repeat the full address verbatim including all coordinates.
+  * SLOWER CADENCE IS STRICTLY FOR DIGIT READBACK ONLY:
+    - Deliver ONLY the address digit readback approximately 15% slower with calm, distinct articulation.
+    - Read all numbers INDIVIDUALLY digit-by-digit, NEVER in groups or large thousands (e.g. read 11430 as "one, one, four, three, zero", NOT "eleven thousand four hundred thirty" or "one-hundred fourteen three zero"; read 9917 as "nine, nine, one, seven"; read 4257 as "four, two, five, seven").
+    - Example: "I have nine, nine, one, seven South, three, two, zero, zero West in South Jordan—does that match your property?"
+  * CRITICAL UTAH GRID ADDRESS INVARIANT — REPEAT COORDINATES ALL THE WAY:
+    - In Utah's grid address system, cardinal directions (North, South, East, West) are vital coordinates.
+    - NEVER omit or drop directional words! Repeat all coordinates ALL THE WAY (e.g., both "South" AND "West" in "9917 South 3200 West").
+  * INSTANT CADENCE RESET & NATURAL CONVERSATIONAL FLOW:
+    - When address verification is NOT taking place, or IMMEDIATELY once the address is confirmed, YOUR CADENCE MUST RETURN TO NORMAL, LIVELY, NATURAL CONVERSATIONAL PACE!
+    - DO NOT remain in a slow, robotic, dragging cadence.
+    - Ask qualification and diagnostic questions naturally, conversationally, and warmly based on what the caller shares. Do NOT sound like an interrogation script or a rigid robotic checklist!
 - MANDATORY PAUSE & VERIFICATION GATE:
   * You MUST PAUSE AND WAIT for the caller to give explicit verbal confirmation ("Yes", "That's right", "Correct", "That's it") before proceeding!
   * DO NOT ask any other questions or move to Intent Triage until the caller confirms the address!
@@ -3941,26 +3997,32 @@ When the caller wants a full roof replacement (not a repair or commercial roof):
       * Timeline: "And for your timeline, are you hoping to get on the install schedule right away, or are you in the research and comparison phase?"
     - NOTE ON DECKING: Never interrogate the caller about decking condition! It is unknown until tear-off. Standard contract includes damaged OSB replacement ($78.13/sheet) upon tear-off.
 
-3. EMAIL CAPTURE, PHONETIC VERIFICATION & OPTION 1 SMS FALLBACK GATE:
+3. VOICE-FIRST QUOTE CAPTURE & REPEAT/ESCAPE HATCH DIGITAL FORM GATE:
+   - PRIMARY DIRECTIVE (VOICE FIRST): 100% OF QUOTE INTAKE MUST BE COMPLETED OVER VOICE!
+     Honey captures the caller's name, property address, MeasureCall attributes (roof type, solar, skylights, roof age, gutters, priorities), and email address entirely by voice. DO NOT text callers this form during normal routine calls from our main line.
    - Ask (<20 words): "What is the best email for your project design specialist to send access to your project details and custom quotes you'll be receiving?"
    - Phonetic Spellout Verification (Human-Style Host Verification):
      "Awesome. To verify your name and email, I'll spell them out as I heard them to make sure your project design specialist sets up your Certified quote request accurately—are you ready?"
      (Spell username letter-by-letter, then pronounce 'at' [domain] 'dot com', e.g. "C-H-A-D @ 'at' gmail dot com", did I get that right?).
-   - OPTION 1 SMS INSTANT VERIFICATION & DIGITAL FORM GATE:
-     * If caller says "No", spelling is ambiguous, caller requests text/digital link, or upon wrapping up quote intake:
-       "No problem at all! I'm texting your digital quote request link to this cell phone right now so you can tap and verify your details directly on your screen."
+   - REPEAT / ESCAPE HATCH GATE (STRICTLY RESERVED FOR CALLERS HAVING TO REPEAT THINGS):
+     * If and ONLY if:
+       (a) The caller is having to repeat things (e.g. email spelling or complex street name fails phonetic verification twice), OR
+       (b) Heavy cell noise or static makes verbal spelling frustrating for the customer, OR
+       (c) The caller specifically asks: "Can you just text me a link?" / "Can I type it in?"
+     * THEN, and ONLY then, pivot to Option 1 SMS Digital Form as an empathetic escape hatch so the caller never gets stuck in a repetition loop:
+       "No problem at all! Let me text a quick private link directly to this cell phone so you can verify your details on your screen without having to repeat anything."
      * Call "send_quote_verification_sms" with callerName, customerPhone, propertyAddress, and all captured MeasureCall attributes!
      * MANDATORY STAY-ON-LINE VERIFICATION CHECK:
-       Honey IMMEDIATELY asks:
-       "I just dispatched your digital quote request link to your cell phone! You can tap it right now to confirm your project specs. Would you like to stay on the line with me while you fill it out in case you have any questions, or would you prefer I let you go?"
+       Honey asks:
+       "I just dispatched that link to your cell phone! You can tap it right now to confirm your project specs. Would you like to stay on the line with me while you fill it out in case you have any questions, or would you prefer I let you go?"
      * IF CALLER CHOOSES TO STAY ON THE LINE ("Yes, stay with me" / "Let me open it up" / "Hold on"):
        - Honey says: "Take your time! I'm right here with you. Feel free to ask if you have any questions about shingle options, warranties, or anything on the form."
-       - Honey pauses and listens attentively. Honey remains active on the line, ready to answer questions about Owens Corning Duration shingles, SureNail technology, 130 MPH wind resistance, Class 4 hail resistance, ice dam protection, or scheduling.
+       - Honey pauses and listens attentively. Honey remains active on the line, ready to answer questions about Duration shingles, SureNail technology, 130 MPH wind resistance, Class 4 hail resistance, ice dam protection, or scheduling.
        - When caller completes the form (or says "I submitted it" / "All done!"):
          Honey says: "Fantastic, I see your confirmation received on our server! Michael Robinson and our estimating team will review your aerial CAD scans and dispatch your certified proposal within 24 to 48 hours. Thank you so much for choosing R-HIVE! Have a wonderful day, goodbye!"
      * IF CALLER PREFERS TO COMPLETE IT LATER ("I'll do it later" / "You can let me go" / "Thanks, I got it"):
        - Honey says: "Sounds wonderful! Michael Robinson and our estimating team will review your aerial CAD scans and have your certified proposal ready within 24 to 48 hours. Thank you so much for calling R-HIVE! Have a wonderful day, goodbye!"
-   - Advance cleanly to Closing Protocol. (CRM: Quote Bucket).
+   - In all normal calls where the caller's email is successfully verified phonetically: DO NOT call send_quote_verification_sms. Honey completes all quote capture by voice and advances cleanly to Closing Protocol. (CRM: Quote Bucket).
 
 MANDATORY ON-SITE SCHEDULING PROTOCOL (CASES 2, 3, 4B, 4C-NO):
 Whenever an on-site physical evaluation is warranted:
@@ -5011,7 +5073,7 @@ class CallSession {
           verified: prop.verified,
           formattedAddress: prop.formattedAddress,
           propertyName: prop.propertyName,
-          instructionsForHoney: `Read back the formatted address "${prop.formattedAddress}" and explicitly ask: "I have ${prop.formattedAddress}—does that match your property?" Wait for their verbal confirmation. Once confirmed, refer to the property as "${prop.propertyName}".`,
+          instructionsForHoney: `Read back the formatted address "${prop.formattedAddress}" verbatim with all directional coordinates and individual digits (e.g. "I have ${prop.formattedAddress.replace(/\b\d+\b/g, m => m.split('').join(', '))}—does that match your property?"). Deliver this address readback approximately 15% slower with calm clarity. As soon as confirmed or on your next turn, immediately return to your normal, lively, natural conversational speed!`,
           city: prop.city,
           zip: prop.zip,
           hasImpendingStorm: prop.hasImpendingStorm,
@@ -5906,31 +5968,6 @@ class CallSession {
         this.pendingHangup = true;
         this.hangupReason = reason;
         this.goodbyePhrase = goodbyePhrase;
-
-        // AUTO-DISPATCH GUARD: Only dispatch quote verification if caller gave an address but NO inspection, callback, or quote was booked
-        const hasBookedEvent = !!(
-          this.sessionData.inspectionBooked ||
-          this.sessionData.outcome === 'inspection' ||
-          this.sessionData.isQuoteVerified ||
-          this.sessionData.callbackSlot ||
-          this.sessionData.isEmergencyDispatched
-        );
-
-        if (this.sessionData.verifiedAddress && !hasBookedEvent && reason !== 'solicitor_quarantine' && reason !== 'spam') {
-          console.log('[CallSession ' + this.callSid + '] Auto-dispatching quote verification SMS & executive dossier on graceful hangup.');
-          const cleanCallerName = this.resolveCallerNameForDispatch();
-          this.executeTool('send_quote_verification_sms', {
-            customerPhone: this.callerPhone,
-            callerName: cleanCallerName,
-            propertyAddress: this.sessionData.verifiedAddress,
-            customerEmail: this.sessionData.customerEmail,
-            solarStatus: this.sessionData.solarStatus || 'Not specified',
-            shingleLayers: this.sessionData.shingleLayers || '1 Layer',
-            discProfile: this.sessionData.discProfile || 'C (Analytical)',
-            customerPriority: this.sessionData.customerPriority || 'Quote Request'
-          }).catch(e => console.warn('[Auto-dispatch Quote Error in hangup_call]', e.message));
-        }
-
         // Arm graceful hangup without cutting off speech: waits for turnComplete + 1500ms audio buffer drain
         this.armGracefulHangup(reason);
 
@@ -6001,21 +6038,6 @@ class CallSession {
     console.log('[CallSession ' + this.callSid + '] Call ended. Closing Gemini stream and archiving to Google Drive...');
     if (this.geminiSession) {
       try { this.geminiSession.close(); } catch(e) {}
-    }
-
-    // AUTO-DISPATCH GUARD: If caller provided an address and session ended before send_quote_verification_sms
-    if (this.sessionData?.verifiedAddress && !this.sessionData?.isQuoteVerified) {
-      console.log('[CallSession ' + this.callSid + '] Auto-dispatching quote verification SMS & executive dossier on session close.');
-      this.executeTool('send_quote_verification_sms', {
-        customerPhone: this.callerPhone,
-        callerName: this.resolveCallerNameForDispatch(),
-        propertyAddress: this.sessionData.verifiedAddress,
-        customerEmail: this.sessionData.customerEmail,
-        solarStatus: this.sessionData.solarStatus || 'Not specified',
-        shingleLayers: this.sessionData.shingleLayers || '1 Layer',
-        discProfile: this.sessionData.discProfile || 'C (Analytical)',
-        customerPriority: this.sessionData.customerPriority || 'Quote Request'
-      }).catch(e => console.warn('[Auto-dispatch Quote Error in close]', e.message));
     }
 
     // Cache completed session so /recording-callback can attach audio to phone folder
@@ -6585,7 +6607,7 @@ Respond naturally with full executive poise, smiling warmth, and Wasatch Front r
       return {
         formattedAddress: prop.formattedAddress,
         propertyName: prop.propertyName,
-        instructionsForHoney: `Read back the formatted address "${prop.formattedAddress}" and ask: "I have ${prop.formattedAddress}—does that match your property?" Wait for verbal confirmation. Once confirmed, refer to the property as "${prop.propertyName}".`,
+        instructionsForHoney: `Read back the formatted address "${prop.formattedAddress}" verbatim with all directional coordinates and individual digits (e.g. "I have ${prop.formattedAddress.replace(/\b\d+\b/g, m => m.split('').join(', '))}—does that match your property?"). Deliver this address readback approximately 15% slower with calm clarity. As soon as confirmed or on your next turn, immediately return to your normal, lively, natural conversational speed!`,
         weatherSummary: prop.weatherSummary,
         inServiceArea: true,
         roofType: prop.roofType || 'Asphalt Architectural Shingle',
