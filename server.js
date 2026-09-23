@@ -6786,7 +6786,8 @@ app.post('/api/verify-email', async (req, res) => {
   try {
     const { 
       token, phone, email, priority, callerName, 
-      propertyType, projectScope, solarStatus, skylights, 
+      propertyAddress: inputAddress, addressModified,
+      propertyType, projectScope, videoCallInspection, solarStatus, skylights, 
       equipmentRemoval, shingleLayers, gutterScope, iceDams, notes 
     } = req.body || {};
     const key = String(phone || token || '').replace(/[^0-9]/g, '');
@@ -6796,7 +6797,7 @@ app.post('/api/verify-email', async (req, res) => {
     }
 
     let customerName = callerName || '';
-    let propertyAddress = '';
+    let propertyAddress = inputAddress || '';
     let callSid = '';
     let chatMessageName = null;
     let lastDossier = '';
@@ -6807,8 +6808,10 @@ app.post('/api/verify-email', async (req, res) => {
       entry.verifiedEmail = email;
       entry.priority = priority || 'Max Warranty';
       if (callerName) entry.callerName = callerName;
+      if (inputAddress) entry.propertyAddress = inputAddress;
       if (propertyType) entry.propertyType = propertyType;
       if (projectScope) entry.projectScope = projectScope;
+      if (videoCallInspection) entry.videoCallInspection = videoCallInspection;
       if (solarStatus) entry.solarStatus = solarStatus;
       if (skylights) entry.skylights = skylights;
       if (equipmentRemoval) entry.equipmentRemoval = equipmentRemoval;
@@ -6818,7 +6821,7 @@ app.post('/api/verify-email', async (req, res) => {
       if (notes) entry.notes = notes;
 
       customerName = entry.callerName || customerName || '';
-      propertyAddress = entry.propertyAddress || '';
+      propertyAddress = entry.propertyAddress || propertyAddress || '';
       callSid = entry.callSid || '';
       chatMessageName = entry.chatMessageName || null;
       lastDossier = entry.lastDossierText || '';
@@ -6837,9 +6840,12 @@ app.post('/api/verify-email', async (req, res) => {
             verified: true,
             verifiedEmail: email,
             callerName: customerName,
+            propertyAddress: propertyAddress || '',
+            addressModified: !!addressModified,
             priority: priority || 'Max Warranty',
             propertyType: propertyType || 'Residential Home',
             projectScope: projectScope || 'Full Roof Replacement',
+            videoCallInspection: videoCallInspection || 'No - Aerial CAD Only',
             solarStatus: solarStatus || 'No Solar',
             skylights: skylights || 'No Skylights',
             equipmentRemoval: equipmentRemoval || 'Everything Staying',
@@ -6856,9 +6862,11 @@ app.post('/api/verify-email', async (req, res) => {
           await db.collection('call_logs').doc(callSid).set({
             customerEmail: email,
             customerName: customerName,
+            propertyAddress: propertyAddress || '',
             customerPriority: priority || 'Max Warranty',
             propertyType: propertyType || 'Residential Home',
             projectScope: projectScope || 'Full Roof Replacement',
+            videoCallInspection: videoCallInspection || 'No - Aerial CAD Only',
             solarStatus: solarStatus || 'No Solar',
             isVerified: true,
             verifiedAt: new Date()
@@ -6873,8 +6881,10 @@ app.post('/api/verify-email', async (req, res) => {
     if (chatMessageName) {
       let patchedDossier = lastDossier || '';
       const intakeSummary = `\n📋 *CUSTOMER DIGITAL INTAKE SPECS:*\n` +
+        (addressModified ? `• 📍 Property Address: ${propertyAddress} (✏️ Updated by Customer)\n` : '') +
         `• Property Classification: ${propertyType || 'Residential Home'}\n` +
         `• Primary Scope: ${projectScope || 'Full Roof Replacement'}\n` +
+        (videoCallInspection && videoCallInspection.includes('Yes') ? `• 📱 Remote Inspection: 📹 YES (15-Min Remote Video Call Requested)\n` : '') +
         `• Solar Panels: ${solarStatus || 'No Solar'}\n` +
         `• Skylights: ${skylights || 'No Skylights'}\n` +
         `• Old Equipment: ${equipmentRemoval || 'Everything Staying'}\n` +
@@ -6907,9 +6917,12 @@ app.post('/api/verify-email', async (req, res) => {
     return res.json({ 
       success: true, 
       email, 
+      propertyAddress: propertyAddress || '',
+      addressModified: !!addressModified,
       priority: priority || 'Max Warranty', 
       propertyType: propertyType || 'Residential Home',
       projectScope: projectScope || 'Full Roof Replacement',
+      videoCallInspection: videoCallInspection || 'No - Aerial CAD Only',
       solarStatus: solarStatus || 'No Solar',
       skylights: skylights || 'No Skylights',
       equipmentRemoval: equipmentRemoval || 'Everything Staying',

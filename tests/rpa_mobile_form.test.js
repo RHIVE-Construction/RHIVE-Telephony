@@ -105,26 +105,60 @@ async function runRpaTests() {
     }
     console.log('  ✅ Zero Checkbox Constraint Verified (100% Quantum Radio Pills)');
 
-    // Verify Address & Name prefill
-    const displayedAddress = await page.locator('#displayAddress').textContent();
-    console.log(`  ✅ Property Address prefilled: "${displayedAddress}"`);
-    if (!displayedAddress.includes('9917 S State St')) {
-      throw new Error(`Address mismatch. Expected 9917 S State St, got: ${displayedAddress}`);
+    // Assert: Chamfered Box Architecture
+    const cardClipPath = await page.locator('#formCard').evaluate(el => window.getComputedStyle(el).clipPath);
+    console.log(`  ✅ Chamfered Box Architecture Verified: clip-path="${cardClipPath}"`);
+    if (!cardClipPath || !cardClipPath.includes('polygon')) {
+      throw new Error(`Chamfer violation: card does not use polygon clip-path! Got: ${cardClipPath}`);
     }
 
-    const nameVal = await page.locator('#nameInput').inputValue();
-    console.log(`  ✅ Homeowner Name prefilled: "${nameVal}"`);
+    // Verify Street View Card & Live Address Anchor
+    await page.waitForSelector('#streetviewCard', { state: 'visible' });
+    const streetviewImgSrc = await page.locator('#streetviewImg').getAttribute('src');
+    console.log(`  ✅ Google Street View Image Loaded: ${streetviewImgSrc.substring(0, 65)}...`);
+
+    // Test: Inline Address Modification Drawer (The Core Escape Hatch Purpose)
+    console.log('\n[RPA Interactive Address Edit] Testing Street View click & inline address editor...');
+    await page.locator('#btnToggleEditAddress').click();
+    await page.waitForSelector('#addressEditDrawer', { state: 'visible' });
+    console.log('  ✅ Address modification drawer opened');
+
+    const updatedAddress = '9917 South 3200 West, South Jordan, UT 84095';
+    await page.locator('#editAddressInput').fill(updatedAddress);
+    await page.locator('#btnApplyAddressUpdate').click();
+    await page.waitForSelector('#addressEditDrawer', { state: 'hidden' });
+
+    const displayedAddress = await page.locator('#displayAddress').textContent();
+    console.log(`  ✅ Address updated & Street View refreshed: "${displayedAddress}"`);
+    if (!displayedAddress.includes('9917 South 3200 West')) {
+      throw new Error(`Address update failed! Expected "9917 South 3200 West", got: ${displayedAddress}`);
+    }
 
     // Capture Screenshot Step 1
     const ssStep1 = path.join(ARTIFACT_DIR, 'rpa_mobile_step1_scope.png');
     await page.screenshot({ path: ssStep1, fullPage: false });
     console.log(`  📸 Captured Mobile Proof: ${ssStep1}`);
 
-    // Interact Step 1: Property Type & Scope
+    // Assert: 15-Minute Remote Video Call is NOT in Step 1 upfront scope
+    const upfrontVideoCount = await page.locator('#step1 input[name="projectScope"][value*="Video"]').count();
+    if (upfrontVideoCount !== 0) {
+      throw new Error('VIOLATION: 15-Minute Video Call found in upfront project scope options!');
+    }
+    console.log('  ✅ 15-Minute Video Call correctly absent from upfront scope choices');
+
+    // Test: Select Active Leak -> Gated Inspection Box reveals
+    await page.locator('label[for="scope_repair"]').click();
+    await page.waitForSelector('#inspectionGateBox', { state: 'visible' });
+    console.log('  ✅ Gated 15-Minute Video Inspection Card dynamically revealed on Active Leak / Repair selection');
+
+    // Select Full Roof Replacement for certified proposal -> Gated inspection box hides
+    await page.locator('label[for="scope_replace"]').click();
+    await page.waitForSelector('#inspectionGateBox', { state: 'hidden' });
+    console.log('  ✅ Selected Scope: Full Roof Replacement (Inspection box hidden for standard replacement)');
+
     await page.locator('label[for="prop_res"]').click();
     console.log('  ✅ Selected Classification: Residential Home');
-    await page.locator('label[for="scope_replace"]').click();
-    console.log('  ✅ Selected Scope: Full Roof Replacement');
+
     await page.locator('#btnNext1').click();
     await page.waitForTimeout(300);
 
@@ -136,21 +170,26 @@ async function runRpaTests() {
     }
     console.log(`  ✅ Successfully advanced to: ${step2Title}`);
 
-    // Select: Solar (Installer Warranty)
-    await page.locator('label[for="solar_warranty"]').click();
-    console.log('  ✅ Selected: Solar (Installer Warranty)');
+    // Select: Solar Panels - Simple binary selection (Instant Estimate & Voice parity)
+    await page.locator('label[for="solar_yes"]').click();
+    console.log('  ✅ Selected: Yes, Solar Installed (Simple binary existence check)');
+
     // Select: 1–2 Skylights (Separated question)
     await page.locator('label[for="sky_12"]').click();
     console.log('  ✅ Selected: 1–2 Skylights');
+
     // Select: Old Equipment Removal - Everything Staying
     await page.locator('label[for="equip_none"]').click();
     console.log('  ✅ Selected: Everything Staying');
+
     // Select: Single Layer
     await page.locator('label[for="layer_1"]').click();
     console.log('  ✅ Selected: Single Layer');
+
     // Select: Replace Gutters All Around (NO micro-mesh)
     await page.locator('label[for="gutters_around"]').click();
     console.log('  ✅ Selected: Seamless Gutters All Around');
+
     // Select: No Ice Dam Issues
     await page.locator('label[for="ice_no"]').click();
     console.log('  ✅ Selected: No Ice Dam Issues');
@@ -206,11 +245,21 @@ async function runRpaTests() {
       throw new Error(`API returned success: false -> ${JSON.stringify(resJson)}`);
     }
 
+    // Verify Address persistence and modification flag
+    if (!resJson.propertyAddress.includes('9917 South 3200 West')) {
+      throw new Error(`Server did not persist updated address! Got: ${resJson.propertyAddress}`);
+    }
+    if (!resJson.addressModified) {
+      throw new Error('Server did not flag addressModified: true!');
+    }
+    console.log('  ✅ Server persisted customer-modified address & flagged addressModified: true');
+
     // Wait for Success Card
     await page.waitForSelector('#successCard', { state: 'visible', timeout: 5000 });
     const confirmedEmailText = await page.locator('#confirmedEmail').textContent();
     console.log(`  ✅ Success Card active! Confirmed email: "${confirmedEmailText}"`);
 
+    const summaryAddress = await page.locator('#summaryAddress').textContent();
     const summaryScope = await page.locator('#summaryScope').textContent();
     const summaryPropType = await page.locator('#summaryPropType').textContent();
     const summarySolar = await page.locator('#summarySolar').textContent();
@@ -219,7 +268,8 @@ async function runRpaTests() {
     const summaryGutters = await page.locator('#summaryGutters').textContent();
     const summaryPriority = await page.locator('#summaryPriority').textContent();
 
-    console.log(`  ✅ Summary Specs:
+    console.log(`  ✅ Summary Specs Capsule:
+       - Address: "${summaryAddress}"
        - Classification: "${summaryPropType}"
        - Scope: "${summaryScope}"
        - Solar: "${summarySolar}"
