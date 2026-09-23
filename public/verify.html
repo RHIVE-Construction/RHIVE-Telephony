@@ -40,7 +40,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 24px 16px 48px;
+      padding: 16px 12px 40px;
     }
 
     .container {
@@ -50,19 +50,19 @@
 
     .brand-header {
       text-align: center;
-      margin-bottom: 24px;
+      margin-bottom: 16px;
     }
 
     .brand-logo {
       display: inline-flex;
       align-items: center;
       gap: 10px;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
 
     .brand-mark {
-      width: 44px;
-      height: 44px;
+      width: 42px;
+      height: 42px;
       background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
       border-radius: 10px;
       display: flex;
@@ -76,7 +76,7 @@
     }
 
     .brand-name {
-      font-size: 22px;
+      font-size: 21px;
       font-weight: 800;
       color: var(--primary);
       letter-spacing: -0.5px;
@@ -94,10 +94,56 @@
       border: 1px solid var(--border);
       padding: 4px 12px;
       border-radius: 9999px;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
       color: var(--primary);
-      margin-top: 6px;
+      margin-top: 4px;
+    }
+
+    /* Stepper Progress Bar */
+    .stepper-container {
+      margin-bottom: 16px;
+      background: #F8FAFC;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+
+    .stepper-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .step-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .step-counter {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .progress-bar {
+      height: 6px;
+      background: #E2E8F0;
+      border-radius: 999px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
+      border-radius: 999px;
+      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      width: 33.33%;
     }
 
     .card {
@@ -105,22 +151,23 @@
       border: 1px solid var(--border);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      padding: 28px 24px;
-      margin-bottom: 20px;
+      padding: 22px 18px;
+      margin-bottom: 16px;
     }
 
     .card-title {
-      font-size: 18px;
-      font-weight: 700;
+      font-size: 19px;
+      font-weight: 800;
       color: var(--primary);
-      margin-bottom: 6px;
+      margin-bottom: 4px;
+      line-height: 1.3;
     }
 
     .card-subtitle {
       font-size: 13px;
       color: var(--text-muted);
-      margin-bottom: 20px;
-      line-height: 1.5;
+      margin-bottom: 16px;
+      line-height: 1.45;
     }
 
     .project-banner {
@@ -128,8 +175,8 @@
       border: 1px solid #E2E8F0;
       border-left: 4px solid var(--accent);
       border-radius: 8px;
-      padding: 14px 16px;
-      margin-bottom: 22px;
+      padding: 12px 14px;
+      margin-bottom: 18px;
     }
 
     .project-label {
@@ -138,31 +185,39 @@
       font-weight: 700;
       color: var(--accent);
       letter-spacing: 0.5px;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
     }
 
     .project-address {
       font-size: 15px;
       font-weight: 700;
       color: var(--primary);
+      line-height: 1.3;
     }
 
     .form-group {
-      margin-bottom: 20px;
+      margin-bottom: 18px;
     }
 
     .form-label {
       display: block;
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 700;
       color: var(--text);
       margin-bottom: 8px;
+    }
+
+    .form-hint {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      display: block;
     }
 
     .input-field {
       width: 100%;
       height: 48px;
-      padding: 12px 16px;
+      padding: 10px 14px;
       background: #FFFFFF;
       border: 1.5px solid var(--border);
       border-radius: 8px;
@@ -177,11 +232,22 @@
       box-shadow: 0 0 0 3px rgba(8, 19, 124, 0.12);
     }
 
+    textarea.input-field {
+      height: auto;
+      min-height: 72px;
+      resize: vertical;
+      font-family: inherit;
+    }
+
     /* Quantum Radio Switch Pills (STRICTLY NO CHECKBOXES) */
     .quantum-pill-group {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
+      gap: 8px;
+    }
+
+    .quantum-pill-group.stacked {
+      grid-template-columns: 1fr;
     }
 
     .quantum-pill {
@@ -193,14 +259,16 @@
       opacity: 0;
       width: 0;
       height: 0;
+      pointer-events: none;
     }
 
     .quantum-pill label {
       display: flex;
       align-items: center;
-      justify-content: center;
-      height: 44px;
-      padding: 0 12px;
+      justify-content: flex-start;
+      gap: 8px;
+      min-height: 48px;
+      padding: 8px 12px;
       background: #FFFFFF;
       border: 1.5px solid var(--border);
       border-radius: 8px;
@@ -209,14 +277,86 @@
       color: var(--text);
       cursor: pointer;
       transition: all 0.15s ease;
-      text-align: center;
+      line-height: 1.25;
+      user-select: none;
+    }
+
+    .quantum-pill label .icon {
+      font-size: 16px;
+      flex-shrink: 0;
     }
 
     .quantum-pill input[type="radio"]:checked + label {
-      background: var(--primary);
+      background: #F0F4FF;
       border-color: var(--primary);
+      color: var(--primary);
+      font-weight: 700;
+      box-shadow: 0 2px 8px rgba(8, 19, 124, 0.15);
+    }
+
+    .quantum-pill input[type="radio"]:checked + label .indicator {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .quantum-pill label .indicator {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border);
+      margin-left: auto;
+      flex-shrink: 0;
+      transition: all 0.15s ease;
+    }
+
+    /* Step Navigation Buttons */
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .btn-secondary {
+      flex: 1;
+      height: 50px;
+      background: #F1F5F9;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-secondary:hover {
+      background: #E2E8F0;
+    }
+
+    .btn-primary {
+      flex: 2;
+      height: 50px;
+      background: var(--primary);
       color: #FFFFFF;
-      box-shadow: 0 2px 8px rgba(8, 19, 124, 0.25);
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background-color 0.15s ease, transform 0.1s ease;
+      box-shadow: 0 4px 12px rgba(8, 19, 124, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-primary:active, .btn-secondary:active, .submit-btn:active {
+      transform: scale(0.98);
     }
 
     .submit-btn {
@@ -227,7 +367,7 @@
       border: none;
       border-radius: 10px;
       font-size: 16px;
-      font-weight: 700;
+      font-weight: 800;
       cursor: pointer;
       transition: background-color 0.15s ease, transform 0.1s ease;
       box-shadow: 0 4px 14px rgba(236, 2, 139, 0.35);
@@ -241,10 +381,6 @@
       background: var(--accent-hover);
     }
 
-    .submit-btn:active {
-      transform: scale(0.98);
-    }
-
     .submit-btn:disabled {
       background: #CBD5E1;
       cursor: not-allowed;
@@ -253,27 +389,44 @@
 
     .trust-footer {
       text-align: center;
-      margin-top: 18px;
-      font-size: 12px;
+      margin-top: 16px;
+      font-size: 11px;
       color: var(--text-muted);
-      line-height: 1.6;
+      line-height: 1.5;
     }
 
     .trust-badges {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 16px;
-      margin-top: 10px;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
       font-weight: 600;
       color: var(--primary);
+      font-size: 11px;
     }
 
-    /* Success State */
+    /* Step containers */
+    .step-section {
+      display: none;
+    }
+
+    .step-section.active {
+      display: block;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Success Card */
     .success-card {
       display: none;
       text-align: center;
-      padding: 36px 24px;
+      padding: 30px 18px;
     }
 
     .success-icon {
@@ -285,32 +438,54 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 30px;
-      margin-bottom: 16px;
+      font-size: 28px;
+      margin-bottom: 14px;
       border: 2px solid #A7F3D0;
+    }
+
+    .specs-summary-box {
+      background: #F8FAFC;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin: 16px 0;
+      text-align: left;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .specs-summary-box .spec-row {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px dashed var(--border);
+      padding: 4px 0;
+    }
+
+    .specs-summary-box .spec-row:last-child {
+      border-bottom: none;
     }
 
     .contact-card {
       background: #F8FAFC;
       border: 1px solid #E2E8F0;
       border-radius: 10px;
-      padding: 16px;
-      margin: 20px 0;
+      padding: 14px;
+      margin: 16px 0;
       text-align: left;
     }
 
     .contact-card h4 {
-      font-size: 13px;
+      font-size: 12px;
       color: var(--accent);
       text-transform: uppercase;
-      font-weight: 700;
-      margin-bottom: 6px;
+      font-weight: 800;
+      margin-bottom: 4px;
     }
 
     .contact-card p {
-      font-size: 14px;
+      font-size: 13px;
       color: var(--text);
-      margin-bottom: 4px;
+      margin-bottom: 2px;
     }
 
     .call-btn {
@@ -319,7 +494,7 @@
       justify-content: center;
       gap: 8px;
       width: 100%;
-      height: 46px;
+      height: 48px;
       background: var(--primary);
       color: #FFFFFF;
       text-decoration: none;
@@ -343,64 +518,371 @@
       </div>
     </header>
 
+    <!-- Stepper Progress Header -->
+    <div class="stepper-container" id="stepperContainer">
+      <div class="stepper-header">
+        <span class="step-title" id="stepTitle">Step 1: Scope & Property</span>
+        <span class="step-counter" id="stepCounter">1 of 3</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>
+
     <!-- Main Card -->
     <main class="card" id="formCard">
-      <h1 class="card-title">Confirm Proposal Delivery</h1>
-      <p class="card-subtitle">Please verify your preferred email address so Michael Robinson and our estimating team can dispatch your custom aerial quote.</p>
-
       <div class="project-banner">
         <div class="project-label">Property Address</div>
         <div class="project-address" id="displayAddress">Loading property details...</div>
       </div>
 
       <form id="verifyForm">
-        <div class="form-group">
-          <label class="form-label" for="emailInput">Preferred Email for Project Proposals *</label>
-          <input 
-            type="email" 
-            id="emailInput" 
-            name="email" 
-            class="input-field" 
-            placeholder="e.g. name@gmail.com" 
-            required
-            autocomplete="email"
-            autofocus
-          >
-        </div>
+        <!-- ================= STEP 1: SCOPE & CONTACT ================= -->
+        <div class="step-section active" id="step1">
+          <h1 class="card-title">Project Scope & Contact</h1>
+          <p class="card-subtitle">Confirm what we are taking care of on your roof today so our engineering team pulls the right aerial CAD scans.</p>
 
-        <div class="form-group">
-          <label class="form-label">Preferred Project Priority</label>
-          <div class="quantum-pill-group">
-            <div class="quantum-pill">
-              <input type="radio" id="prio1" name="priority" value="Fast Installation" checked>
-              <label for="prio1">Fast Schedule</label>
+          <div class="form-group">
+            <label class="form-label" for="nameInput">Homeowner / Contact Name</label>
+            <input 
+              type="text" 
+              id="nameInput" 
+              name="callerName" 
+              class="input-field" 
+              placeholder="e.g. Michael Robinson" 
+              autocomplete="name"
+            >
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">What is the primary scope of your project?</label>
+            <div class="quantum-pill-group stacked">
+              <div class="quantum-pill">
+                <input type="radio" id="scope_replace" name="projectScope" value="Full Roof Replacement" checked>
+                <label for="scope_replace">
+                  <span class="icon">🏠</span>
+                  <span><strong>Full Roof Replacement</strong> — Complete tear-off & precision install</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="scope_repair" name="projectScope" value="Roof Repair / Leak">
+                <label for="scope_repair">
+                  <span class="icon">🔧</span>
+                  <span><strong>Roof Repair / Leak</strong> — Spot repair, flashing, or missing shingles</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="scope_video" name="projectScope" value="15-Min Remote Video Call">
+                <label for="scope_video">
+                  <span class="icon">📱</span>
+                  <span><strong>15-Min Remote Video Call</strong> — Inspect live via phone video</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="scope_commercial" name="projectScope" value="Commercial / Flat Membrane">
+                <label for="scope_commercial">
+                  <span class="icon">🏢</span>
+                  <span><strong>Commercial / Flat Roof</strong> — TPO, PVC, or parapet membrane</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
             </div>
-            <div class="quantum-pill">
-              <input type="radio" id="prio2" name="priority" value="Max Warranty">
-              <label for="prio2">Max Warranty</label>
-            </div>
-            <div class="quantum-pill">
-              <input type="radio" id="prio3" name="priority" value="Curb Appeal">
-              <label for="prio3">Curb Appeal</label>
-            </div>
-            <div class="quantum-pill">
-              <input type="radio" id="prio4" name="priority" value="Technical Specs">
-              <label for="prio4">Tech Specs</label>
-            </div>
+          </div>
+
+          <div class="btn-row">
+            <button type="button" class="btn-primary" id="btnNext1" style="flex:1;">
+              <span>Continue to Roof Details</span> ➔
+            </button>
           </div>
         </div>
 
-        <button type="submit" class="submit-btn" id="submitBtn">
-          <span>Confirm & Unlock My Proposal</span> ➔
-        </button>
+        <!-- ================= STEP 2: ROOF DETAILS (MEASURECALL) ================= -->
+        <div class="step-section" id="step2">
+          <h2 class="card-title">Roof Details (MeasureCall)</h2>
+          <p class="card-subtitle">These quick attributes allow our team to match satellite aerial CAD scans to your exact structure.</p>
+
+          <div class="form-group">
+            <label class="form-label">Roof Profile & Slope</label>
+            <div class="quantum-pill-group">
+              <div class="quantum-pill">
+                <input type="radio" id="roof_pitched" name="roofType" value="Pitched Shingles" checked>
+                <label for="roof_pitched">
+                  <span class="icon">📐</span>
+                  <span>Pitched Shingles</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="roof_flat" name="roofType" value="Flat / Low Slope (TPO)">
+                <label for="roof_flat">
+                  <span class="icon">⬛</span>
+                  <span>Flat / Low Slope</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="roof_metal" name="roofType" value="Metal / Specialty">
+                <label for="roof_metal">
+                  <span class="icon">🏰</span>
+                  <span>Metal / Specialty</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="roof_mixed" name="roofType" value="Mixed Shingle & Flat">
+                <label for="roof_mixed">
+                  <span class="icon">🔀</span>
+                  <span>Mixed Planes</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Solar Panels on Roof?</label>
+            <div class="quantum-pill-group">
+              <div class="quantum-pill">
+                <input type="radio" id="solar_no" name="solarStatus" value="No Solar" checked>
+                <label for="solar_no">
+                  <span class="icon">☀️</span>
+                  <span>No Solar Panels</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="solar_yes" name="solarStatus" value="Solar Present (Detach/Reset)">
+                <label for="solar_yes">
+                  <span class="icon">⚡</span>
+                  <span>Solar Installed</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Skylights or Penetrations?</label>
+            <div class="quantum-pill-group">
+              <div class="quantum-pill">
+                <input type="radio" id="sky_none" name="skylights" value="None" checked>
+                <label for="sky_none">
+                  <span class="icon">🪟</span>
+                  <span>No Skylights</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="sky_12" name="skylights" value="1-2 Skylights">
+                <label for="sky_12">
+                  <span class="icon">☀️</span>
+                  <span>1–2 Skylights</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="sky_3p" name="skylights" value="3+ Skylights">
+                <label for="sky_3p">
+                  <span class="icon">✨</span>
+                  <span>3+ Skylights</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="sky_cooler" name="skylights" value="Swamp Cooler Removal">
+                <label for="sky_cooler">
+                  <span class="icon">❄️</span>
+                  <span>Swamp Cooler</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Approximate Roof Age</label>
+            <div class="quantum-pill-group">
+              <div class="quantum-pill">
+                <input type="radio" id="age_under10" name="roofAge" value="Under 10 Years">
+                <label for="age_under10">
+                  <span class="icon">🟢</span>
+                  <span>&lt; 10 Years</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="age_1015" name="roofAge" value="10-15 Years" checked>
+                <label for="age_1015">
+                  <span class="icon">🟡</span>
+                  <span>10–15 Years</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="age_over15" name="roofAge" value="15+ Years (Brittle)">
+                <label for="age_over15">
+                  <span class="icon">🔴</span>
+                  <span>15+ Yrs (Brittle)</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="age_unsure" name="roofAge" value="Unsure / County Tax Roll">
+                <label for="age_unsure">
+                  <span class="icon">❓</span>
+                  <span>Not Sure</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Gutters & Drainage</label>
+            <div class="quantum-pill-group stacked">
+              <div class="quantum-pill">
+                <input type="radio" id="gutters_good" name="gutters" value="Existing Gutters Good" checked>
+                <label for="gutters_good">
+                  <span class="icon">✔️</span>
+                  <span>Existing gutters in good condition</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="gutters_replace" name="gutters" value="Replace with Seamless Gutters">
+                <label for="gutters_replace">
+                  <span class="icon">🌧️</span>
+                  <span>Replace with new seamless aluminum gutters</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="gutters_guards" name="gutters" value="Add Gutter Guards / Covers">
+                <label for="gutters_guards">
+                  <span class="icon">🛡️</span>
+                  <span>Add micro-mesh gutter protection guards</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button type="button" class="btn-secondary" id="btnBack2">
+              ← Back
+            </button>
+            <button type="button" class="btn-primary" id="btnNext2">
+              <span>Continue to Delivery</span> ➔
+            </button>
+          </div>
+        </div>
+
+        <!-- ================= STEP 3: PRIORITIES & DELIVERY ================= -->
+        <div class="step-section" id="step3">
+          <h2 class="card-title">Proposal Delivery & Priority</h2>
+          <p class="card-subtitle">Choose your primary focus so Michael Robinson configures the ideal Owens Corning package for your home.</p>
+
+          <div class="form-group">
+            <label class="form-label">Preferred Project Priority</label>
+            <div class="quantum-pill-group">
+              <div class="quantum-pill">
+                <input type="radio" id="prio1" name="priority" value="Fast Installation" checked>
+                <label for="prio1">
+                  <span class="icon">🚀</span>
+                  <span>Fast Schedule</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="prio2" name="priority" value="Max Warranty">
+                <label for="prio2">
+                  <span class="icon">🛡️</span>
+                  <span>Max Warranty</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="prio3" name="priority" value="Curb Appeal">
+                <label for="prio3">
+                  <span class="icon">🎨</span>
+                  <span>Curb Appeal</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="prio4" name="priority" value="Technical Specs">
+                <label for="prio4">
+                  <span class="icon">📐</span>
+                  <span>Tech Specs</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="emailInput">Preferred Email for Aerial CAD Proposal *</label>
+            <input 
+              type="email" 
+              id="emailInput" 
+              name="email" 
+              class="input-field" 
+              placeholder="e.g. name@gmail.com" 
+              required
+              autocomplete="email"
+            >
+            <span class="form-hint">Your 3D CAD aerial scan & itemized quote will be sent here.</span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="phoneInput">Direct Mobile Phone for 15-Min ETA</label>
+            <input 
+              type="tel" 
+              id="phoneInput" 
+              name="phone" 
+              class="input-field" 
+              placeholder="e.g. (801) 555-1234" 
+              autocomplete="tel"
+            >
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="notesInput">Special Notes / Gate Codes / Access Details</label>
+            <textarea 
+              id="notesInput" 
+              name="notes" 
+              class="input-field" 
+              placeholder="e.g. Dogs in backyard, gate latch code is 1234, ladder access on west side..."
+            ></textarea>
+          </div>
+
+          <div class="btn-row">
+            <button type="button" class="btn-secondary" id="btnBack3">
+              ← Back
+            </button>
+            <button type="submit" class="submit-btn" id="submitBtn" style="flex:2;">
+              <span>Confirm & Lock In Proposal</span> ➔
+            </button>
+          </div>
+        </div>
       </form>
     </main>
 
-    <!-- Success Card -->
+    <!-- ================= SUCCESS CARD ================= -->
     <div class="card success-card" id="successCard">
       <div class="success-icon">✓</div>
-      <h2 class="card-title" style="color: var(--success); font-size: 22px;">Proposal Channel Confirmed!</h2>
-      <p class="card-subtitle">Thank you! Your custom proposal package will be delivered directly to <strong id="confirmedEmail">your email</strong> within 24 to 48 hours.</p>
+      <h2 class="card-title" style="color: var(--success); font-size: 21px;">Proposal Channel Locked In!</h2>
+      <p class="card-subtitle">Thank you! Your custom 3D aerial proposal package will be delivered directly to <strong id="confirmedEmail">your email</strong> within 24 to 48 hours.</p>
+
+      <div class="specs-summary-box" id="specsSummaryBox">
+        <div class="spec-row"><span>📍 Property:</span> <strong id="summaryAddress">Utah Property</strong></div>
+        <div class="spec-row"><span>🏠 Scope:</span> <strong id="summaryScope">Roof Replacement</strong></div>
+        <div class="spec-row"><span>📐 Roof Profile:</span> <strong id="summaryRoofType">Pitched Shingles</strong></div>
+        <div class="spec-row"><span>🎯 Priority:</span> <strong id="summaryPriority">Fast Schedule</strong></div>
+      </div>
 
       <div class="contact-card">
         <h4>Direct Specialist Contact</h4>
@@ -410,7 +892,7 @@
         <a href="tel:8014491451" class="call-btn">📞 Call or Text Michael Directly</a>
       </div>
 
-      <p class="trust-footer">You may close this window. A confirmation email has been queued.</p>
+      <p class="trust-footer">You may close this window. Your information is locked in on our server.</p>
     </div>
 
     <!-- Trust Footer -->
@@ -431,17 +913,67 @@
     const token = urlParams.get('t') || urlParams.get('token') || '';
     const phoneParam = urlParams.get('phone') || '';
     const addressParam = urlParams.get('address') || '';
+    const nameParam = urlParams.get('name') || '';
 
     const displayAddress = document.getElementById('displayAddress');
+    const nameInput = document.getElementById('nameInput');
     const emailInput = document.getElementById('emailInput');
+    const phoneInput = document.getElementById('phoneInput');
+    const notesInput = document.getElementById('notesInput');
     const formCard = document.getElementById('formCard');
     const successCard = document.getElementById('successCard');
     const confirmedEmail = document.getElementById('confirmedEmail');
     const submitBtn = document.getElementById('submitBtn');
 
-    // Pre-populate address if present
+    const stepTitle = document.getElementById('stepTitle');
+    const stepCounter = document.getElementById('stepCounter');
+    const progressFill = document.getElementById('progressFill');
+
+    const step1 = document.getElementById('step1');
+    const step2 = document.getElementById('step2');
+    const step3 = document.getElementById('step3');
+
+    let currentStep = 1;
+
+    function goToStep(step) {
+      currentStep = step;
+      step1.classList.remove('active');
+      step2.classList.remove('active');
+      step3.classList.remove('active');
+
+      if (step === 1) {
+        step1.classList.add('active');
+        stepTitle.textContent = 'Step 1: Scope & Property';
+        stepCounter.textContent = '1 of 3';
+        progressFill.style.width = '33.33%';
+      } else if (step === 2) {
+        step2.classList.add('active');
+        stepTitle.textContent = 'Step 2: Roof Details (MeasureCall)';
+        stepCounter.textContent = '2 of 3';
+        progressFill.style.width = '66.66%';
+      } else if (step === 3) {
+        step3.classList.add('active');
+        stepTitle.textContent = 'Step 3: Priorities & Delivery';
+        stepCounter.textContent = '3 of 3';
+        progressFill.style.width = '100%';
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    document.getElementById('btnNext1').addEventListener('click', () => goToStep(2));
+    document.getElementById('btnBack2').addEventListener('click', () => goToStep(1));
+    document.getElementById('btnNext2').addEventListener('click', () => goToStep(3));
+    document.getElementById('btnBack3').addEventListener('click', () => goToStep(2));
+
+    // Pre-populate fields from query params
     if (addressParam) {
       displayAddress.textContent = decodeURIComponent(addressParam);
+    }
+    if (nameParam) {
+      nameInput.value = decodeURIComponent(nameParam);
+    }
+    if (phoneParam) {
+      phoneInput.value = decodeURIComponent(phoneParam);
     }
 
     // Fetch call session info from backend
@@ -454,30 +986,60 @@
           } else if (!addressParam) {
             displayAddress.textContent = 'Property on File (Utah)';
           }
+          if (data.name && !nameInput.value) {
+            nameInput.value = data.name;
+          }
           if (data.email) {
             emailInput.value = data.email;
+          }
+          if (data.phone && !phoneInput.value) {
+            phoneInput.value = data.phone;
+          }
+          if (data.projectScope) {
+            const el = document.querySelector(`input[name="projectScope"][value="${data.projectScope}"]`);
+            if (el) el.checked = true;
+          }
+          if (data.roofType) {
+            const el = document.querySelector(`input[name="roofType"][value="${data.roofType}"]`);
+            if (el) el.checked = true;
+          }
+          if (data.priority) {
+            const el = document.querySelector(`input[name="priority"][value="${data.priority}"]`);
+            if (el) el.checked = true;
           }
         })
         .catch(() => {
           if (!addressParam) displayAddress.textContent = 'Property on File (Utah)';
         });
     } else {
-      displayAddress.textContent = 'Property on File (Utah)';
+      if (!addressParam) displayAddress.textContent = 'Property on File (Utah)';
     }
 
     // Submit handler
     document.getElementById('verifyForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = emailInput.value.trim();
+      const callerName = nameInput.value.trim();
+      const phone = phoneInput.value.trim() || phoneParam;
+      const notes = notesInput.value.trim();
+
+      const projectScope = document.querySelector('input[name="projectScope"]:checked')?.value || 'Full Roof Replacement';
+      const roofType = document.querySelector('input[name="roofType"]:checked')?.value || 'Pitched Shingles';
+      const solarStatus = document.querySelector('input[name="solarStatus"]:checked')?.value || 'No Solar';
+      const skylights = document.querySelector('input[name="skylights"]:checked')?.value || 'None';
+      const roofAge = document.querySelector('input[name="roofAge"]:checked')?.value || '10-15 Years';
+      const gutters = document.querySelector('input[name="gutters"]:checked')?.value || 'Existing Gutters Good';
       const priority = document.querySelector('input[name="priority"]:checked')?.value || 'Fast Installation';
 
       if (!email || !email.includes('@')) {
         alert('Please enter a valid email address.');
+        goToStep(3);
+        emailInput.focus();
         return;
       }
 
       submitBtn.disabled = true;
-      submitBtn.innerHTML = '<span>Verifying...</span>';
+      submitBtn.innerHTML = '<span>Verifying & Locking In...</span>';
 
       try {
         const res = await fetch('/api/verify-email', {
@@ -485,30 +1047,47 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             token,
-            phone: phoneParam,
+            phone,
             email,
-            priority
+            callerName,
+            projectScope,
+            roofType,
+            solarStatus,
+            skylights,
+            roofAge,
+            gutters,
+            priority,
+            notes
           })
         });
 
         const data = await res.json();
         if (res.ok && data.success) {
-          formCard.style.display = 'none';
-          successCard.style.display = 'block';
-          confirmedEmail.textContent = email;
+          showSuccess(email, projectScope, roofType, priority);
         } else {
           alert(data.error || 'Failed to submit verification. Please try again or text Michael directly at 801-449-1451.');
           submitBtn.disabled = false;
-          submitBtn.innerHTML = '<span>Confirm & Unlock My Proposal</span> ➔';
+          submitBtn.innerHTML = '<span>Confirm & Lock In Proposal</span> ➔';
         }
       } catch (err) {
         console.error('Submit error:', err);
-        // Optimistic success if offline or network hiccup
-        formCard.style.display = 'none';
-        successCard.style.display = 'block';
-        confirmedEmail.textContent = email;
+        // Optimistic success if offline or network glitch
+        showSuccess(email, projectScope, roofType, priority);
       }
     });
+
+    function showSuccess(email, scope, roof, prio) {
+      formCard.style.display = 'none';
+      document.getElementById('stepperContainer').style.display = 'none';
+      successCard.style.display = 'block';
+      confirmedEmail.textContent = email;
+
+      document.getElementById('summaryAddress').textContent = displayAddress.textContent || 'Utah Property';
+      document.getElementById('summaryScope').textContent = scope;
+      document.getElementById('summaryRoofType').textContent = roof;
+      document.getElementById('summaryPriority').textContent = prio;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   </script>
 </body>
 </html>
