@@ -2227,19 +2227,8 @@ async function executeCallbackBooking(params) {
     }).catch(e => console.warn('[Callback Customer SMS Warning]', e.message));
   }
 
-  // SMS briefing to Main Office JustCall Line (+14354176637) without personal phone redundancy
-  const callbackLeadDossier = `📅 NEW 15-MIN CALL SCHEDULED ON YOUR CALENDAR:\n⭐ ${excitingTitle}\n👤 ${callerName} (${customerPhone})\n🏢 Company: ${companyName || 'N/A'}\n⏰ ${slotSpoken}\n📋 ${reason}`;
-  sendExecutiveSummarySms(callbackLeadDossier).catch(e => console.warn('[Callback Executive SMS Error]', e.message));
-
-
-  // Alert Google Chat
-  if (!params.skipChatAlert) {
-    postGoogleChat(
-      `<b>📅 15-Min Call Scheduled on ${targetSpecialist}'s Calendar!</b><br>⭐ Title: <b>${excitingTitle}</b><br>👤 Caller: <b>${callerName}</b> (${customerPhone})<br>🏢 Company: <b>${companyName || 'N/A'}</b><br>⏰ Time: <b>${slotSpoken}</b><br>📋 Topic: ${reason}<br>📧 Email: ${validCustomerEmail || 'michael@rhiveconstruction.com fallback'}`,
-      `📅 15-Min Call Scheduled`
-    );
-  }
-
+  // Note: Executive Summary SMS to Main Office Line (+14354176637) is strictly deferred
+  // until the call completes with all data finalized in archiveCallToPhoneFolder.
   return { success: true, slotSpoken, targetDate: chosenSlot.date, eventTitle: excitingTitle, startISO: chosenSlot.startISO, endISO: chosenSlot.endISO, calendarId: bookedCalendarId };
 }
 
@@ -2268,10 +2257,11 @@ async function postGoogleChat(text, title = '📞 RHIVE Live Voice Call', button
 
   // 1. Primary: Direct Authenticated API Dispatch to JustCall Leads Thread
   let dispatched = false;
+  let messageName = null;
   try {
     const chat = getGoogleChatClient();
     if (chat) {
-      await chat.spaces.messages.create({
+      const createRes = await chat.spaces.messages.create({
         parent: LEADS_CHAT_SPACE,
         messageReplyOption: 'REPLY_MESSAGE_FALLBACK_TO_NEW_THREAD',
         requestBody: {
@@ -2280,7 +2270,9 @@ async function postGoogleChat(text, title = '📞 RHIVE Live Voice Call', button
         }
       });
       dispatched = true;
-      console.log(`[Google Chat] Dispatched 1 authoritative alert to ${LEADS_CHAT_SPACE} (thread: ${LEADS_CHAT_THREAD})`);
+      messageName = createRes?.data?.name || null;
+      console.log(`[Google Chat] Dispatched 1 authoritative alert to ${LEADS_CHAT_SPACE} (message: ${messageName || 'created'})`);
+      return { success: true, messageName, dispatched: true, data: createRes?.data };
     }
   } catch(apiErr) {
     console.warn('[Google Chat Direct API Warning, attempting fallback]:', apiErr.message);
@@ -2294,7 +2286,7 @@ async function postGoogleChat(text, title = '📞 RHIVE Live Voice Call', button
         ? GOOGLE_CHAT_WEBHOOK
         : (GOOGLE_CHAT_WEBHOOK + (GOOGLE_CHAT_WEBHOOK.includes('?') ? '&' : '?') + 'threadKey=RgYVSFhm94o');
 
-      await axios.post(webhookUrl, {
+      const hookRes = await axios.post(webhookUrl, {
         thread: { threadKey: 'RgYVSFhm94o' },
         cardsV2: [{
           cardId: 'voice-call-' + Date.now(),
@@ -2310,10 +2302,46 @@ async function postGoogleChat(text, title = '📞 RHIVE Live Voice Call', button
       }, { timeout: 8000 });
       dispatched = true;
       console.log('[Google Chat] Fallback webhook dispatch succeeded (thread: RgYVSFhm94o)');
+      return { success: true, messageName: null, dispatched: true, data: hookRes?.data };
     } catch(e) {
       console.warn('[Google Chat] Webhook fallback notification failed:', e.message);
     }
   }
+  return { success: dispatched, messageName, dispatched };
+}
+
+/**
+ * Option A: Patch existing Google Chat card in place so Michael sees ONE single spot
+ * for the caller's information without having to scroll through replies or duplicate cards.
+ */
+async function patchGoogleChatMessage({ messageName, text, title = '📞 RHIVE Call Completed & Lead Archived [✅ INTAKE VERIFIED]' }) {
+  if (!messageName) return false;
+  try {
+    const chat = getGoogleChatClient();
+    if (chat) {
+      const cleanMarkdown = text
+        .replace(/<b>/gi, '*')
+        .replace(/<\/b>/gi, '*')
+        .replace(/<i>/gi, '_')
+        .replace(/<\/i>/gi, '_')
+        .replace(/<br\s*[\/]?>/gi, '\n')
+        .replace(/<a\s+href="([^"]+)">([^<]+)<\/a>/gi, '$1');
+
+      const payloadText = `🦅 *${title}*\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${cleanMarkdown}`;
+      await chat.spaces.messages.patch({
+        name: messageName,
+        updateMask: 'text',
+        requestBody: {
+          text: payloadText
+        }
+      });
+      console.log(`[Google Chat Option A] Patched message card in place: ${messageName}`);
+      return true;
+    }
+  } catch (err) {
+    console.warn('[Google Chat Option A Patch Error]', err.message);
+  }
+  return false;
 }
 
 // ============================================================================
@@ -2670,27 +2698,54 @@ async function archiveCallToPhoneFolder({ callSid, callerPhone, conversationTurn
     console.log('[Google Drive] Saved summary dossier to ' + safePhone + ' folder: ' + docRes.data.name);
 
     // 4. Build Comprehensive Lead Dossier & Alert Google Chat + Staff SMS
+    // Check if intake form was already verified before call ended
+    let verifiedEmail = sessionData.customerEmail;
+    let customerPriority = sessionData.customerPriority;
+    const cleanPhoneKey = safePhone.replace(/[^0-9]/g, '');
+    let isIntakeVerified = false;
+    if (cleanPhoneKey && pendingVerifications.has(cleanPhoneKey)) {
+      const vEntry = pendingVerifications.get(cleanPhoneKey);
+      if (vEntry && vEntry.verified) {
+        isIntakeVerified = true;
+        if (vEntry.verifiedEmail) verifiedEmail = vEntry.verifiedEmail;
+        if (vEntry.priority) customerPriority = vEntry.priority;
+      }
+    }
+
     const fullLeadDossier = buildConsolidatedLeadDossier({
       ...sessionData,
       callSid,
       customerPhone: callerPhone,
+      customerEmail: verifiedEmail || sessionData.customerEmail,
+      customerPriority: customerPriority || sessionData.customerPriority,
+      intakeVerified: isIntakeVerified,
       phoneFolderUrl: phoneFolder?.webViewLink,
       transcriptDriveUrl: docRes.data.webViewLink,
       recordingUrl: recordingFile ? recordingFile.webViewLink : (sessionData.callRecordingUrl || sessionData.recordingUrl || null),
       callSummary: summaryText
     });
 
+    let postedChatMsgName = null;
     if (callSid && hasDispatchedPostCallChat.has(callSid)) {
       console.log(`[Google Chat Safety Guard] Suppressed duplicate post-call Google Chat notification for callSid: ${callSid}`);
     } else {
       if (callSid) hasDispatchedPostCallChat.add(callSid);
-      postGoogleChat(
+      const chatRes = await postGoogleChat(
         fullLeadDossier.replace(/\n/g, '<br>'),
-        '📞 RHIVE Call Completed & Lead Archived',
+        '📞 RHIVE Call Completed & Lead Archived' + (isIntakeVerified ? ' [✅ VERIFIED]' : ''),
         phoneFolder?.webViewLink
       );
+      postedChatMsgName = chatRes?.messageName || null;
     }
 
+    // Option A: Save message name and dossier into pendingVerifications for in-place patch
+    if (cleanPhoneKey && pendingVerifications.has(cleanPhoneKey)) {
+      const vEntry = pendingVerifications.get(cleanPhoneKey);
+      if (postedChatMsgName) vEntry.chatMessageName = postedChatMsgName;
+      vEntry.lastDossierText = fullLeadDossier;
+    }
+
+    // SINGLE AUTHORITATIVE SMS: Sent to Main Office Line (+14354176637) ONLY when all call data is complete!
     sendExecutiveSummarySms(fullLeadDossier).catch(e => console.warn('[Aftercall Executive SMS Error]', e.message));
 
     // 5. Persist Call Log & Session to Firestore CRM (call_logs & twilio_voice_sessions)
@@ -2706,7 +2761,7 @@ async function archiveCallToPhoneFolder({ callSid, callerPhone, conversationTurn
       recordingUrl: recordingFile ? recordingFile.webViewLink : null
     }).catch(err => console.warn('[Firestore Call Log Warning]', err.message));
 
-    // 6. Safety Net: If quote verification SMS was not triggered mid-call, dispatch summary now
+    // 6. Safety Net: If quote verification SMS was not triggered mid-call, schedule calendar hold
     if (!sessionData.isQuoteVerified && (sessionData.verifiedAddress || sessionData.customerName)) {
       const callDisconnectSummary = '📋 INBOUND CALL SUMMARY (CALL ENDED):\n' +
         '👤 ' + (sessionData?.callerName || sessionData?.customerName || 'Customer') + ' (' + callerPhone + ')\n' +
@@ -2717,8 +2772,6 @@ async function archiveCallToPhoneFolder({ callSid, callerPhone, conversationTurn
         (sessionData.materialPreference ? '🏠 Material: ' + sessionData.materialPreference + '\n' : '') +
         (sessionData.discProfile ? '🎯 DISC: ' + sessionData.discProfile + '\n' : '') +
         '📁 Drive Dossier: ' + (phoneFolder?.webViewLink || 'Pending');
-
-      sendExecutiveSummarySms(callDisconnectSummary).catch(e => console.warn('[Disconnect SMS Note]', e.message));
 
       if (calendarClient && !isSimulationOrTest(callerPhone)) {
         try {
@@ -3617,12 +3670,8 @@ async function executeInspectionBooking(params) {
       isInspection: true
     });
 
-    // Dispatch Lead Summary to Main Office JustCall Line (+14354176637) from Hunni Intake
-    if (!isSimulatedCall) {
-      sendExecutiveSummarySms(consolidatedMichael).catch(e => console.warn('[Inspection Executive SMS Error]', e.message));
-    } else {
-      console.log('[Simulation Safety Guard] Suppressed Executive Summary SMS to Main Office Line.');
-    }
+    // Note: Executive Summary SMS to Main Office Line (+14354176637) is strictly deferred
+    // until the call completes with all data finalized in archiveCallToPhoneFolder.
 
     if (targetPhone && !isSimulatedCall) {
       const firstName = params.firstName || (callerName && callerName !== 'Homeowner' && callerName !== 'there' && callerName !== 'Unknown Caller' ? callerName.split(' ')[0] : '');
@@ -3897,13 +3946,20 @@ When the caller wants a full roof replacement (not a repair or commercial roof):
    - Phonetic Spellout Verification (Human-Style Host Verification):
      "Awesome. To verify your name and email, I'll spell them out as I heard them to make sure your project design specialist sets up your Certified quote request accurately—are you ready?"
      (Spell username letter-by-letter, then pronounce 'at' [domain] 'dot com', e.g. "C-H-A-D @ 'at' gmail dot com", did I get that right?).
-   - OPTION 1 SMS INSTANT VERIFICATION FALLBACK GATE:
-     * If caller says "No" or indicates spelling is wrong, ask them to spell it once: "My apologies! Could you spell that for me letter-by-letter?"
-     * If the spelling is still difficult, ambiguous, or the caller expresses frustration on the 2nd attempt, DO NOT KEEP ASKING! Never subject the customer to repeated spelling loops!
-     * IMMEDIATELY pivot to Option 1 SMS Instant Verification:
-       "No problem at all! Let me text a quick verification link to this cell phone right now so you can tap and verify your email directly on your screen without the hassle."
+   - OPTION 1 SMS INSTANT VERIFICATION & DIGITAL FORM GATE:
+     * If caller says "No", spelling is ambiguous, caller requests text/digital link, or upon wrapping up quote intake:
+       "No problem at all! I'm texting your digital quote request link to this cell phone right now so you can tap and verify your details directly on your screen."
      * Call "send_quote_verification_sms" with callerName, customerPhone, propertyAddress, and all captured MeasureCall attributes!
-     * Honey says: "I just dispatched a quick text from your project design specialist with their direct cell (801-449-1451). Did that pop up?"
+     * MANDATORY STAY-ON-LINE VERIFICATION CHECK:
+       Honey IMMEDIATELY asks:
+       "I just dispatched your digital quote request link to your cell phone! You can tap it right now to confirm your project specs. Would you like to stay on the line with me while you fill it out in case you have any questions, or would you prefer I let you go?"
+     * IF CALLER CHOOSES TO STAY ON THE LINE ("Yes, stay with me" / "Let me open it up" / "Hold on"):
+       - Honey says: "Take your time! I'm right here with you. Feel free to ask if you have any questions about shingle options, warranties, or anything on the form."
+       - Honey pauses and listens attentively. Honey remains active on the line, ready to answer questions about Owens Corning Duration shingles, SureNail technology, 130 MPH wind resistance, Class 4 hail resistance, ice dam protection, or scheduling.
+       - When caller completes the form (or says "I submitted it" / "All done!"):
+         Honey says: "Fantastic, I see your confirmation received on our server! Michael Robinson and our estimating team will review your aerial CAD scans and dispatch your certified proposal within 24 to 48 hours. Thank you so much for choosing R-HIVE! Have a wonderful day, goodbye!"
+     * IF CALLER PREFERS TO COMPLETE IT LATER ("I'll do it later" / "You can let me go" / "Thanks, I got it"):
+       - Honey says: "Sounds wonderful! Michael Robinson and our estimating team will review your aerial CAD scans and have your certified proposal ready within 24 to 48 hours. Thank you so much for calling R-HIVE! Have a wonderful day, goodbye!"
    - Advance cleanly to Closing Protocol. (CRM: Quote Bucket).
 
 MANDATORY ON-SITE SCHEDULING PROTOCOL (CASES 2, 3, 4B, 4C-NO):
@@ -5178,8 +5234,8 @@ class CallSession {
           isInspection: false
         });
 
-        // Dispatch Single Lead Summary to Main Office JustCall Line (+14354176637)
-        sendExecutiveSummarySms(consolidatedQuote);
+        // Note: Executive Summary SMS to Main Office Line (+14354176637) is strictly deferred
+        // until the call completes with all data finalized in archiveCallToPhoneFolder.
 
         // 3. Dispatch Email notification to Michael, Kara & Office via Google Calendar DWD
         if (calendarClient && !isSimulationOrTest(targetPhone)) {
@@ -6651,7 +6707,13 @@ app.get('/api/verify-info', async (req, res) => {
         address: entry.propertyAddress || '',
         name: entry.callerName || '',
         email: entry.email || '',
-        phone: entry.phone || ''
+        phone: entry.phone || '',
+        projectScope: entry.projectScope || '',
+        roofType: entry.roofType || '',
+        solarStatus: entry.solarStatus || '',
+        skylights: entry.skylights || '',
+        roofAge: entry.roofAge || '',
+        priority: entry.priority || ''
       });
     }
 
@@ -6665,7 +6727,13 @@ app.get('/api/verify-info', async (req, res) => {
             address: d.propertyAddress || '',
             name: d.callerName || '',
             email: d.verifiedEmail || d.email || '',
-            phone: d.phone || ''
+            phone: d.phone || '',
+            projectScope: d.projectScope || '',
+            roofType: d.roofType || '',
+            solarStatus: d.solarStatus || '',
+            skylights: d.skylights || '',
+            roofAge: d.roofAge || '',
+            priority: d.priority || ''
           });
         }
       } catch (dbErr) {
@@ -6688,25 +6756,42 @@ app.get('/api/verify-info', async (req, res) => {
 // Project Verification Submission Endpoint (Updates Firestore & Cancels 10-Min Timer)
 app.post('/api/verify-email', async (req, res) => {
   try {
-    const { token, phone, email, priority } = req.body || {};
+    const { 
+      token, phone, email, priority, callerName, 
+      projectScope, roofType, solarStatus, skylights, 
+      roofAge, gutters, notes 
+    } = req.body || {};
     const key = String(phone || token || '').replace(/[^0-9]/g, '');
 
     if (!email || !email.includes('@')) {
       return res.status(400).json({ error: 'Valid email required' });
     }
 
-    let callerName = '';
+    let customerName = callerName || '';
     let propertyAddress = '';
     let callSid = '';
+    let chatMessageName = null;
+    let lastDossier = '';
 
     if (key && pendingVerifications.has(key)) {
       const entry = pendingVerifications.get(key);
       entry.verified = true;
       entry.verifiedEmail = email;
-      entry.priority = priority;
-      callerName = entry.callerName || '';
+      entry.priority = priority || 'Fast Installation';
+      if (callerName) entry.callerName = callerName;
+      if (projectScope) entry.projectScope = projectScope;
+      if (roofType) entry.roofType = roofType;
+      if (solarStatus) entry.solarStatus = solarStatus;
+      if (skylights) entry.skylights = skylights;
+      if (roofAge) entry.roofAge = roofAge;
+      if (gutters) entry.gutters = gutters;
+      if (notes) entry.notes = notes;
+
+      customerName = entry.callerName || customerName || '';
       propertyAddress = entry.propertyAddress || '';
       callSid = entry.callSid || '';
+      chatMessageName = entry.chatMessageName || null;
+      lastDossier = entry.lastDossierText || '';
       if (entry.timer) {
         clearTimeout(entry.timer);
         entry.timer = null;
@@ -6716,31 +6801,83 @@ app.post('/api/verify-email', async (req, res) => {
 
     const db = initFirestore();
     if (db) {
-      if (key) {
-        await db.collection('verification_requests').doc(key).set({
-          verified: true,
-          verifiedEmail: email,
-          priority: priority || 'Fast Installation',
-          verifiedAt: new Date(),
-          updatedAt: new Date()
-        }, { merge: true }).catch(e => console.warn('[Firestore Update Error]', e.message));
-      }
+      try {
+        if (key) {
+          await db.collection('verification_requests').doc(key).set({
+            verified: true,
+            verifiedEmail: email,
+            callerName: customerName,
+            priority: priority || 'Fast Installation',
+            projectScope: projectScope || 'Full Roof Replacement',
+            roofType: roofType || 'Pitched Shingles',
+            solarStatus: solarStatus || 'No Solar',
+            skylights: skylights || 'None',
+            roofAge: roofAge || '10-15 Years',
+            gutters: gutters || 'Existing Gutters Good',
+            notes: notes || '',
+            verifiedAt: new Date(),
+            updatedAt: new Date()
+          }, { merge: true });
+        }
 
-      if (callSid) {
-        await db.collection('call_logs').doc(callSid).set({
-          customerEmail: email,
-          customerPriority: priority || 'Fast Installation',
-          isVerified: true,
-          verifiedAt: new Date()
-        }, { merge: true }).catch(e => console.warn('[Firestore Call Log Error]', e.message));
+        if (callSid) {
+          await db.collection('call_logs').doc(callSid).set({
+            customerEmail: email,
+            customerName: customerName,
+            customerPriority: priority || 'Fast Installation',
+            projectScope: projectScope || 'Full Roof Replacement',
+            roofType: roofType || 'Pitched Shingles',
+            solarStatus: solarStatus || 'No Solar',
+            isVerified: true,
+            verifiedAt: new Date()
+          }, { merge: true });
+        }
+      } catch (fsErr) {
+        console.warn('[Firestore Update Error]', fsErr.message);
       }
     }
 
-    const priorityBadge = priority ? ` [Priority: ${priority}]` : '';
-    const chatMsg = `✅ *Customer Verified Project Intake*${priorityBadge}\n👤 *Customer:* ${callerName || 'Homeowner'} (${phone || 'N/A'})\n📍 *Address:* ${propertyAddress || 'Utah Property'}\n📧 *Confirmed Email:* ${email}\n🎯 *Preference:* ${priority || 'Standard'}\n⏱️ *Automation:* 10-minute follow-up SMS cancelled.`;
-    postGoogleChat(chatMsg, '📋 Project Intake Form Verified').catch(e => console.warn('[Chat Verify Alert Warning]', e.message));
+    // Option A: Single Spot Call Info — Patch existing Google Chat card in place (ZERO new messages, ZERO replies!)
+    if (chatMessageName) {
+      let patchedDossier = lastDossier || '';
+      const intakeSummary = `\n📋 *CUSTOMER DIGITAL INTAKE SPECS:*\n` +
+        `• Project Scope: ${projectScope || 'Full Roof Replacement'}\n` +
+        `• Roof Profile: ${roofType || 'Pitched Shingles'}\n` +
+        `• Solar Panels: ${solarStatus || 'No Solar'}\n` +
+        `• Skylights / Additions: ${skylights || 'None'}\n` +
+        `• Roof Age: ${roofAge || '10-15 Years'}\n` +
+        `• Gutters & Drainage: ${gutters || 'Existing Gutters Good'}\n` +
+        `• Selected Priority: ${priority || 'Fast Installation'}` +
+        (notes ? `\n• Special Notes: ${notes}` : '');
 
-    return res.json({ success: true, email, priority });
+      if (patchedDossier) {
+        if (patchedDossier.includes('Intake Verification:')) {
+          patchedDossier = patchedDossier.replace(/Intake Verification:.*\n/i, `Intake Verification: ✅ VERIFIED BY CUSTOMER (${email})\n`);
+        } else if (patchedDossier.includes('👤 Customer / Caller:')) {
+          patchedDossier = patchedDossier.replace(/(👤 Customer \/ Caller:[^\n]+)/, `$1\n📧 Verified Customer Email: ${email.toLowerCase()}`);
+        } else {
+          patchedDossier = `📧 Verified Customer Email: ${email.toLowerCase()}\n` + patchedDossier;
+        }
+        patchedDossier += intakeSummary;
+      } else {
+        patchedDossier = `*📋 RHIVE CERTIFIED QUOTE REQUEST [✅ VERIFIED]*\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n👤 Customer: ${customerName || 'Homeowner'} (${phone || 'N/A'})\n📍 Property: ${propertyAddress || 'Utah Property'}\n📧 Verified Email: ${email}\n⏱️ 10-Min Follow-up Timer: Cancelled` + intakeSummary;
+      }
+
+      await patchGoogleChatMessage({
+        messageName: chatMessageName,
+        text: patchedDossier,
+        title: '📞 RHIVE Call Completed & Lead Archived [✅ INTAKE VERIFIED]'
+      });
+    }
+
+    return res.json({ 
+      success: true, 
+      email, 
+      priority: priority || 'Fast Installation', 
+      projectScope: projectScope || 'Full Roof Replacement',
+      roofType: roofType || 'Pitched Shingles',
+      optionA: true 
+    });
   } catch (err) {
     console.error('[API /api/verify-email Error]', err);
     res.status(500).json({ error: err.message });
