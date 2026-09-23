@@ -523,10 +523,10 @@ const CANONICAL_FLOWS = [
     category: 'Quotes, Repairs & Commercial',
     ivrOption: 'Direct Switchboard: Quotes, Repairs & Commercial Evaluations',
     ivrKey: '1',
-    description: 'Residential and commercial roofing quotes for full replacements, repairs, maintenance, and commercial flat roofs (TPO/PVC). Standard replacements execute a streamlined MeasureCall ping-pong sequence: (1) Solar panel check (mandatory remote question); (2) Skylights, swamp cooler, satellite dish removals; (3) Shingle layers; (4) Eave intake ventilation (1990s code); (5) Gutter areas (location/direction only); (6) Heat trace problem areas (location only). Decking condition is never interrogated (unknown until tear-off). Owens Corning Duration is baseline. Project design specialist orders high-res aerial GIS measurements—no on-site visit needed unless: (1) active leak tarping ($150 fee credited); (2) roof >15yo repair request; (3) commercial flat roof; (4) insurance claim; or (5) customer requests on-site diagnostic walk. Verification SMS dispatched with direct channel to Michael Robinson (801-449-1451).',
+    description: 'Residential and commercial roofing quotes for full replacements, repairs, maintenance, and commercial flat roofs (TPO/PVC). 100% of quote intake is completed over voice. Standard replacements execute a streamlined MeasureCall sequence: (1) Address audio verification with individual digits (~15% slower) and full Utah grid directional coordinates; (2) Instant cadence reset to fast, bubbly tempo; (3) Solar panel check (mandatory remote question); (4) Skylights, swamp cooler, satellite dish removals; (5) Shingle layers (decking condition is never interrogated, unknown until tear-off); (6) Eave intake ventilation; (7) Gutters and ice dam problem areas; (8) Customer DISC profiling and timeline; (9) Email capture with phonetic spellout verification (~15% slower with deliberate pauses) and instant snap-back to ~115% high-energy speed. Owens Corning Duration is baseline. Project design specialist orders high-res aerial GIS measurements—no on-site visit needed unless: (1) active leak tarping ($150 fee credited); (2) roof >15yo repair request; (3) commercial flat roof; (4) insurance claim; or (5) customer requests on-site diagnostic walk. Verification SMS is strictly an escape hatch for difficult spellings or noise.',
     operatorTestScript: 'Hi Honey, I need a quote for our roof in Sandy. We have shingles curling on our 20-year-old roof and want to get a price for a full replacement.',
     callerPrompt: 'Hi Honey, I need a quote for our roof in Sandy. We have shingles curling on our 20-year-old roof and want to get a price for a full replacement.',
-    targetOutcome: 'Certified Quote Requested & Project Specialist SMS Dispatched (Enters Closing Protocol)',
+    targetOutcome: 'Certified Quote Intake Completed 100% via Voice & Phonetic Email Verification (Closing Protocol)',
     isLocked: true,
     plannedTurns: [
       {
@@ -549,33 +549,33 @@ const CANONICAL_FLOWS = [
       {
         turnIndex: 2,
         speaker: 'Honey',
-        text: 'Got it, Sandy! We pull high-res satellite measurements for that. Do you have any solar panels up there?',
-        wordCount: 18,
-        ruleFocus: 'MeasureCall Q1: Solar Panels (Mandatory Remote Question)'
+        text: 'I have one, four, two, zero East, eight, six, zero, zero South in Sandy—does that match your property?',
+        wordCount: 20,
+        ruleFocus: 'Digit-by-Digit Address Readback & Coordinate Preservation'
       },
       {
         turnIndex: 3,
+        speaker: 'Caller',
+        text: 'Yes, that is our house.'
+      },
+      {
+        turnIndex: 3,
+        speaker: 'Honey',
+        text: 'Awesome! We pull high-res satellite measurements for that. Do you have any solar panels up there?',
+        wordCount: 16,
+        ruleFocus: 'MeasureCall Q1: Solar Panels (Mandatory Remote Question)'
+      },
+      {
+        turnIndex: 4,
         speaker: 'Caller',
         text: 'No solar panels.'
       },
       {
-        turnIndex: 3,
-        speaker: 'Honey',
-        text: 'Awesome. Is this the original single layer of shingles, or has it ever been roofed over before?',
-        wordCount: 18,
-        ruleFocus: 'MeasureCall Q2: Existing Roof Layers'
-      },
-      {
-        turnIndex: 4,
-        speaker: 'Caller',
-        text: 'Just the original layer.'
-      },
-      {
         turnIndex: 4,
         speaker: 'Honey',
-        text: 'What is the best email to send your guaranteed proposal to?',
-        wordCount: 11,
-        ruleFocus: 'MeasureCall Email Capture & GIS Dispatch'
+        text: 'What is the best email for your specialist to send your custom quote details to?',
+        wordCount: 15,
+        ruleFocus: 'Voice-First Email Capture'
       },
       {
         turnIndex: 5,
@@ -585,21 +585,21 @@ const CANONICAL_FLOWS = [
       {
         turnIndex: 5,
         speaker: 'Honey',
-        text: 'I just texted you from Michael Robinson, your dedicated project specialist, with his direct cell. Did that pop up?',
-        wordCount: 20,
-        ruleFocus: 'Specialist SMS Dispatch & Closing Protocol'
+        text: 'Awesome. To verify: j - o - h - n, at example dot com—did I get that right?',
+        wordCount: 17,
+        ruleFocus: 'Phonetic Spellout Verification with Deliberate Pauses'
       },
       {
         turnIndex: 6,
         speaker: 'Caller',
-        text: 'Yes, got it right here. Thanks Honey!'
+        text: 'Yes, got it right. Thanks Honey!'
       },
       {
         turnIndex: 6,
         speaker: 'Honey',
-        text: 'You are so welcome! Michael will have your proposal ready shortly. Have a wonderful day!',
-        wordCount: 15,
-        ruleFocus: '4-Step Closing Protocol: Clean Hangup Execution'
+        text: 'Your certified quote request is locked in! Michael will review your aerial CAD scans and dispatch your proposal shortly. Have a wonderful day!',
+        wordCount: 23,
+        ruleFocus: 'Instant Cadence Reset & 4-Step Closing Protocol'
       }
     ],
     lastSimulatedAt: new Date().toISOString(),
@@ -7424,7 +7424,7 @@ app.get(['/audio/rhive_hold_groove.mp3', '/audio/rhive_hold_groove.wav'], (req, 
 
 // Inbound Gateway: Direct Single-Agent AI Roofing Specialist (Honey - Leda Voice)
 app.all(['/twiml', '/voice', '/ivr'], (req, res) => {
-  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  const host = req.headers['x-forwarded-host'] || req.headers.host || 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
   const wsProtocol = req.headers['x-forwarded-proto'] === 'https' ? 'wss' : 'ws';
   const caller = req.query.From || req.body.From || 'Unknown';
   const callSid = req.query.CallSid || req.body.CallSid || ('CALL_' + Date.now());
@@ -7457,7 +7457,7 @@ app.all(['/twiml', '/voice', '/ivr'], (req, res) => {
 
 // Master IVR Menu Selection Router -> Plays realistic PBX transfer ring, then connects to Honey
 app.all('/ivr-select', (req, res) => {
-  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  const host = req.headers['x-forwarded-host'] || req.headers.host || 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
   const wsProtocol = req.headers['x-forwarded-proto'] === 'https' ? 'wss' : 'ws';
   const caller = req.query.From || req.body.From || 'Unknown';
   const callSid = req.query.CallSid || req.body.CallSid || ('CALL_' + Date.now());
@@ -8127,7 +8127,7 @@ app.all('/incoming-sms', async (req, res) => {
 
 // AI Caller TwiML Endpoint (Used for Outbound AI-to-AI Testing)
 app.all('/twiml-caller', (req, res) => {
-  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  const host = req.headers['x-forwarded-host'] || req.headers.host || 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
   const wsProtocol = req.headers['x-forwarded-proto'] === 'https' ? 'wss' : 'ws';
   const scenario = req.query.scenario || 'quote_verification';
   const caller = req.query.From || req.body.From || '+18017833317';
