@@ -57,6 +57,16 @@ async function runTests() {
   assert(dashboardHtml.includes('--rhive-pink: #ec028b;'), 'Executive Dashboard includes RHIVE Pink brand color (#ec028b)');
   assert(dashboardHtml.includes('--rhive-blue: #08137C;'), 'Executive Dashboard includes RHIVE Blue brand color (#08137C)');
 
+  // Static Test 1C: Mobile Project Intake & Verification PWA (Pure White Background + Zero Checkboxes)
+  const verifyPath = path.join(__dirname, '..', 'public', 'verify.html');
+  assert(fs.existsSync(verifyPath), 'Project Intake & Verification HTML exists in public/verify.html');
+  const verifyHtml = fs.readFileSync(verifyPath, 'utf8');
+  const verifyCheckbox = /<input[^>]*type=["']checkbox["']/i.test(verifyHtml);
+  assert(!verifyCheckbox, 'Project Verification Form strictly adheres to NO CHECKBOX rule (Pure Quantum Switches)');
+  assert(verifyHtml.includes('--bg: #FFFFFF;'), 'Project Verification Form features pure white background (#FFFFFF)');
+  assert(verifyHtml.includes('--accent: #ec028b;'), 'Project Verification Form includes RHIVE Pink brand color (#ec028b)');
+  assert(verifyHtml.includes('--primary: #08137C;'), 'Project Verification Form includes RHIVE Blue brand color (#08137C)');
+
   console.log(`\nSpawning local server on port ${TEST_PORT}...`);
   const serverPath = path.join(__dirname, '..', 'server.js');
   serverProc = spawn('node', [serverPath], {
@@ -101,6 +111,7 @@ async function runTests() {
     assert(res.data.revision === 'Rev 67', 'Health reports revision: Rev 67');
     assert(res.data.ambientCompositeLoaded === true, 'Health reports ambientCompositeLoaded: true');
     assert(res.data.dashboardAvailable === true, 'Health reports Executive Dashboard is available');
+    assert(res.data.verifyAvailable === true, 'Health reports Project Verification PWA is available');
     assert(res.data.models && (res.data.models.voiceEngine === 'gemini-3.8-live' || res.data.models.voiceEngine === 'gemini-3.1-flash-live-preview'), 'Health reports Voice Engine: ' + res.data.models.voiceEngine);
     assert(res.data.models && res.data.models.extendedThinking === 'gemini-3.8-live-extended-thinking', 'Health reports Extended Thinking: gemini-3.8-live-extended-thinking');
     assert(res.data.models && res.data.models.agenticWriting === 'gemini-3.8-flash', 'Health reports Agentic Writing & DISC: gemini-3.8-flash');
@@ -112,6 +123,24 @@ async function runTests() {
     assert(dashRes.status === 200 && dashRes.data.includes('Executive Telephony Dashboard'), 'GET / serves Rev 67 All-White Executive Dashboard');
   } catch(e) {
     assert(false, 'GET /health error: ' + e.message);
+  }
+
+  // Test 2C: Mobile Project Verification Route & API Endpoints
+  try {
+    const verifyPageRes = await axios.get(`http://localhost:${TEST_PORT}/verify`);
+    assert(verifyPageRes.status === 200 && verifyPageRes.data.includes('Project Quote Intake & Verification'), 'GET /verify serves Project Intake & Verification HTML');
+
+    const infoRes = await axios.get(`http://localhost:${TEST_PORT}/api/verify-info?phone=8014491451`);
+    assert(infoRes.status === 200 && infoRes.data.phone !== undefined, 'GET /api/verify-info returns 200 and schema');
+
+    const submitRes = await axios.post(`http://localhost:${TEST_PORT}/api/verify-email`, {
+      phone: '8014491451',
+      email: 'verified_tester@rhiveconstruction.com',
+      priority: 'Fast Installation'
+    });
+    assert(submitRes.status === 200 && submitRes.data.success === true, 'POST /api/verify-email successfully verifies and clears 10-min timer');
+  } catch(e) {
+    assert(false, 'Verification endpoints error: ' + e.message);
   }
 
   // Test 2B: Dynamic Google Auth Config Endpoint

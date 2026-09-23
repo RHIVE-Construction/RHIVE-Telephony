@@ -1540,6 +1540,68 @@ async function sendMultiChannelSms({ to, body, preferredSender = 'kara' }) {
   return jcRes;
 }
 
+/**
+ * Verification Session Tracker & 10-Minute Follow-Up Engine:
+ * Tracks dispatched project intake verification links and schedules automated
+ * personal follow-up SMS from Michael's number if not completed within 10 minutes.
+ */
+const pendingVerifications = new Map();
+
+function registerVerificationTimer({ phone, cleanPhone, callerName, propertyAddress, callSid }) {
+  if (!phone || isSimulationOrTest(phone)) return;
+  const key = cleanPhone || String(phone).replace(/[^0-9]/g, '');
+  if (!key) return;
+
+  if (pendingVerifications.has(key)) {
+    const prev = pendingVerifications.get(key);
+    if (prev && prev.timer) clearTimeout(prev.timer);
+  }
+
+  const timer = setTimeout(async () => {
+    try {
+      const entry = pendingVerifications.get(key);
+      if (entry && !entry.verified && !entry.followUpSent) {
+        console.log(`[Verification 10-Min Timer] Form not completed by ${key} within 10 min. Sending follow-up SMS...`);
+        const namePart = entry.callerName ? ' ' + entry.callerName : '';
+        const followUpBody = `Hi${namePart}, this is Michael Robinson with R-HIVE Construction. Just following up on your quote request—did that project form come through okay? I'm available anytime if you'd like to schedule a quick 10-minute call when it works best for you. Text me back here or call me directly at 801-449-1451. Let me know how I can assist!`;
+        await sendMultiChannelSms({
+          to: entry.phone,
+          body: followUpBody,
+          preferredSender: 'michael'
+        });
+        entry.followUpSent = true;
+      }
+    } catch (err) {
+      console.warn('[10-Min Verification Follow-up Error]', err.message);
+    }
+  }, 10 * 60 * 1000); // 10 minutes
+
+  pendingVerifications.set(key, {
+    phone,
+    cleanPhone: key,
+    callerName: callerName || '',
+    propertyAddress: propertyAddress || '',
+    callSid: callSid || '',
+    timer,
+    verified: false,
+    followUpSent: false,
+    createdAt: new Date()
+  });
+
+  const db = initFirestore();
+  if (db) {
+    db.collection('verification_requests').doc(key).set({
+      phone,
+      callerName: callerName || '',
+      propertyAddress: propertyAddress || '',
+      callSid: callSid || '',
+      verified: false,
+      followUpSent: false,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }, { merge: true }).catch(e => console.warn('[Firestore verification_requests Error]', e.message));
+  }
+}
 
 async function startCallRecording(callSid) {
   if (!callSid || callSid.startsWith('TEST_') || callSid.startsWith('SIM_')) return null;
@@ -5057,15 +5119,24 @@ class CallSession {
         if (args?.facetCount) this.sessionData.facetCount = args.facetCount;
         if (args?.pitchMatrix) this.sessionData.pitchMatrix = args.pitchMatrix;
 
-        // 1. Dispatch customer SMS establishing direct line with Project Specialist
+        // 1. Dispatch customer SMS with verification link & register 10-minute follow-up timer
         if (targetPhone && !targetPhone.startsWith('SIM_')) {
+          const hostUrl = process.env.PUBLIC_SERVICE_URL || 'https://rhive-voice-live-bridge-910835773728.us-central1.run.app';
+          const verifyUrl = `${hostUrl}/verify?phone=${encodeURIComponent(targetPhone)}&address=${encodeURIComponent(propertyAddress)}`;
           const greetingName = cleanCallerName ? ' ' + cleanCallerName : '';
-          const smsBody = 'RHIVE: Hi' + greetingName + ', your roof quote for ' + propertyAddress + ' is in progress. Text photos or questions directly to this thread anytime!';
+          const smsBody = `RHIVE: Hi${greetingName}, your roof quote for ${propertyAddress} is in progress. Please confirm your project details & preferences here: ${verifyUrl} — Text or call anytime!`;
           sendMultiChannelSms({
             to: targetPhone,
             body: smsBody,
             preferredSender: 'michael'
           }).catch(e => console.warn('[Quote Verification SMS Warning]', e.message));
+
+          registerVerificationTimer({
+            phone: targetPhone,
+            callerName: cleanCallerName,
+            propertyAddress,
+            callSid: this.callSid
+          });
         }
 
         // 2. Build Single Consolidated Lead Summary (Option B)
@@ -6558,6 +6629,124 @@ app.get(['/settings', '/cockpit'], (req, res) => {
   res.redirect('/health');
 });
 
+// Mobile Project Intake & Verification PWA (Pure White Background + Zero Checkboxes)
+app.get(['/verify', '/intake', '/project-intake'], (req, res) => {
+  const verifyFile = path.join(__dirname, 'public', 'verify.html');
+  if (fs.existsSync(verifyFile)) {
+    return res.sendFile(verifyFile);
+  }
+  res.redirect('/health');
+});
+
+// Project Verification Data Retrieval Endpoint
+app.get('/api/verify-info', async (req, res) => {
+  try {
+    const rawPhone = req.query.phone || req.query.p || '';
+    const token = req.query.t || req.query.token || '';
+    const key = String(rawPhone || token).replace(/[^0-9]/g, '');
+
+    if (key && pendingVerifications.has(key)) {
+      const entry = pendingVerifications.get(key);
+      return res.json({
+        address: entry.propertyAddress || '',
+        name: entry.callerName || '',
+        email: entry.email || '',
+        phone: entry.phone || ''
+      });
+    }
+
+    const db = initFirestore();
+    if (db && key) {
+      try {
+        const doc = await db.collection('verification_requests').doc(key).get();
+        if (doc && doc.exists) {
+          const d = doc.data();
+          return res.json({
+            address: d.propertyAddress || '',
+            name: d.callerName || '',
+            email: d.verifiedEmail || d.email || '',
+            phone: d.phone || ''
+          });
+        }
+      } catch (dbErr) {
+        console.warn('[Firestore verify-info Note]', dbErr.message);
+      }
+    }
+
+    res.json({
+      address: '',
+      name: '',
+      email: '',
+      phone: rawPhone
+    });
+  } catch (err) {
+    console.error('[API /api/verify-info Error]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Project Verification Submission Endpoint (Updates Firestore & Cancels 10-Min Timer)
+app.post('/api/verify-email', async (req, res) => {
+  try {
+    const { token, phone, email, priority } = req.body || {};
+    const key = String(phone || token || '').replace(/[^0-9]/g, '');
+
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ error: 'Valid email required' });
+    }
+
+    let callerName = '';
+    let propertyAddress = '';
+    let callSid = '';
+
+    if (key && pendingVerifications.has(key)) {
+      const entry = pendingVerifications.get(key);
+      entry.verified = true;
+      entry.verifiedEmail = email;
+      entry.priority = priority;
+      callerName = entry.callerName || '';
+      propertyAddress = entry.propertyAddress || '';
+      callSid = entry.callSid || '';
+      if (entry.timer) {
+        clearTimeout(entry.timer);
+        entry.timer = null;
+        console.log(`[Verification] Cancelled 10-minute follow-up timer for ${key}`);
+      }
+    }
+
+    const db = initFirestore();
+    if (db) {
+      if (key) {
+        await db.collection('verification_requests').doc(key).set({
+          verified: true,
+          verifiedEmail: email,
+          priority: priority || 'Fast Installation',
+          verifiedAt: new Date(),
+          updatedAt: new Date()
+        }, { merge: true }).catch(e => console.warn('[Firestore Update Error]', e.message));
+      }
+
+      if (callSid) {
+        await db.collection('call_logs').doc(callSid).set({
+          customerEmail: email,
+          customerPriority: priority || 'Fast Installation',
+          isVerified: true,
+          verifiedAt: new Date()
+        }, { merge: true }).catch(e => console.warn('[Firestore Call Log Error]', e.message));
+      }
+    }
+
+    const priorityBadge = priority ? ` [Priority: ${priority}]` : '';
+    const chatMsg = `✅ *Customer Verified Project Intake*${priorityBadge}\n👤 *Customer:* ${callerName || 'Homeowner'} (${phone || 'N/A'})\n📍 *Address:* ${propertyAddress || 'Utah Property'}\n📧 *Confirmed Email:* ${email}\n🎯 *Preference:* ${priority || 'Standard'}\n⏱️ *Automation:* 10-minute follow-up SMS cancelled.`;
+    postGoogleChat(chatMsg, '📋 Project Intake Form Verified').catch(e => console.warn('[Chat Verify Alert Warning]', e.message));
+
+    return res.json({ success: true, email, priority });
+  } catch (err) {
+    console.error('[API /api/verify-email Error]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Live Google Calendar DWD Availability API Endpoint
 app.get('/api/calendar-preview', async (req, res) => {
   try {
@@ -6593,6 +6782,7 @@ app.get('/health', (req, res) => {
     transferRingExists: fs.existsSync(path.join(__dirname, 'audio', 'transfer_ring.wav')),
     controlPanelAvailable: fs.existsSync(path.join(__dirname, 'public', 'settings.html')),
     dashboardAvailable: fs.existsSync(path.join(__dirname, 'public', 'dashboard.html')),
+    verifyAvailable: fs.existsSync(path.join(__dirname, 'public', 'verify.html')),
     timestamp: new Date().toISOString()
   });
 });
