@@ -4,34 +4,41 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>R-HIVE Construction | Project Quote Intake & Verification</title>
-  <link rel="icon" href="/rhive-logo-white.png?v=2">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="/rhive-logo-black.png">
   <style>
+    /* =========================================================================
+       RHIVE OS QUANTUM DESIGN SYSTEM (TECH-NOIR / CHAMFERED BOXES ARCHITECTURE)
+       Pure White Theme (#FFFFFF), High-Contrast Brand Accents (#08137C, #ec028b)
+       Strict Zero-Checkbox Directive (100% Quantum Radio Switch Pills)
+       ========================================================================= */
     :root {
-      --primary: #08137C;
-      --primary-light: #1624a6;
-      --accent: #ec028b;
+      --primary: #08137C;          /* RHIVE Blue */
+      --primary-light: #1624A6;
+      --accent: #ec028b;           /* RHIVE Quantum Pink */
       --accent-hover: #d0027a;
-      --accent-glow: rgba(236, 2, 139, 0.25);
-      --bg: #FFFFFF;
-      --surface: #F8FAFC;
+      --accent-soft: rgba(236, 2, 139, 0.08);
+      --bg: #FFFFFF;               /* Pure White */
       --card-bg: #FFFFFF;
-      --border: #E2E8F0;
-      --border-focus: #ec028b;
-      --text: #0F172A;
-      --text-muted: #64748B;
+      --text: #0F172A;             /* Slate 900 */
+      --text-muted: #64748B;       /* Slate 500 */
+      --border: #E2E8F0;           /* Slate 200 */
+      --border-dark: #374151;      /* Slate 700 */
       --success: #10B981;
-      --radius: 12px;
-      --shadow: 0 4px 20px -2px rgba(8, 19, 124, 0.06), 0 2px 6px -1px rgba(8, 19, 124, 0.04);
+      --warning: #F59E0B;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+      --shadow: 0 4px 16px -2px rgba(8, 19, 124, 0.08);
+      --shadow-lg: 0 10px 25px -4px rgba(8, 19, 124, 0.12);
+      --pink-glow: 0 0 14px rgba(236, 2, 139, 0.35);
     }
 
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: 'Rubik', sans-serif;
       -webkit-tap-highlight-color: transparent;
     }
 
@@ -42,18 +49,32 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 16px 14px 40px;
+      padding: 16px 12px 36px 12px;
+      line-height: 1.45;
     }
 
     .container {
       width: 100%;
-      max-width: 500px;
+      max-width: 520px;
+    }
+
+    /* =========================================================================
+       CHAMFERED GEOMETRY (CIRCUITRY CARD SPECIFICATION)
+       clip-path: polygon(...) for 45-degree angle corner cuts
+       ========================================================================= */
+    .chamfer-card {
+      clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
+      position: relative;
+    }
+
+    .chamfer-sm {
+      clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
     }
 
     /* Brand Header Matching rhiveconstruction.com */
     .brand-header {
       text-align: center;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -65,19 +86,19 @@
       align-items: center;
       justify-content: center;
       gap: 10px;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
       text-decoration: none;
     }
 
     .brand-logo-img {
-      height: 38px;
+      height: 36px;
       width: auto;
       object-fit: contain;
       filter: drop-shadow(0 0 6px rgba(236, 2, 139, 0.35));
     }
 
     .brand-tagline {
-      font-size: 11px;
+      font-size: 10.5px;
       font-weight: 700;
       letter-spacing: 0.12em;
       text-transform: uppercase;
@@ -89,13 +110,13 @@
       color: var(--accent);
     }
 
-    /* Stepper Progress Bar */
+    /* Stepper Progress Bar (Chamfered) */
     .stepper-container {
-      margin-bottom: 14px;
+      margin-bottom: 12px;
       background: #F8FAFC;
       border: 1px solid var(--border);
-      border-radius: 10px;
       padding: 10px 14px;
+      clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
     }
 
     .stepper-header {
@@ -107,7 +128,7 @@
 
     .step-title {
       font-size: 11px;
-      font-weight: 700;
+      font-weight: 800;
       color: var(--primary);
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -115,7 +136,7 @@
 
     .step-counter {
       font-size: 11px;
-      font-weight: 700;
+      font-weight: 800;
       color: var(--accent);
     }
 
@@ -135,13 +156,37 @@
       width: 33.33%;
     }
 
+    /* =========================================================================
+       MAIN CHAMFERED CARD & CORNER NOTCHES
+       ========================================================================= */
     .card {
       background: var(--card-bg);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
       box-shadow: var(--shadow);
-      padding: 22px 18px;
+      padding: 20px 16px;
       margin-bottom: 16px;
+      position: relative;
+    }
+
+    /* Corner SVG Accents (Tech-Noir Circuitry) */
+    .corner-notch-tl {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 20px;
+      height: 20px;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .corner-notch-br {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 20px;
+      height: 20px;
+      pointer-events: none;
+      z-index: 10;
     }
 
     .card-title {
@@ -154,47 +199,211 @@
     }
 
     .card-subtitle {
-      font-size: 13px;
+      font-size: 12.5px;
       color: var(--text-muted);
       margin-bottom: 16px;
-      line-height: 1.45;
+      line-height: 1.4;
     }
 
-    .project-banner {
+    /* =========================================================================
+       INTERACTIVE STREET VIEW & VISUAL ADDRESS ANCHOR
+       ========================================================================= */
+    .streetview-card {
+      border: 1.5px solid var(--border);
       background: #F8FAFC;
-      border: 1px solid #E2E8F0;
-      border-left: 4px solid var(--accent);
-      border-radius: 8px;
-      padding: 12px 14px;
-      margin-bottom: 18px;
+      margin-bottom: 16px;
+      overflow: hidden;
+      position: relative;
+      cursor: pointer;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .streetview-card:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 12px rgba(236, 2, 139, 0.2);
+    }
+
+    .streetview-image-wrap {
+      width: 100%;
+      height: 140px;
+      background: #0F172A;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .streetview-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.3s ease;
+    }
+
+    .streetview-card:hover .streetview-img {
+      transform: scale(1.02);
+    }
+
+    .streetview-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(15,23,42,0.7) 100%);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding: 10px 12px;
+    }
+
+    .streetview-tag {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #FFFFFF;
+      font-size: 9.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 3px 8px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #10B981;
+      box-shadow: 0 0 6px #10B981;
+      animation: pulseGreen 1.5s infinite;
+    }
+
+    .btn-change-addr {
+      background: var(--accent);
+      color: #FFFFFF;
+      border: none;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 5px 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      transition: background 0.15s ease;
+    }
+
+    .btn-change-addr:hover {
+      background: var(--accent-hover);
+    }
+
+    .address-banner-content {
+      padding: 10px 12px;
+      background: #FFFFFF;
+      border-top: 1px solid var(--border);
+    }
+
+    .address-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2px;
     }
 
     .project-label {
-      font-size: 10px;
+      font-size: 9.5px;
       text-transform: uppercase;
       font-weight: 800;
       color: var(--accent);
       letter-spacing: 0.08em;
-      margin-bottom: 2px;
+    }
+
+    .edit-hint-text {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 600;
     }
 
     .project-address {
-      font-size: 15px;
+      font-size: 14.5px;
       font-weight: 700;
       color: var(--primary);
       line-height: 1.3;
     }
 
-    .form-group {
-      margin-bottom: 18px;
+    /* Inline Address Modification Drawer */
+    .address-edit-drawer {
+      background: #F1F5F9;
+      border-top: 1.5px solid var(--accent);
+      padding: 12px;
+      animation: fadeIn 0.2s ease-out;
     }
 
-    /* Form Label with Info Hover Tooltip */
+    .drawer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .drawer-title {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--primary);
+      letter-spacing: 0.06em;
+    }
+
+    .btn-close-drawer {
+      background: transparent;
+      border: none;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 2px 6px;
+    }
+
+    .drawer-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      line-height: 1.35;
+    }
+
+    .drawer-input-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .btn-save-address {
+      background: var(--primary);
+      color: #FFFFFF;
+      border: none;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 0 12px;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s ease;
+    }
+
+    .btn-save-address:hover {
+      background: var(--primary-light);
+    }
+
+    /* Form Fields & Info Hover Tooltips */
+    .form-group {
+      margin-bottom: 16px;
+    }
+
     .form-label-wrap {
       display: flex;
       align-items: center;
       gap: 6px;
-      margin-bottom: 8px;
+      margin-bottom: 7px;
     }
 
     .form-label {
@@ -213,12 +422,12 @@
     }
 
     .tooltip-icon {
-      width: 17px;
-      height: 17px;
+      width: 16px;
+      height: 16px;
       border-radius: 50%;
       background: #E2E8F0;
       color: #64748B;
-      font-size: 11px;
+      font-size: 10.5px;
       font-weight: 700;
       display: inline-flex;
       align-items: center;
@@ -244,14 +453,14 @@
       color: #FFFFFF;
       text-align: left;
       padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 11.5px;
+      border-radius: 6px;
+      font-size: 11px;
       font-weight: 500;
       line-height: 1.4;
       white-space: normal;
-      width: 240px;
+      width: 230px;
       z-index: 100;
-      box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.25);
       transition: opacity 0.2s, visibility 0.2s;
       pointer-events: none;
     }
@@ -276,12 +485,11 @@
 
     .input-field {
       width: 100%;
-      height: 48px;
-      padding: 10px 14px;
+      height: 46px;
+      padding: 10px 12px;
       background: #FFFFFF;
       border: 1.5px solid var(--border);
-      border-radius: 8px;
-      font-size: 15px;
+      font-size: 14.5px;
       color: var(--text);
       transition: border-color 0.15s ease, box-shadow 0.15s ease;
       outline: none;
@@ -294,12 +502,14 @@
 
     textarea.input-field {
       height: auto;
-      min-height: 72px;
+      min-height: 70px;
       resize: vertical;
       font-family: inherit;
     }
 
-    /* Quantum Radio Switch Pills (STRICTLY NO CHECKBOXES) */
+    /* =========================================================================
+       QUANTUM RADIO SWITCH PILLS (CHAMFERED & STRICTLY ZERO CHECKBOXES)
+       ========================================================================= */
     .quantum-pill-group {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -327,11 +537,10 @@
       align-items: center;
       justify-content: flex-start;
       gap: 8px;
-      min-height: 48px;
+      min-height: 46px;
       padding: 8px 12px;
       background: #FFFFFF;
       border: 1.5px solid var(--border);
-      border-radius: 8px;
       font-size: 13px;
       font-weight: 600;
       color: var(--text);
@@ -339,6 +548,7 @@
       transition: all 0.15s ease;
       line-height: 1.25;
       user-select: none;
+      clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
     }
 
     .quantum-pill label .icon {
@@ -369,21 +579,56 @@
       transition: all 0.15s ease;
     }
 
-    /* Step Navigation Buttons */
+    /* Inspection Gate Reveal Card (15-Minute Video Call) */
+    .inspection-gate-box {
+      background: #F0FDF4;
+      border: 1.5px solid #86EFAC;
+      padding: 12px 14px;
+      margin-top: 10px;
+      clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+      animation: fadeIn 0.25s ease-out;
+    }
+
+    .inspection-gate-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .inspection-gate-icon {
+      font-size: 22px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .inspection-gate-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #166534;
+      line-height: 1.25;
+    }
+
+    .inspection-gate-desc {
+      font-size: 11.5px;
+      color: #15803D;
+      line-height: 1.35;
+      margin-top: 2px;
+    }
+
+    /* Step Navigation Buttons (Chamfered) */
     .btn-row {
       display: flex;
       gap: 10px;
-      margin-top: 22px;
+      margin-top: 20px;
     }
 
     .btn-secondary {
       flex: 1;
-      height: 48px;
+      height: 46px;
       background: #F1F5F9;
       color: var(--text);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 14px;
+      font-size: 13.5px;
       font-weight: 700;
       cursor: pointer;
       transition: background-color 0.15s ease;
@@ -391,6 +636,7 @@
       align-items: center;
       justify-content: center;
       gap: 6px;
+      clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
     }
 
     .btn-secondary:hover {
@@ -399,12 +645,11 @@
 
     .btn-primary {
       flex: 2;
-      height: 48px;
+      height: 46px;
       background: var(--primary);
       color: #FFFFFF;
       border: none;
-      border-radius: 8px;
-      font-size: 15px;
+      font-size: 14.5px;
       font-weight: 700;
       cursor: pointer;
       transition: background-color 0.15s ease, transform 0.1s ease;
@@ -413,6 +658,7 @@
       align-items: center;
       justify-content: center;
       gap: 8px;
+      clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
     }
 
     .btn-primary:active, .btn-secondary:active, .submit-btn:active {
@@ -421,11 +667,10 @@
 
     .submit-btn {
       width: 100%;
-      height: 50px;
+      height: 48px;
       background: var(--accent);
       color: #FFFFFF;
       border: none;
-      border-radius: 8px;
       font-size: 15px;
       font-weight: 800;
       cursor: pointer;
@@ -435,6 +680,7 @@
       align-items: center;
       justify-content: center;
       gap: 8px;
+      clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
     }
 
     .submit-btn:hover {
@@ -447,74 +693,70 @@
       box-shadow: none;
     }
 
-    .trust-footer {
-      text-align: center;
-      margin-top: 14px;
-      font-size: 11px;
-      color: var(--text-muted);
-      line-height: 1.5;
-    }
-
+    /* Step Visibility */
     .step-section {
       display: none;
+      animation: fadeIn 0.3s ease-out;
     }
 
     .step-section.active {
       display: block;
-      animation: fadeIn 0.2s ease-out;
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(4px); }
+      from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* ==========================================================================
-       1000% OPTIMIZED SUCCESS SCREEN (SALES & MARKETING CLOSING ENGINE)
-       ========================================================================== */
+    /* =========================================================================
+       1000% SALES CLOSING EXPERIENCE (SUCCESS CARD)
+       ========================================================================= */
     .success-card {
       display: none;
-      padding: 24px 18px;
       text-align: center;
+      border-top: 4px solid var(--accent);
+      animation: fadeIn 0.4s ease-out;
     }
 
     .success-header-badge {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      background: #ECFDF5;
-      color: #065F46;
-      border: 1px solid #A7F3D0;
-      padding: 6px 14px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 700;
+      gap: 6px;
+      background: #FDF2F8;
+      border: 1px solid rgba(236, 2, 139, 0.3);
+      color: var(--accent);
+      padding: 4px 12px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
       margin-bottom: 12px;
+      clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
     }
 
     .success-pulse {
-      width: 8px;
-      height: 8px;
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
-      background: var(--success);
-      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3);
-      animation: pulseGreen 1.8s infinite;
+      background: var(--accent);
+      box-shadow: 0 0 0 3px rgba(236, 2, 139, 0.25);
+      animation: pulsePink 1.8s infinite;
     }
 
-    @keyframes pulseGreen {
-      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
-      70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    @keyframes pulsePink {
+      0% { box-shadow: 0 0 0 0 rgba(236, 2, 139, 0.5); }
+      70% { box-shadow: 0 0 0 6px rgba(236, 2, 139, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(236, 2, 139, 0); }
     }
 
     /* What Happens Next Roadmap */
     .roadmap-box {
       background: #F8FAFC;
       border: 1px solid var(--border);
-      border-radius: 10px;
       padding: 14px 16px;
       margin: 16px 0;
       text-align: left;
+      clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
     }
 
     .roadmap-title {
@@ -600,10 +842,10 @@
     .specs-summary-box {
       background: #FFFFFF;
       border: 1.5px solid var(--border);
-      border-radius: 10px;
       padding: 14px;
       margin: 16px 0;
       text-align: left;
+      clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
     }
 
     .specs-summary-header {
@@ -614,7 +856,7 @@
     }
 
     .specs-summary-title {
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 800;
       text-transform: uppercase;
       color: var(--primary);
@@ -624,8 +866,8 @@
     .spec-grid {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 6px;
-      font-size: 12.5px;
+      gap: 5px;
+      font-size: 12px;
     }
 
     .spec-row {
@@ -654,12 +896,11 @@
     /* Edit Specs Button */
     .btn-edit-specs {
       width: 100%;
-      height: 40px;
+      height: 38px;
       background: #F1F5F9;
       color: var(--primary);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 700;
       cursor: pointer;
       display: flex;
@@ -668,6 +909,7 @@
       gap: 6px;
       margin-top: 10px;
       transition: all 0.15s ease;
+      clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
     }
 
     .btn-edit-specs:hover {
@@ -678,10 +920,10 @@
     .contact-card {
       background: #F8FAFC;
       border: 1.5px solid #E2E8F0;
-      border-radius: 10px;
       padding: 16px 14px;
       margin: 16px 0;
       text-align: left;
+      clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
     }
 
     .contact-card h4 {
@@ -744,8 +986,7 @@
     }
 
     .action-btn {
-      height: 44px;
-      border-radius: 8px;
+      height: 42px;
       font-weight: 700;
       font-size: 13px;
       text-decoration: none;
@@ -755,6 +996,7 @@
       gap: 6px;
       transition: all 0.15s ease;
       cursor: pointer;
+      clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
     }
 
     .action-btn.call-action {
@@ -779,7 +1021,7 @@
 
     .copy-number-btn {
       width: 100%;
-      height: 34px;
+      height: 32px;
       background: transparent;
       border: none;
       color: var(--text-muted);
@@ -825,6 +1067,14 @@
       transform: translateX(-50%) translateY(0);
       opacity: 1;
     }
+
+    .trust-footer {
+      text-align: center;
+      font-size: 11px;
+      color: #94A3B8;
+      margin-top: 20px;
+      line-height: 1.5;
+    }
   </style>
 </head>
 <body>
@@ -842,7 +1092,7 @@
       <div class="brand-tagline">R-HIVE <span>CONSTRUCTION</span> • UTAH ROOFING</div>
     </header>
 
-    <!-- Stepper Progress Header -->
+    <!-- Stepper Progress Header (Chamfered) -->
     <div class="stepper-container" id="stepperContainer">
       <div class="stepper-header">
         <span class="step-title" id="stepTitle">Step 1: Property & Scope</span>
@@ -853,11 +1103,63 @@
       </div>
     </div>
 
-    <!-- Main Card -->
-    <main class="card" id="formCard">
-      <div class="project-banner">
-        <div class="project-label">Property Address</div>
-        <div class="project-address" id="displayAddress">Loading property details...</div>
+    <!-- Main Card (Chamfered Box Architecture) -->
+    <main class="card chamfer-card" id="formCard">
+      <!-- Circuitry Notch Accents (Top-Left Pink, Bottom-Right Navy) -->
+      <svg class="corner-notch-tl" viewBox="0 0 20 20">
+        <line x1="0" y1="18" x2="18" y2="0" stroke="#ec028b" stroke-width="2.5" />
+      </svg>
+      <svg class="corner-notch-br" viewBox="0 0 20 20">
+        <line x1="2" y1="20" x2="20" y2="2" stroke="#08137C" stroke-width="2.5" />
+      </svg>
+
+      <!-- ================= INTERACTIVE STREET VIEW & VISUAL ANCHOR ================= -->
+      <div class="streetview-card chamfer-sm" id="streetviewCard">
+        <div class="streetview-image-wrap" id="streetviewWrap" title="Click photo to modify or edit address">
+          <img 
+            id="streetviewImg" 
+            class="streetview-img" 
+            src="https://maps.googleapis.com/maps/api/streetview?size=600x260&location=South%20Jordan%2C%20UT&key=AIzaSyAyDim_1uOJy6rS_GZ-EwNKmJyCrvSvqRA" 
+            alt="Property Street View"
+          />
+          <div class="streetview-overlay">
+            <span class="streetview-tag">
+              <span class="live-dot"></span>
+              <span>LIVE STREET VIEW</span>
+            </span>
+            <button type="button" class="btn-change-addr" id="btnToggleEditAddress">
+              <span>✏️ Change Address</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="address-banner-content" id="addressBanner">
+          <div class="address-header-row">
+            <span class="project-label">Property Address</span>
+            <span class="edit-hint-text">Click to edit or modify</span>
+          </div>
+          <div class="project-address" id="displayAddress">Loading property details...</div>
+        </div>
+
+        <!-- Inline Address Modification Drawer -->
+        <div class="address-edit-drawer" id="addressEditDrawer" style="display: none;">
+          <div class="drawer-header">
+            <span class="drawer-title">Edit Property Address</span>
+            <button type="button" class="btn-close-drawer" id="btnCloseAddressDrawer">✕</button>
+          </div>
+          <p class="drawer-desc">Correct street number, directional coordinates (e.g. 3200 West), or unit number to re-anchor aerial measurements.</p>
+          <div class="drawer-input-row">
+            <input 
+              type="text" 
+              id="editAddressInput" 
+              class="input-field chamfer-sm" 
+              placeholder="e.g. 9917 South 3200 West, South Jordan, UT"
+            />
+            <button type="button" class="btn-save-address chamfer-sm" id="btnApplyAddressUpdate">
+              <span>Save & Refresh</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       <form id="verifyForm">
@@ -912,14 +1214,6 @@
                 </label>
               </div>
               <div class="quantum-pill">
-                <input type="radio" id="scope_storm" name="projectScope" value="Storm Damage / Insurance">
-                <label for="scope_storm">
-                  <span class="icon">🌪️</span>
-                  <span><strong>Storm Damage / Insurance</strong> — Wind, hail, or storm damage inspection</span>
-                  <span class="indicator"></span>
-                </label>
-              </div>
-              <div class="quantum-pill">
                 <input type="radio" id="scope_repair" name="projectScope" value="Active Leak / Spot Repair">
                 <label for="scope_repair">
                   <span class="icon">💧</span>
@@ -928,12 +1222,41 @@
                 </label>
               </div>
               <div class="quantum-pill">
-                <input type="radio" id="scope_video" name="projectScope" value="15-Min Remote Video Call">
-                <label for="scope_video">
-                  <span class="icon">📱</span>
-                  <span><strong>15-Min Remote Video Call</strong> — Inspect live via homeowner smartphone</span>
+                <input type="radio" id="scope_storm" name="projectScope" value="Storm Damage / Insurance">
+                <label for="scope_storm">
+                  <span class="icon">🌪️</span>
+                  <span><strong>Storm Damage / Insurance</strong> — Wind, hail, or storm damage inspection</span>
                   <span class="indicator"></span>
                 </label>
+              </div>
+            </div>
+
+            <!-- Gated Inspection Card: 15-Minute Remote Video Call (Reveals on Active Leak / Repair) -->
+            <div class="inspection-gate-box" id="inspectionGateBox" style="display: none;">
+              <div class="inspection-gate-header">
+                <span class="inspection-gate-icon">📱</span>
+                <div>
+                  <div class="inspection-gate-title">15-Minute Remote Smartphone Video Inspection</div>
+                  <div class="inspection-gate-desc">Eliminate waiting for a truck roll! Walk your roofline live with Michael Robinson using your smartphone camera so our team can evaluate the repair live.</div>
+                </div>
+              </div>
+              <div class="quantum-pill-group" style="margin-top: 10px;">
+                <div class="quantum-pill">
+                  <input type="radio" id="video_yes" name="videoCallInspection" value="Yes - 15-Min Remote Video Call">
+                  <label for="video_yes">
+                    <span class="icon">📹</span>
+                    <span>Request 15-Min Video Call</span>
+                    <span class="indicator"></span>
+                  </label>
+                </div>
+                <div class="quantum-pill">
+                  <input type="radio" id="video_no" name="videoCallInspection" value="No - Aerial CAD Only" checked>
+                  <label for="video_no">
+                    <span class="icon">🛰️</span>
+                    <span>Standard Aerial Scan</span>
+                    <span class="indicator"></span>
+                  </label>
+                </div>
               </div>
             </div>
           </div>
@@ -950,7 +1273,7 @@
               type="text" 
               id="nameInput" 
               name="callerName" 
-              class="input-field" 
+              class="input-field chamfer-sm" 
               placeholder="e.g. Michael Robinson" 
               autocomplete="name"
             >
@@ -958,62 +1281,46 @@
 
           <div class="btn-row">
             <button type="button" class="btn-primary" id="btnNext1" style="flex:1;">
-              <span>Continue to Roof Anatomy</span> ➔
+              <span>Continue to Roof Details</span> ➔
             </button>
           </div>
         </div>
 
-        <!-- ================= STEP 2: ROOF ANATOMY (MEASURECALL) ================= -->
+        <!-- ================= STEP 2: ROOF ANATOMY (MEASURECALL & INSTANT ESTIMATE PARITY) ================= -->
         <div class="step-section" id="step2">
           <h2 class="card-title">Roof Details (MeasureCall)</h2>
           <p class="card-subtitle">These attributes match Honey's voice questions so our project designer can calibrate satellite scans accurately.</p>
 
-          <!-- Question: Solar Panels -->
+          <!-- Question 1: Solar Panels (Instant Estimate & Voice Simplicity) -->
           <div class="form-group">
             <div class="form-label-wrap">
               <label class="form-label">Solar Panels on Roof?</label>
               <div class="info-tooltip" tabindex="0">
                 <span class="tooltip-icon">i</span>
-                <span class="tooltip-box">If panels are under active installer warranty, your solar provider handles detach & reset. Otherwise RHIVE coordinates it.</span>
+                <span class="tooltip-box">Tells the estimating team whether solar arrays need to be accounted for in satellite facet measurements.</span>
               </div>
             </div>
-            <div class="quantum-pill-group stacked">
+            <div class="quantum-pill-group">
               <div class="quantum-pill">
                 <input type="radio" id="solar_no" name="solarStatus" value="No Solar" checked>
                 <label for="solar_no">
                   <span class="icon">☀️</span>
-                  <span><strong>No Solar Panels</strong> — Clear roof surface</span>
+                  <span>No Solar Panels</span>
                   <span class="indicator"></span>
                 </label>
               </div>
               <div class="quantum-pill">
-                <input type="radio" id="solar_warranty" name="solarStatus" value="Solar (Installer Warranty)">
-                <label for="solar_warranty">
+                <input type="radio" id="solar_yes" name="solarStatus" value="Yes, Solar Installed">
+                <label for="solar_yes">
                   <span class="icon">⚡</span>
-                  <span><strong>Solar (Installer Warranty)</strong> — Detached by solar company</span>
-                  <span class="indicator"></span>
-                </label>
-              </div>
-              <div class="quantum-pill">
-                <input type="radio" id="solar_rhive" name="solarStatus" value="Solar (RHIVE Detach & Reset)">
-                <label for="solar_rhive">
-                  <span class="icon">🔧</span>
-                  <span><strong>Solar (RHIVE Detach & Reset)</strong> — RHIVE certified crew handles</span>
-                  <span class="indicator"></span>
-                </label>
-              </div>
-              <div class="quantum-pill">
-                <input type="radio" id="solar_planning" name="solarStatus" value="Planning Solar Soon">
-                <label for="solar_planning">
-                  <span class="icon">🔋</span>
-                  <span><strong>Planning Solar Soon</strong> — Engineer roof layout for solar</span>
+                  <span>Yes, Solar Installed</span>
                   <span class="indicator"></span>
                 </label>
               </div>
             </div>
           </div>
 
-          <!-- Question: Skylights (Separate from Equipment Removal) -->
+          <!-- Question 2: Skylights -->
           <div class="form-group">
             <div class="form-label-wrap">
               <label class="form-label">Skylights on Roof?</label>
@@ -1050,7 +1357,7 @@
             </div>
           </div>
 
-          <!-- Question: Obsolete Equipment Removal (Separate Group) -->
+          <!-- Question 3: Obsolete Equipment Removal -->
           <div class="form-group">
             <div class="form-label-wrap">
               <label class="form-label">Old Equipment Removal?</label>
@@ -1095,7 +1402,7 @@
             </div>
           </div>
 
-          <!-- Question: Existing Roof Layers -->
+          <!-- Question 4: Existing Roof Layers -->
           <div class="form-group">
             <div class="form-label-wrap">
               <label class="form-label">Existing Roof Layers</label>
@@ -1140,7 +1447,7 @@
             </div>
           </div>
 
-          <!-- Question: Gutters (Exact Voice Question, ZERO Micro-Mesh) -->
+          <!-- Question 5: Gutters (Exact Voice Question, ZERO Micro-Mesh) -->
           <div class="form-group">
             <div class="form-label-wrap">
               <label class="form-label">Gutters & Downspouts</label>
@@ -1185,7 +1492,7 @@
             </div>
           </div>
 
-          <!-- Question: Winter Ice Dams & Hotspots (Honey Voice Question 6) -->
+          <!-- Question 6: Winter Ice Dams & Hotspots (Honey Voice Question 6) -->
           <div class="form-group">
             <div class="form-label-wrap">
               <label class="form-label">Winter Ice Dams & Icicles</label>
@@ -1194,28 +1501,20 @@
                 <span class="tooltip-box">During heavy Utah snows, ice dams can force meltwater under shingles. Self-regulating heat trace cables solve this.</span>
               </div>
             </div>
-            <div class="quantum-pill-group stacked">
+            <div class="quantum-pill-group">
               <div class="quantum-pill">
                 <input type="radio" id="ice_no" name="iceDams" value="No Ice Dam Issues" checked>
                 <label for="ice_no">
                   <span class="icon">❄️</span>
-                  <span><strong>No Ice Dam Issues</strong> — Normal snowmelt drainage</span>
+                  <span>No Ice Dam Issues</span>
                   <span class="indicator"></span>
                 </label>
               </div>
               <div class="quantum-pill">
-                <input type="radio" id="ice_heavy" name="iceDams" value="Heavy Ice Dams / Icicles">
+                <input type="radio" id="ice_heavy" name="iceDams" value="Heavy Ice Dams / Large Icicles">
                 <label for="ice_heavy">
                   <span class="icon">⚠️</span>
-                  <span><strong>Heavy Ice Dams / Large Icicles</strong> — Over walkways or in roof valleys</span>
-                  <span class="indicator"></span>
-                </label>
-              </div>
-              <div class="quantum-pill">
-                <input type="radio" id="ice_heat" name="iceDams" value="Request Heat Trace Option">
-                <label for="ice_heat">
-                  <span class="icon">⚡</span>
-                  <span><strong>Include Self-Regulating Heat Trace</strong> — De-icing cables for valleys</span>
+                  <span>Heavy Ice Dams</span>
                   <span class="indicator"></span>
                 </label>
               </div>
@@ -1293,7 +1592,7 @@
               type="email" 
               id="emailInput" 
               name="email" 
-              class="input-field" 
+              class="input-field chamfer-sm" 
               placeholder="e.g. name@gmail.com" 
               required
               autocomplete="email"
@@ -1312,7 +1611,7 @@
               type="tel" 
               id="phoneInput" 
               name="phone" 
-              class="input-field" 
+              class="input-field chamfer-sm" 
               placeholder="e.g. (801) 555-1234" 
               autocomplete="tel"
             >
@@ -1329,7 +1628,7 @@
             <textarea 
               id="notesInput" 
               name="notes" 
-              class="input-field" 
+              class="input-field chamfer-sm" 
               placeholder="e.g. Gate code is 1234, dogs in backyard, ladder access on west side..."
             ></textarea>
           </div>
@@ -1346,28 +1645,36 @@
       </form>
     </main>
 
-    <!-- ================= 1000% OPTIMIZED SUCCESS CARD ================= -->
-    <div class="card success-card" id="successCard">
+    <!-- ================= 1000% OPTIMIZED SUCCESS CARD (CHAMFERED) ================= -->
+    <div class="card chamfer-card success-card" id="successCard">
+      <!-- Circuitry Notch Accents -->
+      <svg class="corner-notch-tl" viewBox="0 0 20 20">
+        <line x1="0" y1="18" x2="18" y2="0" stroke="#ec028b" stroke-width="2.5" />
+      </svg>
+      <svg class="corner-notch-br" viewBox="0 0 20 20">
+        <line x1="2" y1="20" x2="20" y2="2" stroke="#08137C" stroke-width="2.5" />
+      </svg>
+
       <div class="success-header-badge">
         <span class="success-pulse"></span>
         <span>PROPOSAL CHANNEL LOCKED IN</span>
       </div>
 
-      <h2 class="card-title" style="color: var(--primary); font-size: 21px; margin-bottom: 6px;">
+      <h2 class="card-title" style="color: var(--primary); font-size: 20px; margin-bottom: 4px;">
         Proposal Successfully Initialized!
       </h2>
-      <p class="card-subtitle" style="margin-bottom: 14px;">
+      <p class="card-subtitle" style="margin-bottom: 12px;">
         Thank you! Your project design specialist, <strong>Michael Robinson</strong>, has received your specifications and is formulating your certified proposal package.
       </p>
 
-      <!-- Dynamic 3-Phase Roadmap -->
+      <!-- Dynamic 3-Phase Roadmap (Chamfered) -->
       <div class="roadmap-box">
         <div class="roadmap-title">What Happens Next</div>
         <div class="roadmap-step completed">
           <div class="step-dot">✓</div>
           <div class="step-info">
             <div class="step-name">Project Intake & Telemetry Locked</div>
-            <div class="step-desc">Your property specs are recorded on our secure server.</div>
+            <div class="step-desc">Your property specs are recorded on our secure cloud server.</div>
           </div>
         </div>
         <div class="roadmap-step in-progress">
@@ -1386,7 +1693,7 @@
         </div>
       </div>
 
-      <!-- Specs Summary Capsule -->
+      <!-- Specs Summary Capsule (Chamfered) -->
       <div class="specs-summary-box" id="specsSummaryBox">
         <div class="specs-summary-header">
           <span class="specs-summary-title">Configured Project Specs</span>
@@ -1432,7 +1739,7 @@
         </button>
       </div>
 
-      <!-- Direct Specialist Contact Module -->
+      <!-- Direct Specialist Contact Module (Chamfered) -->
       <div class="contact-card">
         <h4>Direct Specialist Contact</h4>
         <div class="specialist-header">
@@ -1456,7 +1763,7 @@
         </button>
       </div>
 
-      <p class="trust-footer" style="margin-top: 12px;">You may safely close this window. Your quote request is queued with our estimating team.</p>
+      <p class="trust-footer" style="margin-top: 10px;">You may safely close this window. Your quote request is queued with our estimating team.</p>
     </div>
 
     <!-- Trust Footer Matching rhiveconstruction.com -->
@@ -1474,13 +1781,26 @@
   </div>
 
   <script>
+    const GOOGLE_MAPS_KEY = 'AIzaSyAyDim_1uOJy6rS_GZ-EwNKmJyCrvSvqRA';
+
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('t') || urlParams.get('token') || '';
     const phoneParam = urlParams.get('phone') || '';
     const addressParam = urlParams.get('address') || '';
     const nameParam = urlParams.get('name') || '';
 
+    let currentAddress = addressParam ? decodeURIComponent(addressParam) : 'South Jordan, UT';
+    let addressModifiedByUser = false;
+
     const displayAddress = document.getElementById('displayAddress');
+    const streetviewImg = document.getElementById('streetviewImg');
+    const streetviewWrap = document.getElementById('streetviewWrap');
+    const btnToggleEditAddress = document.getElementById('btnToggleEditAddress');
+    const addressEditDrawer = document.getElementById('addressEditDrawer');
+    const btnCloseAddressDrawer = document.getElementById('btnCloseAddressDrawer');
+    const editAddressInput = document.getElementById('editAddressInput');
+    const btnApplyAddressUpdate = document.getElementById('btnApplyAddressUpdate');
+
     const nameInput = document.getElementById('nameInput');
     const emailInput = document.getElementById('emailInput');
     const phoneInput = document.getElementById('phoneInput');
@@ -1498,8 +1818,84 @@
     const step1 = document.getElementById('step1');
     const step2 = document.getElementById('step2');
     const step3 = document.getElementById('step3');
+    const inspectionGateBox = document.getElementById('inspectionGateBox');
 
     let currentStep = 1;
+
+    // Refresh Street View Image with fallback to Satellite Map
+    function refreshStreetView(addr) {
+      if (!addr) return;
+      const encoded = encodeURIComponent(addr);
+      streetviewImg.onerror = function() {
+        this.onerror = null;
+        this.src = `https://maps.googleapis.com/maps/api/staticmap?center=${encoded}&zoom=19&size=600x260&maptype=satellite&key=${GOOGLE_MAPS_KEY}`;
+      };
+      streetviewImg.src = `https://maps.googleapis.com/maps/api/streetview?size=600x260&location=${encoded}&key=${GOOGLE_MAPS_KEY}`;
+    }
+
+    // Initialize address and Street View
+    if (addressParam) {
+      currentAddress = decodeURIComponent(addressParam);
+      displayAddress.textContent = currentAddress;
+      editAddressInput.value = currentAddress;
+      refreshStreetView(currentAddress);
+    }
+
+    // Toggle Address Modification Drawer
+    function toggleAddressDrawer(show) {
+      const isVisible = addressEditDrawer.style.display !== 'none';
+      const nextState = (typeof show === 'boolean') ? show : !isVisible;
+      addressEditDrawer.style.display = nextState ? 'block' : 'none';
+      if (nextState) {
+        editAddressInput.value = currentAddress;
+        editAddressInput.focus();
+      }
+    }
+
+    btnToggleEditAddress.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleAddressDrawer(true);
+    });
+
+    streetviewWrap.addEventListener('click', () => {
+      toggleAddressDrawer(true);
+    });
+
+    document.getElementById('addressBanner').addEventListener('click', () => {
+      toggleAddressDrawer(true);
+    });
+
+    btnCloseAddressDrawer.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleAddressDrawer(false);
+    });
+
+    // Apply Address Modification
+    btnApplyAddressUpdate.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const updated = editAddressInput.value.trim();
+      if (!updated) {
+        alert('Please enter a valid street address.');
+        return;
+      }
+      currentAddress = updated;
+      addressModifiedByUser = true;
+      displayAddress.textContent = currentAddress;
+      refreshStreetView(currentAddress);
+      toggleAddressDrawer(false);
+      showToast('📍 Address updated & Street View refreshed!');
+    });
+
+    // Scope selection listener to reveal/hide 15-Minute Video Inspection Card
+    document.querySelectorAll('input[name="projectScope"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        if (radio.value === 'Active Leak / Spot Repair' && radio.checked) {
+          inspectionGateBox.style.display = 'block';
+        } else {
+          inspectionGateBox.style.display = 'none';
+        }
+      });
+    });
 
     function goToStep(step) {
       currentStep = step;
@@ -1514,7 +1910,7 @@
         progressFill.style.width = '33.33%';
       } else if (step === 2) {
         step2.classList.add('active');
-        stepTitle.textContent = 'Step 2: Roof Anatomy (MeasureCall)';
+        stepTitle.textContent = 'Step 2: Roof Details (MeasureCall)';
         stepCounter.textContent = '2 of 3';
         progressFill.style.width = '66.66%';
       } else if (step === 3) {
@@ -1572,10 +1968,6 @@
       });
     });
 
-    // Pre-populate fields from query params
-    if (addressParam) {
-      displayAddress.textContent = decodeURIComponent(addressParam);
-    }
     if (nameParam) {
       nameInput.value = decodeURIComponent(nameParam);
     }
@@ -1588,10 +1980,11 @@
       fetch(`/api/verify-info?t=${encodeURIComponent(token)}&phone=${encodeURIComponent(phoneParam)}`)
         .then(res => res.json())
         .then(data => {
-          if (data.address) {
-            displayAddress.textContent = data.address;
-          } else if (!addressParam) {
-            displayAddress.textContent = 'Property on File (Utah)';
+          if (data.address && !addressParam) {
+            currentAddress = data.address;
+            displayAddress.textContent = currentAddress;
+            editAddressInput.value = currentAddress;
+            refreshStreetView(currentAddress);
           }
           if (data.name && !nameInput.value) {
             nameInput.value = data.name;
@@ -1608,7 +2001,12 @@
           }
           if (data.projectScope) {
             const el = document.querySelector(`input[name="projectScope"][value="${data.projectScope}"]`);
-            if (el) el.checked = true;
+            if (el) {
+              el.checked = true;
+              if (data.projectScope === 'Active Leak / Spot Repair') {
+                inspectionGateBox.style.display = 'block';
+              }
+            }
           }
           if (data.priority) {
             const el = document.querySelector(`input[name="priority"][value="${data.priority}"]`);
@@ -1618,8 +2016,6 @@
         .catch(() => {
           if (!addressParam) displayAddress.textContent = 'Property on File (Utah)';
         });
-    } else {
-      if (!addressParam) displayAddress.textContent = 'Property on File (Utah)';
     }
 
     // Submit handler
@@ -1632,6 +2028,7 @@
 
       const propertyType = document.querySelector('input[name="propertyType"]:checked')?.value || 'Residential Home';
       const projectScope = document.querySelector('input[name="projectScope"]:checked')?.value || 'Full Roof Replacement';
+      const videoCallInspection = document.querySelector('input[name="videoCallInspection"]:checked')?.value || 'No - Aerial CAD Only';
       const solarStatus = document.querySelector('input[name="solarStatus"]:checked')?.value || 'No Solar';
       const skylights = document.querySelector('input[name="skylights"]:checked')?.value || 'No Skylights';
       const equipmentRemoval = document.querySelector('input[name="equipmentRemoval"]:checked')?.value || 'Everything Staying';
@@ -1659,8 +2056,11 @@
             phone,
             email,
             callerName,
+            propertyAddress: currentAddress,
+            addressModified: addressModifiedByUser,
             propertyType,
             projectScope,
+            videoCallInspection,
             solarStatus,
             skylights,
             equipmentRemoval,
@@ -1693,7 +2093,7 @@
       successCard.style.display = 'block';
       confirmedEmail.textContent = email;
 
-      document.getElementById('summaryAddress').textContent = displayAddress.textContent || 'Utah Property';
+      document.getElementById('summaryAddress').textContent = currentAddress || 'Utah Property';
       document.getElementById('summaryPropType').textContent = propType || 'Residential Home';
       document.getElementById('summaryScope').textContent = scope || 'Full Roof Replacement';
       document.getElementById('summarySolar').textContent = solar || 'No Solar';
