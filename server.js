@@ -3974,8 +3974,8 @@ When the caller wants a full roof replacement (not a repair or commercial roof):
       * If caller has solar panels:
         Honey (<25 words): "Gotcha! If your panels are under an active installer warranty, they handle detach and reset—otherwise, RHIVE's certified installation crews safely detach and reset them with your new roof."
         (Record solarStatus and solarDetachParty: 'installer' vs 'rhive').
-   - Question 2 (Skylights, Swamp Coolers & Satellite Dishes - Approved Exception):
-     "Looking at your preliminary roof layout here—do you have any skylights, or an old swamp cooler or satellite dish you'd like removed, or is everything staying?"
+   - Question 2 (Skylights, Swamp Coolers & Satellite Dishes - Aerial Intent Parity):
+     "We count any skylights directly from our aerial scans—if you have skylights, would you like them replaced with new units, kept and resealed, or removed and decked over? And do you have an old swamp cooler or satellite dish you'd like removed?"
    - Question 3 (Existing Layers - Slope-Aware Invariant):
      * If flat roof (pitch <= 2/12): "Looking at your flat roof section—is this a single layer of membrane, or has it ever been roofed over with an additional layer?"
      * If pitched roof (pitch >= 3/12): "Is this the original single layer of shingles, or has it ever been roofed over with a second layer?"
@@ -4291,8 +4291,7 @@ Never mention any CRM. All call records are saved automatically to Google Drive 
                 propertyType: { type: 'STRING', description: 'Property classification (Residential or Commercial).' },
                 projectScope: { type: 'STRING', description: 'Scope (e.g. Full replacement, Roof repair, Commercial flat roof).' },
                 solarStatus: { type: 'STRING', description: 'Solar panels present, and whether original installer or RHIVE resets.' },
-                solarDetachParty: { type: 'STRING', description: 'Who handles solar detach/reset: "installer" (if under warranty) or "rhive" (certified crew detach & reset).' },
-                skylights_count: { type: 'STRING', description: 'Number or presence of skylights (e.g. 2 skylights, none).' },
+                skylights_count: { type: 'STRING', description: 'Action/preference for skylights: "Replace with New", "Keep & Reseal", "Cancel & Deck Over", or "No Skylights".' },
                 swamp_cooler_removal: { type: 'STRING', description: 'Whether old swamp cooler should be removed and capped (e.g. Yes - remove and cap, None).' },
                 satellite_removal: { type: 'STRING', description: 'Whether old satellite dish should be removed and disposed (e.g. Yes - remove, None).' },
                 removals: { type: 'STRING', description: 'Legacy catch-all for skylight/cooler/satellite removals.' },

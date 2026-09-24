@@ -1320,37 +1320,45 @@
             </div>
           </div>
 
-          <!-- Question 2: Skylights -->
+          <!-- Question 2: Skylight Plan -->
           <div class="form-group">
             <div class="form-label-wrap">
-              <label class="form-label">Skylights on Roof?</label>
+              <label class="form-label">Skylight Plan (If Any)</label>
               <div class="info-tooltip" tabindex="0">
                 <span class="tooltip-icon">i</span>
-                <span class="tooltip-box">Skylights require custom ice and water shield flashing collars installed during roof replacement.</span>
+                <span class="tooltip-box">We count skylight quantities directly from aerial CAD scans. Choose whether you would like them replaced with new Velux units, kept and resealed, or canceled and decked over.</span>
               </div>
             </div>
             <div class="quantum-pill-group">
               <div class="quantum-pill">
-                <input type="radio" id="sky_none" name="skylights" value="No Skylights" checked>
-                <label for="sky_none">
-                  <span class="icon">🪟</span>
-                  <span>No Skylights</span>
+                <input type="radio" id="sky_replace" name="skylights" value="Replace with New" checked>
+                <label for="sky_replace">
+                  <span class="icon">✨</span>
+                  <span>Replace with New</span>
                   <span class="indicator"></span>
                 </label>
               </div>
               <div class="quantum-pill">
-                <input type="radio" id="sky_12" name="skylights" value="1–2 Skylights">
-                <label for="sky_12">
-                  <span class="icon">🌤️</span>
-                  <span>1–2 Skylights</span>
+                <input type="radio" id="sky_keep" name="skylights" value="Keep & Reseal">
+                <label for="sky_keep">
+                  <span class="icon">🛡️</span>
+                  <span>Keep & Reseal</span>
                   <span class="indicator"></span>
                 </label>
               </div>
-              <div class="quantum-pill" style="grid-column: span 2;">
-                <input type="radio" id="sky_3p" name="skylights" value="3+ Skylights">
-                <label for="sky_3p">
-                  <span class="icon">✨</span>
-                  <span>3 or More Skylights</span>
+              <div class="quantum-pill">
+                <input type="radio" id="sky_cancel" name="skylights" value="Cancel & Deck Over">
+                <label for="sky_cancel">
+                  <span class="icon">🪵</span>
+                  <span>Cancel & Deck Over</span>
+                  <span class="indicator"></span>
+                </label>
+              </div>
+              <div class="quantum-pill">
+                <input type="radio" id="sky_none" name="skylights" value="No Skylights">
+                <label for="sky_none">
+                  <span class="icon">🚫</span>
+                  <span>No Skylights</span>
                   <span class="indicator"></span>
                 </label>
               </div>

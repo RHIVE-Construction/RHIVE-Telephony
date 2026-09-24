@@ -198,8 +198,8 @@ async function recordRhiveDigitalQuoteForm() {
     await page.locator('label[for="solar_yes"]').click();
     await page.waitForTimeout(500);
 
-    // Skylights
-    await page.locator('label[for="sky_12"]').click();
+    // Skylights: Replace with New
+    await page.locator('label[for="sky_replace"]').click();
     await page.waitForTimeout(400);
 
     // Equipment Removal
