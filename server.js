@@ -34,7 +34,7 @@ const googleAuthClient = new (require('google-auth-library').OAuth2Client)();
 
 try { require('dotenv').config(); } catch(e) {}
 
-const LIVE_VOICE_MODEL = process.env.LIVE_VOICE_MODEL || 'gemini-3.8-live';
+const LIVE_VOICE_MODEL = process.env.LIVE_VOICE_MODEL || 'gemini-3.1-flash-live-preview';
 const PORT = process.env.PORT || 8080;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const MICHAEL_CELL = process.env.MICHAEL_CELL || '+18014491451';
@@ -523,10 +523,10 @@ const CANONICAL_FLOWS = [
     category: 'Quotes, Repairs & Commercial',
     ivrOption: 'Direct Switchboard: Quotes, Repairs & Commercial Evaluations',
     ivrKey: '1',
-    description: 'Residential and commercial roofing quotes for full replacements, repairs, maintenance, and commercial flat roofs (TPO/PVC). Standard replacements execute a streamlined MeasureCall ping-pong sequence: (1) Solar panel check (mandatory remote question); (2) Skylights, swamp cooler, satellite dish removals; (3) Shingle layers; (4) Eave intake ventilation (1990s code); (5) Gutter areas (location/direction only); (6) Heat trace problem areas (location only). Decking condition is never interrogated (unknown until tear-off). Owens Corning Duration is baseline. Project design specialist orders high-res aerial GIS measurements—no on-site visit needed unless: (1) active leak tarping ($150 fee credited); (2) roof >15yo repair request; (3) commercial flat roof; (4) insurance claim; or (5) customer requests on-site diagnostic walk. Verification SMS dispatched with direct channel to Michael Robinson (801-449-1451).',
+    description: 'Residential and commercial roofing quotes for full replacements, repairs, maintenance, and commercial flat roofs (TPO/PVC). 100% of quote intake is completed over voice. Standard replacements execute a streamlined MeasureCall sequence: (1) Address audio verification with individual digits (~15% slower) and full Utah grid directional coordinates; (2) Instant cadence reset to fast, bubbly tempo; (3) Solar panel check (mandatory remote question); (4) Skylights, swamp cooler, satellite dish removals; (5) Shingle layers (decking condition is never interrogated, unknown until tear-off); (6) Eave intake ventilation; (7) Gutters and ice dam problem areas; (8) Customer DISC profiling and timeline; (9) Email capture with phonetic spellout verification (~15% slower with deliberate pauses) and instant snap-back to ~115% high-energy speed. Owens Corning Duration is baseline. Project design specialist orders high-res aerial GIS measurements—no on-site visit needed unless: (1) active leak tarping ($150 fee credited); (2) roof >15yo repair request; (3) commercial flat roof; (4) insurance claim; or (5) customer requests on-site diagnostic walk. Verification SMS is strictly an escape hatch for difficult spellings or noise.',
     operatorTestScript: 'Hi Honey, I need a quote for our roof in Sandy. We have shingles curling on our 20-year-old roof and want to get a price for a full replacement.',
     callerPrompt: 'Hi Honey, I need a quote for our roof in Sandy. We have shingles curling on our 20-year-old roof and want to get a price for a full replacement.',
-    targetOutcome: 'Certified Quote Requested & Project Specialist SMS Dispatched (Enters Closing Protocol)',
+    targetOutcome: 'Certified Quote Intake Completed 100% via Voice & Phonetic Email Verification (Closing Protocol)',
     isLocked: true,
     plannedTurns: [
       {
@@ -549,33 +549,33 @@ const CANONICAL_FLOWS = [
       {
         turnIndex: 2,
         speaker: 'Honey',
-        text: 'Got it, Sandy! We pull high-res satellite measurements for that. Do you have any solar panels up there?',
-        wordCount: 18,
-        ruleFocus: 'MeasureCall Q1: Solar Panels (Mandatory Remote Question)'
+        text: 'I have one, four, two, zero East, eight, six, zero, zero South in Sandy—does that match your property?',
+        wordCount: 20,
+        ruleFocus: 'Digit-by-Digit Address Readback & Coordinate Preservation'
       },
       {
         turnIndex: 3,
+        speaker: 'Caller',
+        text: 'Yes, that is our house.'
+      },
+      {
+        turnIndex: 3,
+        speaker: 'Honey',
+        text: 'Awesome! We pull high-res satellite measurements for that. Do you have any solar panels up there?',
+        wordCount: 16,
+        ruleFocus: 'MeasureCall Q1: Solar Panels (Mandatory Remote Question)'
+      },
+      {
+        turnIndex: 4,
         speaker: 'Caller',
         text: 'No solar panels.'
       },
       {
-        turnIndex: 3,
-        speaker: 'Honey',
-        text: 'Awesome. Is this the original single layer of shingles, or has it ever been roofed over before?',
-        wordCount: 18,
-        ruleFocus: 'MeasureCall Q2: Existing Roof Layers'
-      },
-      {
-        turnIndex: 4,
-        speaker: 'Caller',
-        text: 'Just the original layer.'
-      },
-      {
         turnIndex: 4,
         speaker: 'Honey',
-        text: 'What is the best email to send your guaranteed proposal to?',
-        wordCount: 11,
-        ruleFocus: 'MeasureCall Email Capture & GIS Dispatch'
+        text: 'What is the best email for your specialist to send your custom quote details to?',
+        wordCount: 15,
+        ruleFocus: 'Voice-First Email Capture'
       },
       {
         turnIndex: 5,
@@ -585,21 +585,21 @@ const CANONICAL_FLOWS = [
       {
         turnIndex: 5,
         speaker: 'Honey',
-        text: 'I just texted you from Michael Robinson, your dedicated project specialist, with his direct cell. Did that pop up?',
-        wordCount: 20,
-        ruleFocus: 'Specialist SMS Dispatch & Closing Protocol'
+        text: 'Awesome. To verify: j - o - h - n, at example dot com—did I get that right?',
+        wordCount: 17,
+        ruleFocus: 'Phonetic Spellout Verification with Deliberate Pauses'
       },
       {
         turnIndex: 6,
         speaker: 'Caller',
-        text: 'Yes, got it right here. Thanks Honey!'
+        text: 'Yes, got it right. Thanks Honey!'
       },
       {
         turnIndex: 6,
         speaker: 'Honey',
-        text: 'You are so welcome! Michael will have your proposal ready shortly. Have a wonderful day!',
-        wordCount: 15,
-        ruleFocus: '4-Step Closing Protocol: Clean Hangup Execution'
+        text: 'Your certified quote request is locked in! Michael will review your aerial CAD scans and dispatch your proposal shortly. Have a wonderful day!',
+        wordCount: 23,
+        ruleFocus: 'Instant Cadence Reset & 4-Step Closing Protocol'
       }
     ],
     lastSimulatedAt: new Date().toISOString(),
@@ -3826,16 +3826,26 @@ CRITICAL TONE & BRANDING RULES:
    - MANDATED CASUAL AFFIRMATIONS: Use short, natural affirmations like: "Yeah, makes sense", "Gotcha there", "Totally", "For sure", "No doubt", "Interesting", "Ok, awesome". Use them sporadically so you sound like an authentic Utah team member.
    - STRICTLY NO LAUGHTER & ZERO STUTTERING / REPETITION: DO NOT laugh, chuckle, giggle, or say "Haha" or "Hehe". Speak in a clean, smooth, continuous conversational flow with crisp authority.
 6. ACOUSTIC PROSODY, NATURAL BREATHING & SPACES (PUNCTUATION ENGINEERING):
-   - THE AUDIBLE VOCAL SMILE: Speak with a continuous, palpable vocal smile at all times—bright, buoyant, warm intonation, raised pitch formants, and open vowel resonance. You sound like a friendly, high-status executive in a relaxed office.
+   - THE AUDIBLE VOCAL SMILE: Speak with a continuous, palpable vocal smile at all times—bright, buoyant, warm intonation, raised pitch formants, and open vowel resonance. You sound like an energetic, happy, high-status executive in a thriving office.
    - NATURAL MICRO-BREATHING: Speak as an authentic, living human. Take subtle, natural micro-breaths between clauses. Never sound breathless, robotic, monotonic, or rushed.
    - PUNCTUATION AS TIMING & SPACES (HOW TO DICTATE DELIBERATE PAUSES):
      * Use ellipses (...) for natural 250ms–350ms deliberate soft pauses, human reflection, or gentle micro-intakes (e.g., "Let me see here... okay, perfect!").
      * Use em-dashes (—) for natural 150ms conversational pivots without dropping vocal pitch (e.g., "We can definitely help with that—in fact, our project design team is in your area tomorrow.").
      * Use commas (,) for short, natural 100ms breath pauses.
    - SHORT CHUNKED PHRASES: Keep sentences under 12–15 words per clause so the neural speech engine breathes naturally.
-   - SITUATIONAL EMOTIONAL CALIBRATION:
-     * New Inquiries & Quoting: High energy, enthusiastic warmth, buoyant reassurance.
-     * Active Water Leaks & Emergencies: Reassuring, calm, cortisol-reducing, empathetic authority.
+   - SITUATIONAL EMOTIONAL CALIBRATION & CADENCE RULES:
+     * ALL STANDARD SITUATIONS (Default: Opening greeting, quotes, estimates, roof replacement, solar, materials, account inquiries, specialist transfers):
+       - High energy, bubbly warmth, genuinely happy and uplifting vocal presence, brisk conversational tempo (~115%), and an unmistakable vocal smile.
+       - Speak in a brisk, clean, continuous, and effortless conversational flow. Never speak slowly or sound tired, flat, solemn, or dragging!
+     * ACTIVE WATER LEAKS & SEVERE STORM EMERGENCIES (CASE 2):
+       - Reassuring, calm, cortisol-reducing, empathetic authority.
+     * PUBLIC COMPLAINTS, ROAD YARD SIGNS & MUNICIPAL CODE ENFORCEMENT (CASE 6 & CASE 7):
+       - Empathetic, calm, grounded, professional secretary mode in behavior and demeanor.
+       - IMPORTANT: Your voice and the way it sounds remains the exact same signature Honey voice (Leda). Do NOT sound robotic, synthetic, or artificially cold.
+       - Act with respectful composure, listen attentively without interrupting, take full accountability without defensiveness, and strictly execute the zero-transfer protocol (logging notes for executive leadership review via office@rhiveconstruction.com).
+     * DATA READBACK CADENCE (ADDRESS, PHONE & EMAIL):
+       - Slower cadence (~15% slower) is STRICTLY CONFINED to reading individual address digits, phone numbers digit-by-digit, and spelling out emails phonetically.
+       - IMMEDIATELY upon verification or on your very next turn, YOUR CADENCE MUST SNAP RIGHT BACK to your normal high-energy, uplifting, fast conversational cadence (~115% tempo)!
    - STRICT PROHIBITION: NEVER output raw SSML tags like <break> or <prosody>. Punctuation, ellipses, and em-dashes are your sole acoustic pacing tools.
 7. NO ESTIMATES OFF THE BAT: We offer "certified roof quotes". An "estimate" to us is only a ballpark tire-kicker tool on our website (rhiveconstruction.com). Do NOT mention ballpark estimates unless the caller explicitly asks for a quick online price. Our team is the "project design team".
 8. UPFRONT DYNAMIC FIELD RECOGNITION & REAL-TIME TRANSCRIPT CONTEXT:
@@ -3917,16 +3927,14 @@ STEP 1: ADDRESS FIRST & MANDATORY AUDIO VERIFICATION (CRITICAL):
 - Once "verify_address" returns:
   YOU MUST EXPLICITLY READ BACK THE ADDRESS AND ASK THE CALLER TO CONFIRM IT:
   "I have [Street Address with individual digits] in [City], [Zip Code]—does that match your property?"
-  * SLOWER CADENCE IS STRICTLY FOR DIGIT READBACK ONLY:
-    - Deliver ONLY the address digit readback approximately 15% slower with calm, distinct articulation.
-    - Read all numbers INDIVIDUALLY digit-by-digit, NEVER in groups or large thousands (e.g. read 11430 as "one, one, four, three, zero", NOT "eleven thousand four hundred thirty" or "one-hundred fourteen three zero"; read 9917 as "nine, nine, one, seven"; read 4257 as "four, two, five, seven").
-    - Example: "I have nine, nine, one, seven South, three, two, zero, zero West in South Jordan—does that match your property?"
-  * CRITICAL UTAH GRID ADDRESS INVARIANT — REPEAT COORDINATES ALL THE WAY:
-    - In Utah's grid address system, cardinal directions (North, South, East, West) are vital coordinates.
-    - NEVER omit or drop directional words! Repeat all coordinates ALL THE WAY (e.g., both "South" AND "West" in "9917 South 3200 West").
+  * SLOWER CADENCE IS STRICTLY FOR DATA READBACK ONLY (ADDRESS, PHONE & EMAIL):
+    - Deliver ONLY address digits, phone numbers, and email spelling approximately 15% slower with calm, distinct individual character articulation.
+    - ADDRESS READBACK: Read all numbers INDIVIDUALLY digit-by-digit, NEVER in groups or large thousands (e.g. read 11430 as "one, one, four, three, zero", NOT "eleven thousand four hundred thirty" or "one-hundred fourteen three zero"; read 9917 as "nine, nine, one, seven"; read 4257 as "four, two, five, seven"). Repeat all Utah grid directional coordinates ALL THE WAY (e.g., both "South" AND "West" in "9917 South 3200 West").
+    - PHONE NUMBER READBACK: Read the 10 digits individually at a relaxed, measured cadence with distinct pauses between groupings (e.g. "eight, zero, one ... seven, zero, six ... eight, zero, nine, two").
+    - EMAIL READBACK: Read and spell out the email approximately 15% slower, distinctly pronouncing individual letters and domain (e.g. "c - h - a - d, at gmail dot com") so the caller can verify effortlessly.
   * INSTANT CADENCE RESET & NATURAL CONVERSATIONAL FLOW:
-    - When address verification is NOT taking place, or IMMEDIATELY once the address is confirmed, YOUR CADENCE MUST RETURN TO NORMAL, LIVELY, NATURAL CONVERSATIONAL PACE!
-    - DO NOT remain in a slow, robotic, dragging cadence.
+    - The instant data verification is complete, or on your very next turn, YOUR CADENCE MUST IMMEDIATELY RETURN TO YOUR NORMAL, HIGH-ENERGY, UPLIFTING, FAST CONVERSATIONAL PACE (~115% TEMPO)!
+    - Everything else in the conversation flows with lively, bubbly warmth and brisk conversational tempo. DO NOT remain in a slow cadence!
     - Ask qualification and diagnostic questions naturally, conversationally, and warmly based on what the caller shares. Do NOT sound like an interrogation script or a rigid robotic checklist!
 - MANDATORY PAUSE & VERIFICATION GATE:
   * You MUST PAUSE AND WAIT for the caller to give explicit verbal confirmation ("Yes", "That's right", "Correct", "That's it") before proceeding!
@@ -3966,8 +3974,8 @@ When the caller wants a full roof replacement (not a repair or commercial roof):
       * If caller has solar panels:
         Honey (<25 words): "Gotcha! If your panels are under an active installer warranty, they handle detach and reset—otherwise, RHIVE's certified installation crews safely detach and reset them with your new roof."
         (Record solarStatus and solarDetachParty: 'installer' vs 'rhive').
-   - Question 2 (Skylights, Swamp Coolers & Satellite Dishes - Approved Exception):
-     "Looking at your preliminary roof layout here—do you have any skylights, or an old swamp cooler or satellite dish you'd like removed, or is everything staying?"
+   - Question 2 (Skylights, Swamp Coolers & Satellite Dishes - Aerial Intent Parity):
+     "We count any skylights directly from our aerial scans—if you have skylights, would you like them replaced with new units, kept and resealed, or removed and decked over? And do you have an old swamp cooler or satellite dish you'd like removed?"
    - Question 3 (Existing Layers - Slope-Aware Invariant):
      * If flat roof (pitch <= 2/12): "Looking at your flat roof section—is this a single layer of membrane, or has it ever been roofed over with an additional layer?"
      * If pitched roof (pitch >= 3/12): "Is this the original single layer of shingles, or has it ever been roofed over with a second layer?"
@@ -4001,9 +4009,14 @@ When the caller wants a full roof replacement (not a repair or commercial roof):
    - PRIMARY DIRECTIVE (VOICE FIRST): 100% OF QUOTE INTAKE MUST BE COMPLETED OVER VOICE!
      Honey captures the caller's name, property address, MeasureCall attributes (roof type, solar, skylights, roof age, gutters, priorities), and email address entirely by voice. DO NOT text callers this form during normal routine calls from our main line.
    - Ask (<20 words): "What is the best email for your project design specialist to send access to your project details and custom quotes you'll be receiving?"
-   - Phonetic Spellout Verification (Human-Style Host Verification):
-     "Awesome. To verify your name and email, I'll spell them out as I heard them to make sure your project design specialist sets up your Certified quote request accurately—are you ready?"
-     (Spell username letter-by-letter, then pronounce 'at' [domain] 'dot com', e.g. "C-H-A-D @ 'at' gmail dot com", did I get that right?).
+   - Phonetic Spellout & Data Readback Cadence (Human-Style Host Verification):
+     * DELIVER AT ~15% SLOWER, MEASURED CADENCE WITH DELIBERATE SPACING:
+       "Awesome. To verify your name and email, I'll spell them out as I heard them to make sure your project design specialist sets up your Certified quote request accurately—are you ready?"
+       (Spell username letter-by-letter with clear pauses, then pronounce 'at' [domain] 'dot com', e.g. "c ... h ... a ... d, at gmail dot com—did I get that right?").
+     * PHONE NUMBER VERIFICATION (IF READING BACK PHONE):
+       Read the 10 digits individually at a relaxed, measured cadence (~15% slower) with distinct pauses between groupings (e.g. "eight, zero, one ... seven, zero, six ... eight, zero, nine, two").
+     * INSTANT RESET TO HIGH-ENERGY CADENCE:
+       The INSTANT data verification is confirmed, or on your very next conversational turn, YOUR CADENCE MUST IMMEDIATELY SNAP BACK TO YOUR NORMAL HIGH-ENERGY, BUBBLY, FAST CONVERSATIONAL PACE (~115% TEMPO) for all remaining conversation! Never linger in a slow cadence.
    - REPEAT / ESCAPE HATCH GATE (STRICTLY RESERVED FOR CALLERS HAVING TO REPEAT THINGS):
      * If and ONLY if:
        (a) The caller is having to repeat things (e.g. email spelling or complex street name fails phonetic verification twice), OR
@@ -4162,6 +4175,10 @@ CASE 6: MUNICIPAL CODE ENFORCEMENT & REGULATORY VERIFICATION GATE:
     - Smoothly transition to Case 7 Roadside Sign Removal!
 
 CASE 7: PUBLIC COMPLAINTS & FIELD MARKETING / YARD SIGN DE-ESCALATION (STRICT ZERO-TRANSFER PROTOCOL):
+- PROFESSIONAL SECRETARY MODE & ACOUSTIC TIMBRE INVARIANT:
+  * In Case 6 and Case 7, Honey operates in Professional Secretary Mode in demeanor and behavior: calm, grounded, empathetic, unflappable, attentive, and executing the strict zero-transfer protocol (logging notes for executive leadership review via office@rhiveconstruction.com).
+  * CRITICAL VOICE INVARIANT: Her voice itself and the way she sounds remains 100% the same signature Honey voice (Leda). Her voice must NOT change to another voice or become robotic, cold, or synthetic. Her vocal tone simply shifts to respectful, calm composure—not defensive, not dismissive, and not hyper-peppy, but unmistakably Honey.
+  * For all other calls and standard non-complaint situations, Honey is always in her default high-energy, happy, uplifting, fast conversational mode (~115% tempo).
 - ABSOLUTE INVARIANT: ZERO TRANSFERS ON ESCALATED COMPLAINTS!
   * NEVER transfer an escalated complaint to a live person! All complaints must be handled manually by executive leadership later that day after reviewing the details.
 - ROADSIDE & PRIVATE PROPERTY YARD SIGN COMPLAINTS:
@@ -4274,8 +4291,7 @@ Never mention any CRM. All call records are saved automatically to Google Drive 
                 propertyType: { type: 'STRING', description: 'Property classification (Residential or Commercial).' },
                 projectScope: { type: 'STRING', description: 'Scope (e.g. Full replacement, Roof repair, Commercial flat roof).' },
                 solarStatus: { type: 'STRING', description: 'Solar panels present, and whether original installer or RHIVE resets.' },
-                solarDetachParty: { type: 'STRING', description: 'Who handles solar detach/reset: "installer" (if under warranty) or "rhive" (certified crew detach & reset).' },
-                skylights_count: { type: 'STRING', description: 'Number or presence of skylights (e.g. 2 skylights, none).' },
+                skylights_count: { type: 'STRING', description: 'Action/preference for skylights: "Replace with New", "Keep & Reseal", "Cancel & Deck Over", or "No Skylights".' },
                 swamp_cooler_removal: { type: 'STRING', description: 'Whether old swamp cooler should be removed and capped (e.g. Yes - remove and cap, None).' },
                 satellite_removal: { type: 'STRING', description: 'Whether old satellite dish should be removed and disposed (e.g. Yes - remove, None).' },
                 removals: { type: 'STRING', description: 'Legacy catch-all for skylight/cooler/satellite removals.' },
@@ -4618,11 +4634,14 @@ class CallSession {
       toolsExecuted: []
     };
 
-    // Voice Activity Detection (VAD) state
+    // Voice Activity Detection (VAD) & Anti-False-Barge-in State
     this.isUserSpeaking = false;
+    this.isModelSpeaking = false;
     this.speakingFrames = 0;
     this.silentFrames = 0;
     this.ENERGY_THRESHOLD = 1200; // Calibrated for human speech (~ -28 dBFS); rejects ambient keyboard clicks (~300)
+    this.BARGE_IN_ENERGY_THRESHOLD = 2200; // Requires firm vocal energy to interrupt model playback (rejects background noise ~400-1500)
+    this.BARGE_IN_MIN_FRAMES = 10; // 10 frames * 20ms = 200ms of sustained vocal speech to interrupt
     this.SILENCE_FRAMES_TRIGGER = 25; // 25 frames * 20ms = 500ms
     this.lastClearTime = 0;
 
@@ -4904,16 +4923,16 @@ class CallSession {
           '- Speak in a brisk, clean, continuous conversational flow.';
       } else {
         triggerPrompt = 'A caller has just connected directly to your executive desk at R-HIVE Construction roofing specialists.\n' +
-          'Deliver your opening greeting immediately with relaxed executive poise, calm radiant warmth, natural human breathing rhythm, and an unmistakable, genuine vocal smile:\n' +
+          'Deliver your opening greeting immediately with high energy, bubbly warmth, fast conversational tempo (~115%), and an unmistakable vocal smile:\n' +
           '"' + chosenGreeting + '"\n' +
           'ACOUSTIC & PROSODY RULES:\n' +
           '- EXACT BRAND PHONETICS: Always pronounce "R-HIVE" as the letter "R" followed by "HIVE" ("R - Hive"). Never say "Re-hive" or "Rehive"!\n' +
           '- The exact company brand name is "R-HIVE Construction roofing specialists".\n' +
-          '- Calm radiant warmth, natural conversational cadence, relaxed breathing rhythm, and genuine hospitality.\n' +
+          '- High energy, upbeat, happy, and genuinely enthusiastic hospitality.\n' +
           '- ZERO NAME-DROPPING: Never say "Michael" or "Kara" in your opening greeting.\n' +
           '- STRICTLY BANNED WORDS: NEVER say "help", "assist", "happy", "so happy", "happy to help", or "we are happy". Let your smiling vocal tone do the work.\n' +
           '- STRICTLY NO laughter, giggles, chuckles, or audible "haha" sounds.\n' +
-          '- Speak in an effortless, human, conversational cadence with natural phrasing.';
+          '- Speak in a brisk, clean, continuous conversational flow.';
       }
 
       // Allow 950ms for caller mobile carrier audio stream to establish before sending Turn 0 (compensates for JustCall -> Twilio PSTN forwarding latency)
@@ -4939,9 +4958,11 @@ class CallSession {
       // 1. Interruption Detection (Barge-In)
       if (msg.serverContent?.interrupted) {
         const now = Date.now();
-        if (!this.lastClearTime || (now - this.lastClearTime > 300)) {
+        // Only accept barge-in if Honey was actively speaking (prevents false buffer clears from ambient noise)
+        if (this.isModelSpeaking && (!this.lastClearTime || (now - this.lastClearTime > 400))) {
           this.lastClearTime = now;
-          console.log('[CallSession ' + this.callSid + '] ⚡ Barge-in confirmed by Gemini Live. Clearing Twilio playback buffer.');
+          this.isModelSpeaking = false;
+          console.log('[CallSession ' + this.callSid + '] ⚡ Sustained human barge-in confirmed by Gemini Live. Clearing Twilio playback buffer.');
           if (this.streamSid && this.twilioWs.readyState === WebSocket.OPEN) {
             this.twilioWs.send(JSON.stringify({ event: 'clear', streamSid: this.streamSid }));
           }
@@ -5017,6 +5038,7 @@ class CallSession {
 
       // 4. Real-Time Audio Streaming (24kHz Linear PCM -> 8kHz Mu-Law with Ambient -> Twilio)
       if (msg.serverContent?.modelTurn?.parts) {
+        this.isModelSpeaking = true;
         for (const part of msg.serverContent.modelTurn.parts) {
           if (part.inlineData && part.inlineData.data) {
             const pcm24k = Buffer.from(part.inlineData.data, 'base64');
@@ -5038,9 +5060,15 @@ class CallSession {
         }
       }
 
-      // 5. Turn Complete Disconnect Coordination
-      if (msg.serverContent?.turnComplete && this.pendingHangup) {
-        this.onTurnCompleteForHangup(1500);
+      // 5. Turn Complete Disconnect Coordination & Speaking State Reset
+      if (msg.serverContent?.turnComplete) {
+        // Model speech generation complete; allow audio buffer to drain then yield speaking floor
+        setTimeout(() => {
+          this.isModelSpeaking = false;
+        }, 600);
+        if (this.pendingHangup) {
+          this.onTurnCompleteForHangup(1500);
+        }
       }
     } catch(msgErr) {
       console.error('[CallSession ' + this.callSid + '] Error handling Gemini message:', msgErr.message);
@@ -5990,39 +6018,71 @@ class CallSession {
     try {
       const muLawInbound = Buffer.from(payloadBase64, 'base64');
       const energy = calculateEnergy(muLawInbound);
-      const pcm16k = muLaw8kToPcm16k(muLawInbound, 1.0); // 1.0 flat gain (eliminates artificial amplification of background keyboard noise)
+      const pcm16k = muLaw8kToPcm16k(muLawInbound, 1.0); // 1.0 flat gain
 
-      // Stream audio chunk to Gemini Live via the verified audio: parameter
-      this.geminiSession.sendRealtimeInput({
-        audio: {
-          mimeType: 'audio/pcm;rate=16000',
-          data: pcm16k.toString('base64')
-        }
-      });
-
-      // Voice Activity Detection (VAD) state machine
-      if (energy > this.ENERGY_THRESHOLD) {
-        this.speakingFrames++;
-        this.silentFrames = 0;
-        // Require at least 8 consecutive frames (~160ms) of sustained vocal energy to confirm real human speech
-        if (this.speakingFrames >= 8 && !this.isUserSpeaking) {
-          this.isUserSpeaking = true;
-          const now = Date.now();
-          if (!this.lastClearTime || (now - this.lastClearTime > 400)) {
-            this.lastClearTime = now;
-            // Barge-in: interrupt model playback only when sustained human speech starts
-            if (this.streamSid && this.twilioWs.readyState === WebSocket.OPEN) {
-              this.twilioWs.send(JSON.stringify({ event: 'clear', streamSid: this.streamSid }));
+      // INTELLIGENT DUAL-ZONE VAD & BACKGROUND NOISE GATE:
+      // Zone 1: When Honey is speaking (model turn active):
+      // Gating out low-energy background hiss, A/C rumble, car road noise, and mic breathing (< 2200).
+      // Background noise is replaced with digital silence before streaming to Gemini Live so Gemini Live's
+      // internal VAD does not register false interruptions. Only firm, sustained caller speech (>= 2200
+      // for 10 frames / 200ms) will trigger an intentional barge-in.
+      if (this.isModelSpeaking) {
+        if (energy >= this.BARGE_IN_ENERGY_THRESHOLD) {
+          this.speakingFrames++;
+          this.silentFrames = 0;
+          if (this.speakingFrames >= this.BARGE_IN_MIN_FRAMES && !this.isUserSpeaking) {
+            this.isUserSpeaking = true;
+            const now = Date.now();
+            if (!this.lastClearTime || (now - this.lastClearTime > 400)) {
+              this.lastClearTime = now;
+              this.isModelSpeaking = false;
+              console.log(`[CallSession ${this.callSid}] ⚡ Intentional caller barge-in confirmed (Energy: ${Math.round(energy)}). Clearing Twilio playback buffer.`);
+              if (this.streamSid && this.twilioWs.readyState === WebSocket.OPEN) {
+                this.twilioWs.send(JSON.stringify({ event: 'clear', streamSid: this.streamSid }));
+              }
             }
           }
+          this.geminiSession.sendRealtimeInput({
+            audio: {
+              mimeType: 'audio/pcm;rate=16000',
+              data: pcm16k.toString('base64')
+            }
+          });
+        } else {
+          // Audio is ambient/background noise: reset speaking accumulator and feed silence
+          this.speakingFrames = 0;
+          const silenceBuffer = Buffer.alloc(pcm16k.length);
+          this.geminiSession.sendRealtimeInput({
+            audio: {
+              mimeType: 'audio/pcm;rate=16000',
+              data: silenceBuffer.toString('base64')
+            }
+          });
         }
       } else {
-        if (this.isUserSpeaking) {
-          this.silentFrames++;
-          if (this.silentFrames >= this.SILENCE_FRAMES_TRIGGER) {
-            this.isUserSpeaking = false;
-            this.silentFrames = 0;
-            this.speakingFrames = 0;
+        // Zone 2: When Honey is listening (caller's turn):
+        // Stream full audio freely to Gemini Live with high sensitivity so soft and natural speech is captured effortlessly.
+        this.geminiSession.sendRealtimeInput({
+          audio: {
+            mimeType: 'audio/pcm;rate=16000',
+            data: pcm16k.toString('base64')
+          }
+        });
+
+        if (energy > this.ENERGY_THRESHOLD) {
+          this.speakingFrames++;
+          this.silentFrames = 0;
+          if (this.speakingFrames >= 4 && !this.isUserSpeaking) {
+            this.isUserSpeaking = true;
+          }
+        } else {
+          if (this.isUserSpeaking) {
+            this.silentFrames++;
+            if (this.silentFrames >= this.SILENCE_FRAMES_TRIGGER) {
+              this.isUserSpeaking = false;
+              this.silentFrames = 0;
+              this.speakingFrames = 0;
+            }
           }
         }
       }
@@ -6427,7 +6487,7 @@ Respond naturally with full executive poise, smiling warmth, and Wasatch Front r
           {
             role: 'user',
             parts: [{
-              text: 'The web audio connection has established with RHIVE Construction Roofing Specialists. Honey has picked up. Speak your dynamic opening greeting warmly as Honey with an audible smile, natural micro-breathing, and relaxed executive warmth.'
+              text: 'The web audio connection has established with RHIVE Construction Roofing Specialists. Honey has picked up. Speak your dynamic opening greeting immediately with high energy, bubbly warmth, fast conversational tempo (~115%), an audible vocal smile, and genuinely enthusiastic hospitality.'
             }]
           }
         ],
@@ -7363,7 +7423,7 @@ app.get(['/audio/rhive_hold_groove.mp3', '/audio/rhive_hold_groove.wav'], (req, 
 
 // Inbound Gateway: Direct Single-Agent AI Roofing Specialist (Honey - Leda Voice)
 app.all(['/twiml', '/voice', '/ivr'], (req, res) => {
-  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  const host = req.headers['x-forwarded-host'] || req.headers.host || 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
   const wsProtocol = req.headers['x-forwarded-proto'] === 'https' ? 'wss' : 'ws';
   const caller = req.query.From || req.body.From || 'Unknown';
   const callSid = req.query.CallSid || req.body.CallSid || ('CALL_' + Date.now());
@@ -7396,7 +7456,7 @@ app.all(['/twiml', '/voice', '/ivr'], (req, res) => {
 
 // Master IVR Menu Selection Router -> Plays realistic PBX transfer ring, then connects to Honey
 app.all('/ivr-select', (req, res) => {
-  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  const host = req.headers['x-forwarded-host'] || req.headers.host || 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
   const wsProtocol = req.headers['x-forwarded-proto'] === 'https' ? 'wss' : 'ws';
   const caller = req.query.From || req.body.From || 'Unknown';
   const callSid = req.query.CallSid || req.body.CallSid || ('CALL_' + Date.now());
@@ -8066,7 +8126,7 @@ app.all('/incoming-sms', async (req, res) => {
 
 // AI Caller TwiML Endpoint (Used for Outbound AI-to-AI Testing)
 app.all('/twiml-caller', (req, res) => {
-  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  const host = req.headers['x-forwarded-host'] || req.headers.host || 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
   const wsProtocol = req.headers['x-forwarded-proto'] === 'https' ? 'wss' : 'ws';
   const scenario = req.query.scenario || 'quote_verification';
   const caller = req.query.From || req.body.From || '+18017833317';

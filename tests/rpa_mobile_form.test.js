@@ -174,9 +174,9 @@ async function runRpaTests() {
     await page.locator('label[for="solar_yes"]').click();
     console.log('  ✅ Selected: Yes, Solar Installed (Simple binary existence check)');
 
-    // Select: 1–2 Skylights (Separated question)
-    await page.locator('label[for="sky_12"]').click();
-    console.log('  ✅ Selected: 1–2 Skylights');
+    // Select: Skylights - Replace with New
+    await page.locator('label[for="sky_replace"]').click();
+    console.log('  ✅ Selected: Replace with New Skylights');
 
     // Select: Old Equipment Removal - Everything Staying
     await page.locator('label[for="equip_none"]').click();
