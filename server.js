@@ -3758,24 +3758,24 @@ async function executeInspectionBooking(params) {
 // ============================================================================
 const DYNAMIC_GREETINGS = {
   direct_switchboard: [
-    "Hi, this is Honey! R-hive's AI Roofing Specialist—what can we take care of on your roof today!?",
-    "Hi, this is Honey! R-hive's AI Roofing Specialist—what can we take care of on your roof today!?"
+    "Hello, this is Honey! R-hive's AI Roofing Specialist, how may I assist with your roofing project today!?",
+    "Hello, this is Honey! R-hive's AI Roofing Specialist, how may I assist with your roofing project today!?"
   ],
   '1': [
-    "Hi, this is Honey! R-hive's AI Roofing Specialist—what can we take care of on your roof today!?"
+    "Hello, this is Honey! R-hive's AI Roofing Specialist, how may I assist with your roofing project today!?"
   ],
   '2': [
     "R-hive Construction Roofing Specialists! This is Honey on rapid emergency dispatch! Where is your active leak located so we can get tarping scheduled right away?",
     "R-hive Construction Roofing Specialists rapid dispatch, this is Honey! Where is the active leak located so we can get a crew scheduled immediately?"
   ],
   '3': [
-    "R-hive Construction Roofing Specialists Commercial and Multi-Property Division! This is Honey. What can we take care of on your commercial or multi-property project today?"
+    "R-hive Construction Roofing Specialists Commercial and Multi-Property Division! This is Honey. How can I assist with your commercial or multi-property project today?"
   ],
   '4': [
-    "R-hive Construction Roofing Specialists Insurance and Storm Restoration! This is Honey. What can we take care of with your insurance claim today?"
+    "R-hive Construction Roofing Specialists Insurance and Storm Restoration! This is Honey. How can I assist with your insurance claim today?"
   ],
   '5': [
-    "R-hive Construction Operations and Billing! This is Honey. How can I direct your call or take care of your account today?"
+    "R-hive Construction Operations and Billing! This is Honey. How can I assist with your invoice or direct your call today?"
   ],
   transfer_fallback_kara: [
     "Thanks for holding! It looks like Kara is currently tied up. Would you like me to schedule a 15-minute call? Leave me a message I can send to Kara? Or would you like me to have Kara message you now through text and get back to you as soon as possible?"
@@ -3804,7 +3804,7 @@ CRITICAL TONE & BRANDING RULES:
    - SPOKEN BRAND IDENTITY (VOICE AGENTS):
      * When speaking our company name over the phone for proper TTS phonetics, it is strictly "R-hive Construction Roofing Specialists" (pronounced "R-hive", using strictly the letter "R", never "Are").
      * Always maintain singular brand identity ("R-hive Construction"). Never pluralize the company name.
-     * Standard opening greeting: "Hello, this is Honey! R-hive Construction's AI Roofing Specialist, how may I assist your call today!?"
+     * Standard opening greeting: "Hello, this is Honey! R-hive's AI Roofing Specialist, how may I assist with your roofing project today!?"
      * Never use "concierge". Your official title is "AI Roofing Specialist" or "Executive Project Specialist".
    - WRITTEN BRANDING (CUSTOMER & MARKETING COPY):
      * When transcription is not involved and it is writing that is read by the customer (e.g. text messages, confirmation cards, proposals, marketing copy), the company name is strictly the official "RHIVE Construction Roofing Specialists" (or "RHIVE Construction").
@@ -4947,7 +4947,7 @@ class CallSession {
           '- NEVER re-ask for the caller\'s name, phone number, company, or invoice number if already known.\n' +
           '- NO robotic phrases or canned speech. Speak with high warmth, empathetic tone, and a vocal smile.\n' +
           '- STRICTLY NO laughter, giggles, chuckles, or audible "haha" sounds.\n' +
-          '- STRICTLY BANNED WORDS: NEVER say "happy", "so happy", "happy to help", or "we are happy". Let your smiling vocal tone do the work.\n' +
+          '- STRICTLY BANNED WORDS: NEVER say "happy to help", or "we are happy". Let your smiling vocal tone do the work.\n' +
           '- Speak in a brisk, clean, continuous conversational flow.';
       } else {
         triggerPrompt = 'A caller has just connected directly to your executive desk at R-HIVE Construction roofing specialists.\n' +
@@ -4958,7 +4958,7 @@ class CallSession {
           '- The exact company brand name is "R-HIVE Construction roofing specialists".\n' +
           '- High energy, upbeat, happy, and genuinely enthusiastic hospitality.\n' +
           '- ZERO NAME-DROPPING: Never say "Michael" or "Kara" in your opening greeting.\n' +
-          '- STRICTLY BANNED WORDS: NEVER say "help", "assist", "happy", "so happy", "happy to help", or "we are happy". Let your smiling vocal tone do the work.\n' +
+          '- STRICTLY BANNED WORDS: NEVER say "happy to help", or "we are happy". Deliver the exact greeting above naturally with high energy and an uplifting, cheerful vocal smile.\n' +
           '- STRICTLY NO laughter, giggles, chuckles, or audible "haha" sounds.\n' +
           '- Speak in a brisk, clean, continuous conversational flow.';
       }
@@ -7473,13 +7473,15 @@ app.all(['/twiml', '/voice', '/ivr'], (req, res) => {
   // Default ambient mode to none (studio quality voice, 0 mu-law carrier hiss)
   const ambientMode = req.query.ambient || 'none';
 
-  console.log('[Inbound Call] Call ' + callSid + ' from ' + caller + '. Connecting directly to Honey AI Roofing Specialist (Ambient Mode: ' + ambientMode + ').');
-
+  const ringAudioUrl = 'https://' + host + '/audio/transfer_ring.wav';
   const wsUrl = wsProtocol + '://' + host + '/media-stream';
+
+  console.log('[Inbound Call] Call ' + callSid + ' from ' + caller + '. Playing 2.5 rings (' + ringAudioUrl + ') then connecting to Honey AI Roofing Specialist (Ambient Mode: ' + ambientMode + ').');
 
   res.type('text/xml');
   return res.send('<?xml version="1.0" encoding="UTF-8"?>\n' +
 '<Response>\n' +
+'    <Play>' + ringAudioUrl + '</Play>\n' +
 '    <Connect>\n' +
 '        <Stream url="' + wsUrl + '">\n' +
 '            <Parameter name="caller" value="' + escapeXml(caller) + '" />\n' +
