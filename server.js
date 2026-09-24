@@ -1585,6 +1585,7 @@ function registerVerificationTimer({ phone, cleanPhone, callerName, propertyAddr
   }, 10 * 60 * 1000); // 10 minutes
 
   pendingVerifications.set(key, {
+        flaggedQuestions: this.sessionData.flaggedQuestions || [],
     phone,
     cleanPhone: key,
     callerName: callerName || '',
@@ -1735,7 +1736,7 @@ async function executeScreenedTransfer(options) {
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Dial action="https://${host}/transfer-completed?${xmlQParams}">
-        <Conference waitUrl="https://${host}/hold-music?option=${opt}&amp;callSid=${callSid}" startConferenceOnEnter="true" endConferenceOnExit="true">
+        <Conference waitUrl="https://${host}/hold-music?option=${opt}&amp;callSid=${callSid}" startConferenceOnEnter="true" endConferenceOnExit="true" record="record-from-start" recordingStatusCallback="https://${host}/recording-callback">
             ${confName}
         </Conference>
     </Dial>
@@ -1762,7 +1763,9 @@ async function executeScreenedTransfer(options) {
       To: targetNumber,
       From: TWILIO_NUMBER,
       Url: `https://${host}/screen-whisper?${qParams}&conf=${confName}`,
-      Timeout: 30
+      StatusCallback: `https://${host}/screen-status-callback?${qParams}&conf=${confName}`,
+      StatusCallbackEvent: ['completed', 'busy', 'no-answer', 'failed'],
+      Timeout: 25
     });
 
     const outboundRes = await axios.post(
@@ -3975,7 +3978,7 @@ When the caller wants a full roof replacement (not a repair or commercial roof):
         Honey (<25 words): "Gotcha! If your panels are under an active installer warranty, they handle detach and reset—otherwise, RHIVE's certified installation crews safely detach and reset them with your new roof."
         (Record solarStatus and solarDetachParty: 'installer' vs 'rhive').
    - Question 2 (Skylights, Swamp Coolers & Satellite Dishes - Aerial Intent Parity):
-     "We count any skylights directly from our aerial scans—if you have skylights, would you like them replaced with new units, kept and resealed, or removed and decked over? And do you have an old swamp cooler or satellite dish you'd like removed?"
+     "We count any skylights directly from our aerial scans—if you have skylights, would you like them replaced with brand-new units under warranty to prevent leaks, kept and resealed, or removed and decked over? And do you have an old swamp cooler or satellite dish you'd like removed?"
    - Question 3 (Existing Layers - Slope-Aware Invariant):
      * If flat roof (pitch <= 2/12): "Looking at your flat roof section—is this a single layer of membrane, or has it ever been roofed over with an additional layer?"
      * If pitched roof (pitch >= 3/12): "Is this the original single layer of shingles, or has it ever been roofed over with a second layer?"
@@ -4017,7 +4020,30 @@ When the caller wants a full roof replacement (not a repair or commercial roof):
        Read the 10 digits individually at a relaxed, measured cadence (~15% slower) with distinct pauses between groupings (e.g. "eight, zero, one ... seven, zero, six ... eight, zero, nine, two").
      * INSTANT RESET TO HIGH-ENERGY CADENCE:
        The INSTANT data verification is confirmed, or on your very next conversational turn, YOUR CADENCE MUST IMMEDIATELY SNAP BACK TO YOUR NORMAL HIGH-ENERGY, BUBBLY, FAST CONVERSATIONAL PACE (~115% TEMPO) for all remaining conversation! Never linger in a slow cadence.
-   - REPEAT / ESCAPE HATCH GATE (STRICTLY RESERVED FOR CALLERS HAVING TO REPEAT THINGS):
+   - THE "FLAG & SKIP" FRICTIONLESS INTAKE PROTOCOL (SEAMLESS & NEVER COLD FULL FORMS):
+     * If and ONLY if:
+       (a) The caller has trouble with ANY question (such as address directional coordinates, email spelling, solar panels, skylights, shingle layers, gutters, eave ventilation, or priorities) taking more than 2 turns, OR
+       (b) Heavy cell noise or static makes verbal spelling frustrating for the customer, OR
+       (c) The caller specifically asks: "Can you just text me a link?" / "Can I type it in?"
+     * THEN, DO NOT ABORT THE CALL! DO NOT force them into a blank 4-step form!
+     * Honey reassures the caller warmly:
+       "No worries at all, let's not get stuck on that! I'll flag [that question / the address] and text you a quick verification link at the end so we can keep moving. Let's move on to the next question..."
+     * Record that question in flaggedQuestions (e.g. 'address', 'skylights', 'solar', 'layers', 'gutters', 'email').
+     * Proceed immediately to the next question in the ping-pong sequence over the phone.
+     * At the closing of the call, Honey explains:
+       "I'm sending over a quick verification link for the questions that we flagged. Once you confirm those, just quickly review the rest of your pre-filled info and hit submit, and our system will instantly register your request and finalize your aerial CAD proposal!"
+     * Call "send_quote_verification_sms" passing flaggedQuestions and all captured MeasureCall attributes!
+     * MANDATORY STAY-ON-LINE VERIFICATION CHECK:
+       Honey asks:
+       "I just dispatched that link to your cell phone! You can tap it right now to confirm the flagged items. Would you like to stay on the line with me while you look it over in case you have any questions, or would you prefer I let you go?"
+     * IF CALLER CHOOSES TO STAY ON THE LINE ("Yes, stay with me" / "Let me open it up" / "Hold on"):
+       - Honey says: "Take your time! I'm right here with you. Feel free to ask if you have any questions about shingle options, warranties, or anything on the form."
+       - Honey pauses and listens attentively. Honey remains active on the line, ready to answer questions about Duration shingles, SureNail technology, 130 MPH wind resistance, Class 4 hail resistance, ice dam protection, or scheduling.
+       - When caller completes the form (or says "I submitted it" / "All done!"):
+         Honey says: "Fantastic, I see your confirmation received on our server! Michael Robinson and our estimating team will review your aerial CAD scans and dispatch your certified proposal within 24 to 48 hours. Thank you so much for choosing R-HIVE! Have a wonderful day, goodbye!"
+     * IF CALLER PREFERS TO COMPLETE IT LATER ("I'll do it later" / "You can let me go" / "Thanks, I got it"):
+       - Honey says: "Sounds wonderful! Michael Robinson and our estimating team will review your aerial CAD scans and have your certified proposal ready within 24 to 48 hours. Thank you so much for calling R-HIVE! Have a wonderful day, goodbye!"
+     *
      * If and ONLY if:
        (a) The caller is having to repeat things (e.g. email spelling or complex street name fails phonetic verification twice), OR
        (b) Heavy cell noise or static makes verbal spelling frustrating for the customer, OR
@@ -4291,7 +4317,8 @@ Never mention any CRM. All call records are saved automatically to Google Drive 
                 propertyType: { type: 'STRING', description: 'Property classification (Residential or Commercial).' },
                 projectScope: { type: 'STRING', description: 'Scope (e.g. Full replacement, Roof repair, Commercial flat roof).' },
                 solarStatus: { type: 'STRING', description: 'Solar panels present, and whether original installer or RHIVE resets.' },
-                skylights_count: { type: 'STRING', description: 'Action/preference for skylights: "Replace with New", "Keep & Reseal", "Cancel & Deck Over", or "No Skylights".' },
+                skylights_count: { type: 'STRING', description: 'Action/preference for skylights: "Replace with New" (brand-new watertight replacement units under warranty), "Keep & Reseal", "Cancel & Deck Over", or "No Skylights".' },
+            flaggedQuestions: { type: 'ARRAY', items: { type: 'STRING' }, description: 'Questions flagged during call for customer review on the form (e.g. ["address", "skylights"]).' },
                 swamp_cooler_removal: { type: 'STRING', description: 'Whether old swamp cooler should be removed and capped (e.g. Yes - remove and cap, None).' },
                 satellite_removal: { type: 'STRING', description: 'Whether old satellite dish should be removed and disposed (e.g. Yes - remove, None).' },
                 removals: { type: 'STRING', description: 'Legacy catch-all for skylight/cooler/satellite removals.' },
@@ -4615,6 +4642,7 @@ class CallSession {
       solarStatus: null,
       solarDetachParty: null,
       skylights_count: null,
+      flaggedQuestions: [],
       swamp_cooler_removal: null,
       satellite_removal: null,
       shingleLayers: null,
@@ -5268,7 +5296,12 @@ class CallSession {
         // 1. Dispatch customer SMS with verification link & register 10-minute follow-up timer
         if (targetPhone && !targetPhone.startsWith('SIM_')) {
           const hostUrl = process.env.PUBLIC_SERVICE_URL || 'https://rhive-voice-live-bridge-910835773728.us-central1.run.app';
-          const verifyUrl = `${hostUrl}/verify?phone=${encodeURIComponent(targetPhone)}&address=${encodeURIComponent(propertyAddress)}`;
+          if (args?.flaggedQuestions) {
+          const rawFlags = Array.isArray(args.flaggedQuestions) ? args.flaggedQuestions : String(args.flaggedQuestions).split(',');
+          this.sessionData.flaggedQuestions = Array.from(new Set([...(this.sessionData.flaggedQuestions || []), ...rawFlags.map(f => String(f).trim().toLowerCase())]));
+        }
+        const flaggedQuery = (this.sessionData.flaggedQuestions && this.sessionData.flaggedQuestions.length > 0) ? `&flagged=${encodeURIComponent(this.sessionData.flaggedQuestions.join(','))}` : '';
+        const verifyUrl = `${hostUrl}/verify?phone=${encodeURIComponent(targetPhone)}&address=${encodeURIComponent(propertyAddress)}${flaggedQuery}`;
           const greetingName = cleanCallerName ? ' ' + cleanCallerName : '';
           const smsBody = `RHIVE: Hi${greetingName}, your roof quote for ${propertyAddress} is in progress. Please confirm your project details & preferences here: ${verifyUrl} — Text or call anytime!`;
           sendMultiChannelSms({
@@ -5651,9 +5684,8 @@ class CallSession {
         // Qualified transfer logged; single authoritative lead dossier will be dispatched upon call completion.
         console.log(`[CallSession ${this.callSid}] 📞 Secretary qualified transfer registered. Will post single dossier on call completion.`);
 
-        // Physically bridge live call on Twilio carrier PSTN with warm whisper screening
-        console.log('[CallSession ' + this.callSid + '] Bridging live screened PSTN call to ' + targetSpecialist + ' (' + targetEntity + ') at ' + targetCell + '...');
-        executeScreenedTransfer({
+        const spokenTarget = explicitKara ? 'Kara' : (explicitMichael ? 'Michael' : departmentLabel);
+        const transferOptions = {
           callSid: this.callSid,
           targetNumber: targetCell,
           targetSpecialist: targetSpecialist,
@@ -5667,13 +5699,18 @@ class CallSession {
           propertyAddress: propertyAddress,
           callerPhone: this.callerPhone,
           selection: this.selection
-        });
+        };
 
-        const spokenTarget = explicitKara ? 'Kara' : (explicitMichael ? 'Michael' : departmentLabel);
+        // Defer physical carrier redirect by 4,200ms so Honey speaks the warm handoff phrase over WebSocket before Twilio redirects to conference/hold music
+        console.log(`[CallSession ${this.callSid}] ⏳ Deferring screened PSTN transfer by 4,200ms to allow Honey's warm verbal handoff ("OK ${callerName}...") to play in full to caller.`);
+        setTimeout(() => {
+          executeScreenedTransfer(transferOptions);
+        }, 4200);
+
         return {
           transferInitiated: true,
           department: spokenTarget,
-          instruction: 'Transfer initiated. Tell the caller: "Hold for just a moment while I transfer your call to ' + spokenTarget + '."'
+          instruction: `Say warmly and clearly to the caller: "OK ${callerName}. Thanks for letting me know! I'll now transfer you over to ${departmentLabel}. Please hold for just a moment..." Do NOT call any more tools.`
         };
       }
 
@@ -6798,7 +6835,8 @@ app.get('/api/verify-info', async (req, res) => {
         shingleLayers: entry.shingleLayers || '',
         gutterScope: entry.gutterScope || '',
         iceDams: entry.iceDams || '',
-        priority: entry.priority || ''
+        priority: entry.priority || '',
+        flaggedQuestions: entry.flaggedQuestions || (req.query.flagged ? req.query.flagged.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [])
       });
     }
 
@@ -6821,7 +6859,8 @@ app.get('/api/verify-info', async (req, res) => {
             shingleLayers: d.shingleLayers || '',
             gutterScope: d.gutterScope || '',
             iceDams: d.iceDams || '',
-            priority: d.priority || ''
+            priority: d.priority || '',
+            flaggedQuestions: d.flaggedQuestions || (req.query.flagged ? req.query.flagged.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [])
           });
         }
       } catch (dbErr) {
@@ -7650,6 +7689,41 @@ app.all('/screen-decision', async (req, res) => {
 });
 
 // 3. Transfer Completed Endpoint: Checks if dial was completed or needs fallback
+// Outbound Screening Call Status Callback (Resilience Guard)
+// If outbound screening call to specialist is busy, unanswered (25s), or fails, immediately pull caller out of hold music
+app.all('/screen-status-callback', async (req, res) => {
+  const callStatus = (req.body.CallStatus || req.query.CallStatus || '').toLowerCase();
+  const callSid = req.query.callSid || '';
+  const confName = req.query.conf || '';
+  console.log(`[Screen Status Callback] Outbound screening call status: ${callStatus} for inbound call ${callSid} (Conf: ${confName})`);
+
+  if (['busy', 'no-answer', 'failed', 'canceled'].includes(callStatus) && callSid) {
+    console.log(`[Screen Status Callback] ⚠️ Specialist line unavailable (${callStatus}). Releasing conference ${confName} and redirecting caller ${callSid} to /transfer-fallback.`);
+    try {
+      const host = req.headers['x-forwarded-host'] || req.headers.host || 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
+      const qParams = new URLSearchParams(req.query).toString();
+      const xmlQParams = qParams.replace(/&/g, '&amp;');
+      const authHeader = 'Basic ' + Buffer.from(TWILIO_API_KEY_SID + ':' + TWILIO_API_SECRET).toString('base64');
+      const fallbackTwiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Redirect>https://${host}/transfer-fallback?${xmlQParams}</Redirect></Response>`;
+      const postData = querystring.stringify({ Twiml: fallbackTwiml });
+      await axios.post(
+        'https://api.twilio.com/2010-04-01/Accounts/' + TWILIO_ACCOUNT_SID + '/Calls/' + callSid + '.json',
+        postData,
+        {
+          headers: {
+            'Authorization': authHeader,
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          timeout: 5000
+        }
+      );
+    } catch(e) {
+      console.warn('[Screen Status Callback Redirect Warning]', e.message);
+    }
+  }
+  res.type('text/xml').send('<Response/>');
+});
+
 app.all('/transfer-completed', (req, res) => {
   const dialStatus = req.body.DialCallStatus || req.query.DialCallStatus || '';
   const dialDuration = parseInt(req.body.DialCallDuration || req.query.DialCallDuration || 0, 10);
