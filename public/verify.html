@@ -708,6 +708,69 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
+    /* Flagged Questions & Frictionless Pre-population */
+    .flagged-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      background: #FFF1F8;
+      border-left: 4px solid var(--accent);
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+      box-shadow: 0 2px 8px rgba(236, 2, 139, 0.1);
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    .flagged-banner-icon {
+      font-size: 20px;
+      line-height: 1;
+      padding-top: 2px;
+    }
+
+    .flagged-banner-content {
+      flex: 1;
+    }
+
+    .flagged-banner-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .flagged-banner-text {
+      font-size: 12.5px;
+      color: #333333;
+      margin-top: 2px;
+      line-height: 1.4;
+    }
+
+    .flagged-highlight {
+      border: 2px solid var(--accent) !important;
+      border-radius: 8px;
+      padding: 12px !important;
+      background: #FFF9FC !important;
+      position: relative;
+      transition: all 0.2s ease;
+    }
+
+    .flagged-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10.5px;
+      font-weight: 800;
+      color: #FFFFFF;
+      background: var(--accent);
+      padding: 2px 8px;
+      clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-left: 8px;
+    }
+
     /* =========================================================================
        1000% SALES CLOSING EXPERIENCE (SUCCESS CARD)
        ========================================================================= */
@@ -1162,6 +1225,15 @@
         </div>
       </div>
 
+      <!-- Flagged Questions Quick Confirmation Banner -->
+      <div id="flaggedBanner" class="flagged-banner" style="display: none;">
+        <div class="flagged-banner-icon">📌</div>
+        <div class="flagged-banner-content">
+          <div class="flagged-banner-title">Quick Confirmation Needed</div>
+          <div class="flagged-banner-text">We've pre-filled your answers from your call with Honey! Please review the flagged question(s) highlighted below, verify the rest, and tap submit.</div>
+        </div>
+      </div>
+
       <form id="verifyForm">
         <!-- ================= STEP 1: PROPERTY TYPE & SCOPE ================= -->
         <div class="step-section active" id="step1">
@@ -1292,7 +1364,7 @@
           <p class="card-subtitle">These attributes match Honey's voice questions so our project designer can calibrate satellite scans accurately.</p>
 
           <!-- Question 1: Solar Panels (Instant Estimate & Voice Simplicity) -->
-          <div class="form-group">
+          <div class="form-group" id="groupSolar">
             <div class="form-label-wrap">
               <label class="form-label">Solar Panels on Roof?</label>
               <div class="info-tooltip" tabindex="0">
@@ -1321,12 +1393,12 @@
           </div>
 
           <!-- Question 2: Skylight Plan -->
-          <div class="form-group">
+          <div class="form-group" id="groupSkylights">
             <div class="form-label-wrap">
               <label class="form-label">Skylight Plan (If Any)</label>
               <div class="info-tooltip" tabindex="0">
                 <span class="tooltip-icon">i</span>
-                <span class="tooltip-box">We count skylight quantities directly from aerial CAD scans. Choose whether you would like them replaced with new Velux units, kept and resealed, or canceled and decked over.</span>
+                <span class="tooltip-box">We count skylight quantities directly from aerial CAD scans. Choose whether you would like them replaced with brand-new units (watertight under manufacturer warranty to permanently resolve leaks), kept and resealed with new flashing, or canceled and decked over.</span>
               </div>
             </div>
             <div class="quantum-pill-group">
@@ -1366,7 +1438,7 @@
           </div>
 
           <!-- Question 3: Obsolete Equipment Removal -->
-          <div class="form-group">
+          <div class="form-group" id="groupEquipment">
             <div class="form-label-wrap">
               <label class="form-label">Old Equipment Removal?</label>
               <div class="info-tooltip" tabindex="0">
@@ -1411,7 +1483,7 @@
           </div>
 
           <!-- Question 4: Existing Roof Layers -->
-          <div class="form-group">
+          <div class="form-group" id="groupLayers">
             <div class="form-label-wrap">
               <label class="form-label">Existing Roof Layers</label>
               <div class="info-tooltip" tabindex="0">
@@ -1456,7 +1528,7 @@
           </div>
 
           <!-- Question 5: Gutters (Exact Voice Question, ZERO Micro-Mesh) -->
-          <div class="form-group">
+          <div class="form-group" id="groupGutters">
             <div class="form-label-wrap">
               <label class="form-label">Gutters & Downspouts</label>
               <div class="info-tooltip" tabindex="0">
@@ -1501,7 +1573,7 @@
           </div>
 
           <!-- Question 6: Winter Ice Dams & Hotspots (Honey Voice Question 6) -->
-          <div class="form-group">
+          <div class="form-group" id="groupIceDams">
             <div class="form-label-wrap">
               <label class="form-label">Winter Ice Dams & Icicles</label>
               <div class="info-tooltip" tabindex="0">
@@ -1976,6 +2048,63 @@
       });
     });
 
+    function setRadioValue(name, val) {
+      if (!val) return;
+      const strVal = String(val).trim().toLowerCase();
+      const inputs = Array.from(document.querySelectorAll(`input[name="${name}"]`));
+      
+      let matched = inputs.find(i => i.value.toLowerCase() === strVal || i.id.toLowerCase() === strVal);
+      
+      if (!matched) {
+        if (name === 'solarStatus') {
+          if (strVal === 'yes' || strVal.includes('install') || strVal === 'solar_yes') matched = document.getElementById('solar_yes');
+          else if (strVal === 'no' || strVal.includes('none') || strVal === 'solar_no') matched = document.getElementById('solar_no');
+        } else if (name === 'skylights') {
+          if (strVal.includes('replace') || strVal.includes('new') || strVal === 'sky_replace') matched = document.getElementById('sky_replace');
+          else if (strVal.includes('reseal') || strVal.includes('keep') || strVal === 'sky_keep') matched = document.getElementById('sky_keep');
+          else if (strVal.includes('cancel') || strVal.includes('deck') || strVal === 'sky_cancel') matched = document.getElementById('sky_cancel');
+          else if (strVal.includes('no') || strVal.includes('none') || strVal === 'sky_none') matched = document.getElementById('sky_none');
+        } else if (name === 'shingleLayers') {
+          if (strVal === '1' || strVal.includes('single') || strVal === 'layer_1') matched = document.getElementById('layer_1');
+          else if (strVal === '2' || strVal.includes('double') || strVal.includes('2+') || strVal === 'layer_2') matched = document.getElementById('layer_2');
+          else if (strVal.includes('unsure') || strVal.includes('measurecall') || strVal === 'layer_unsure') matched = document.getElementById('layer_unsure');
+        } else if (name === 'equipmentRemoval') {
+          if (strVal.includes('stay') || strVal.includes('everything') || strVal === 'equip_none') matched = document.getElementById('equip_none');
+          else if (strVal.includes('cooler') || strVal.includes('swamp') || strVal === 'equip_cooler') matched = document.getElementById('equip_cooler');
+          else if (strVal.includes('dish') || strVal.includes('satellite') || strVal === 'equip_dish') matched = document.getElementById('equip_dish');
+          else if (strVal.includes('both') || strVal === 'equip_both') matched = document.getElementById('equip_both');
+        } else if (name === 'gutterScope') {
+          if (strVal.includes('around') || strVal.includes('all') || strVal === 'gutters_around') matched = document.getElementById('gutters_around');
+          else if (strVal.includes('front') || strVal.includes('repair') || strVal === 'gutters_front') matched = document.getElementById('gutters_front');
+          else if (strVal.includes('ok') || strVal.includes('existing') || strVal.includes('keep') || strVal === 'gutters_none') matched = document.getElementById('gutters_none');
+        } else if (name === 'iceDams') {
+          if (strVal === 'yes' || strVal.includes('heavy') || strVal.includes('leak') || strVal === 'ice_yes') matched = document.getElementById('ice_yes');
+          else if (strVal === 'no' || strVal.includes('clean') || strVal.includes('no ice') || strVal === 'ice_no') matched = document.getElementById('ice_no');
+        } else if (name === 'projectScope') {
+          if (strVal.includes('replace') || strVal === 'scope_replace') matched = document.getElementById('scope_replace');
+          else if (strVal.includes('repair') || strVal.includes('leak') || strVal.includes('spot') || strVal === 'scope_repair') matched = document.getElementById('scope_repair');
+        } else if (name === 'propertyType') {
+          if (strVal.includes('res') || strVal === 'prop_res') matched = document.getElementById('prop_res');
+          else if (strVal.includes('com') || strVal === 'prop_comm') matched = document.getElementById('prop_comm');
+        }
+      }
+
+      if (!matched) {
+        matched = inputs.find(i => i.value.toLowerCase().includes(strVal) || strVal.includes(i.value.toLowerCase()));
+      }
+
+      if (matched) {
+        matched.checked = true;
+        if (name === 'projectScope') {
+          if (matched.value === 'Active Leak / Spot Repair') {
+            inspectionGateBox.style.display = 'block';
+          } else {
+            inspectionGateBox.style.display = 'none';
+          }
+        }
+      }
+    }
+
     if (nameParam) {
       nameInput.value = decodeURIComponent(nameParam);
     }
@@ -1983,9 +2112,120 @@
       phoneInput.value = decodeURIComponent(phoneParam);
     }
 
+    const flaggedParam = urlParams.get('flagged') || '';
+
+    // Pre-populate directly from URL parameters
+    const urlPropertyType = urlParams.get('propertyType');
+    if (urlPropertyType) setRadioValue('propertyType', urlPropertyType);
+
+    const urlProjectScope = urlParams.get('projectScope');
+    if (urlProjectScope) setRadioValue('projectScope', urlProjectScope);
+
+    const urlVideoCall = urlParams.get('videoCallInspection');
+    if (urlVideoCall) setRadioValue('videoCallInspection', urlVideoCall);
+
+    const urlSolar = urlParams.get('solarStatus') || urlParams.get('solar');
+    if (urlSolar) setRadioValue('solarStatus', urlSolar);
+
+    const urlSkylights = urlParams.get('skylights') || urlParams.get('skylight');
+    if (urlSkylights) setRadioValue('skylights', urlSkylights);
+
+    const urlEquipment = urlParams.get('equipmentRemoval') || urlParams.get('equipment');
+    if (urlEquipment) setRadioValue('equipmentRemoval', urlEquipment);
+
+    const urlLayers = urlParams.get('shingleLayers') || urlParams.get('layers');
+    if (urlLayers) setRadioValue('shingleLayers', urlLayers);
+
+    const urlGutters = urlParams.get('gutterScope') || urlParams.get('gutters');
+    if (urlGutters) setRadioValue('gutterScope', urlGutters);
+
+    const urlIceDams = urlParams.get('iceDams') || urlParams.get('ice');
+    if (urlIceDams) setRadioValue('iceDams', urlIceDams);
+
+    const urlPriority = urlParams.get('priority');
+    if (urlPriority) setRadioValue('priority', urlPriority);
+
+    function applyFlags(flagsList) {
+      if (!flagsList || flagsList.length === 0) return;
+      const banner = document.getElementById('flaggedBanner');
+      if (banner) banner.style.display = 'flex';
+
+      let step1HasFlag = false;
+      let step2HasFlag = false;
+
+      if (flagsList.some(f => f.includes('address') || f.includes('location'))) {
+        step1HasFlag = true;
+        addressEditDrawer.classList.add('open');
+        streetviewCard.classList.add('flagged-highlight');
+        setTimeout(() => editAddressInput.focus(), 300);
+      }
+
+      if (flagsList.some(f => f.includes('solar'))) {
+        step2HasFlag = true;
+        const g = document.getElementById('groupSolar');
+        if (g) {
+          g.classList.add('flagged-highlight');
+          const lbl = g.querySelector('.form-label');
+          if (lbl && !lbl.querySelector('.flagged-badge')) lbl.insertAdjacentHTML('beforeend', '<span class="flagged-badge">Needs Input</span>');
+        }
+      }
+
+      if (flagsList.some(f => f.includes('skylight'))) {
+        step2HasFlag = true;
+        const g = document.getElementById('groupSkylights');
+        if (g) {
+          g.classList.add('flagged-highlight');
+          const lbl = g.querySelector('.form-label');
+          if (lbl && !lbl.querySelector('.flagged-badge')) lbl.insertAdjacentHTML('beforeend', '<span class="flagged-badge">Needs Input</span>');
+        }
+      }
+
+      if (flagsList.some(f => f.includes('layer') || f.includes('shingle'))) {
+        step2HasFlag = true;
+        const g = document.getElementById('groupLayers');
+        if (g) {
+          g.classList.add('flagged-highlight');
+          const lbl = g.querySelector('.form-label');
+          if (lbl && !lbl.querySelector('.flagged-badge')) lbl.insertAdjacentHTML('beforeend', '<span class="flagged-badge">Needs Input</span>');
+        }
+      }
+
+      if (flagsList.some(f => f.includes('gutter'))) {
+        step2HasFlag = true;
+        const g = document.getElementById('groupGutters');
+        if (g) {
+          g.classList.add('flagged-highlight');
+          const lbl = g.querySelector('.form-label');
+          if (lbl && !lbl.querySelector('.flagged-badge')) lbl.insertAdjacentHTML('beforeend', '<span class="flagged-badge">Needs Input</span>');
+        }
+      }
+
+      if (flagsList.some(f => f.includes('equipment') || f.includes('cooler') || f.includes('dish'))) {
+        step2HasFlag = true;
+        const g = document.getElementById('groupEquipment');
+        if (g) {
+          g.classList.add('flagged-highlight');
+          const lbl = g.querySelector('.form-label');
+          if (lbl && !lbl.querySelector('.flagged-badge')) lbl.insertAdjacentHTML('beforeend', '<span class="flagged-badge">Needs Input</span>');
+        }
+      }
+
+      if (flagsList.some(f => f.includes('email'))) {
+        emailInput.parentElement?.classList.add('flagged-highlight');
+      }
+
+      if (!step1HasFlag && step2HasFlag) {
+        goToStep(2);
+      }
+    }
+
+    if (flaggedParam) {
+      applyFlags(flaggedParam.split(',').map(s => s.trim().toLowerCase()));
+    }
+
     // Fetch call session info from backend
     if (token || phoneParam) {
-      fetch(`/api/verify-info?t=${encodeURIComponent(token)}&phone=${encodeURIComponent(phoneParam)}`)
+      fetch(`/api/verify-info?t=${encodeURIComponent(token)}&phone=${encodeURIComponent(phoneParam)}&flagged=${encodeURIComponent(flaggedParam)}`)
         .then(res => res.json())
         .then(data => {
           if (data.address && !addressParam) {
@@ -2003,23 +2243,21 @@
           if (data.phone && !phoneInput.value) {
             phoneInput.value = data.phone;
           }
-          if (data.propertyType) {
-            const el = document.querySelector(`input[name="propertyType"][value="${data.propertyType}"]`);
-            if (el) el.checked = true;
-          }
-          if (data.projectScope) {
-            const el = document.querySelector(`input[name="projectScope"][value="${data.projectScope}"]`);
-            if (el) {
-              el.checked = true;
-              if (data.projectScope === 'Active Leak / Spot Repair') {
-                inspectionGateBox.style.display = 'block';
-              }
-            }
-          }
-          if (data.priority) {
-            const el = document.querySelector(`input[name="priority"][value="${data.priority}"]`);
-            if (el) el.checked = true;
-          }
+          if (data.propertyType) setRadioValue('propertyType', data.propertyType);
+          if (data.projectScope) setRadioValue('projectScope', data.projectScope);
+          if (data.videoCallInspection) setRadioValue('videoCallInspection', data.videoCallInspection);
+          if (data.solarStatus) setRadioValue('solarStatus', data.solarStatus);
+          if (data.skylights) setRadioValue('skylights', data.skylights);
+          if (data.equipmentRemoval) setRadioValue('equipmentRemoval', data.equipmentRemoval);
+          if (data.shingleLayers) setRadioValue('shingleLayers', data.shingleLayers);
+          if (data.gutterScope) setRadioValue('gutterScope', data.gutterScope);
+          if (data.iceDams) setRadioValue('iceDams', data.iceDams);
+          if (data.priority) setRadioValue('priority', data.priority);
+
+          const serverFlags = data.flaggedQuestions || [];
+          const urlFlags = flaggedParam ? flaggedParam.split(',').map(s => s.trim().toLowerCase()) : [];
+          const allFlags = Array.from(new Set([...serverFlags, ...urlFlags]));
+          applyFlags(allFlags);
         })
         .catch(() => {
           if (!addressParam) displayAddress.textContent = 'Property on File (Utah)';
