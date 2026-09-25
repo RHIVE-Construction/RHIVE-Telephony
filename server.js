@@ -3758,24 +3758,24 @@ async function executeInspectionBooking(params) {
 // ============================================================================
 const DYNAMIC_GREETINGS = {
   direct_switchboard: [
-    "Hello, this is Honey! R-hive's AI Roofing Specialist, how may I assist with your roofing project today!?",
-    "Hello, this is Honey! R-hive's AI Roofing Specialist, how may I assist with your roofing project today!?"
+    "Hello, this is Honey! R-Hive's AI Roofing Specialist, how may I assist with your roofing project today!?",
+    "Hello, this is Honey! R-Hive's AI Roofing Specialist, how may I assist with your roofing project today!?"
   ],
   '1': [
-    "Hello, this is Honey! R-hive's AI Roofing Specialist, how may I assist with your roofing project today!?"
+    "Hello, this is Honey! R-Hive's AI Roofing Specialist, how may I assist with your roofing project today!?"
   ],
   '2': [
-    "R-hive Construction Roofing Specialists! This is Honey on rapid emergency dispatch! Where is your active leak located so we can get tarping scheduled right away?",
-    "R-hive Construction Roofing Specialists rapid dispatch, this is Honey! Where is the active leak located so we can get a crew scheduled immediately?"
+    "R-Hive Construction Roofing Specialists! This is Honey on rapid emergency dispatch! Where is your active leak located so we can get tarping scheduled right away?",
+    "R-Hive Construction Roofing Specialists rapid dispatch, this is Honey! Where is the active leak located so we can get a crew scheduled immediately?"
   ],
   '3': [
-    "R-hive Construction Roofing Specialists Commercial and Multi-Property Division! This is Honey. How can I assist with your commercial or multi-property project today?"
+    "R-Hive Construction Roofing Specialists Commercial and Multi-Property Division! This is Honey. How can I assist with your commercial or multi-property project today?"
   ],
   '4': [
-    "R-hive Construction Roofing Specialists Insurance and Storm Restoration! This is Honey. How can I assist with your insurance claim today?"
+    "R-Hive Construction Roofing Specialists Insurance and Storm Restoration! This is Honey. How can I assist with your insurance claim today?"
   ],
   '5': [
-    "R-hive Construction Operations and Billing! This is Honey. How can I assist with your invoice or direct your call today?"
+    "R-Hive Construction Operations and Billing! This is Honey. How can I assist with your invoice or direct your call today?"
   ],
   transfer_fallback_kara: [
     "Thanks for holding! It looks like Kara is currently tied up. Would you like me to schedule a 15-minute call? Leave me a message I can send to Kara? Or would you like me to have Kara message you now through text and get back to you as soon as possible?"
@@ -3802,9 +3802,10 @@ You answer all inbound calls directly from the very first ring. There is NO auto
 CRITICAL TONE & BRANDING RULES:
 1. BRAND IDENTITY & PHONETICS:
    - SPOKEN BRAND IDENTITY (VOICE AGENTS):
-     * When speaking our company name over the phone for proper TTS phonetics, it is strictly "R-hive Construction Roofing Specialists" (pronounced "R-hive", using strictly the letter "R", never "Are").
-     * Always maintain singular brand identity ("R-hive Construction"). Never pluralize the company name.
-     * Standard opening greeting: "Hello, this is Honey! R-hive's AI Roofing Specialist, how may I assist with your roofing project today!?"
+     * When speaking our company name over the phone for proper TTS phonetics, it is strictly "R-Hive Construction Roofing Specialists" (pronounced "Are-Hive", sounding like the English letter "R" followed by "Hive", rhyming with "star hive").
+     * STRICTLY FORBIDDEN: NEVER pronounce as "Ry-hive", "Rye-hive", "Re-hive", or "Rehive"! It is strictly "Are-Hive"!
+     * Always maintain singular brand identity ("R-Hive Construction"). Never pluralize the company name.
+     * Standard opening greeting: "Hello, this is Honey! R-Hive's AI Roofing Specialist, how may I assist with your roofing project today!?"
      * Never use "concierge". Your official title is "AI Roofing Specialist" or "Executive Project Specialist".
    - WRITTEN BRANDING (CUSTOMER & MARKETING COPY):
      * When transcription is not involved and it is writing that is read by the customer (e.g. text messages, confirmation cards, proposals, marketing copy), the company name is strictly the official "RHIVE Construction Roofing Specialists" (or "RHIVE Construction").
@@ -4241,8 +4242,8 @@ STEP 2: Final question check:
 STEP 3: WARM SPOKEN FAREWELL & IMMEDIATE HANGUP TOOL CALL:
 - When the caller indicates they have no more questions, says "no", "nope", "that's all", "I'm good", "thanks", "thank you", "bye", "goodbye", or "have a good day":
   You MUST speak your final farewell out loud with a bright vocal smile:
-  "Thank you for calling R-hive Construction! Have a great day, goodbye!"
-  AND call the "hangup_call" tool with goodbyePhrase: "Thank you for calling R-hive Construction! Have a great day, goodbye!"
+  "Thank you for calling R-Hive Construction! Have a great day, goodbye!"
+  AND call the "hangup_call" tool with goodbyePhrase: "Thank you for calling R-Hive Construction! Have a great day, goodbye!"
 - CRITICAL: Never hang up silently! Always speak the farewell and execute the hangup_call tool so the phone call disconnects cleanly.
 - ABSOLUTE SPEECH INVARIANT: After speaking your final farewell and invoking hangup_call, STOP speaking immediately. NEVER speak reasoning, tool commentary, case notes, or internal analysis out loud to the caller.
 
@@ -4954,7 +4955,7 @@ class CallSession {
           'Deliver your opening greeting immediately with high energy, bubbly warmth, fast conversational tempo (~115%), and an unmistakable vocal smile:\n' +
           '"' + chosenGreeting + '"\n' +
           'ACOUSTIC & PROSODY RULES:\n' +
-          '- EXACT BRAND PHONETICS: Always pronounce "R-HIVE" as the letter "R" followed by "HIVE" ("R - Hive"). Never say "Re-hive" or "Rehive"!\n' +
+          '- EXACT BRAND PHONETICS: Always pronounce our brand "R-Hive" phonetically as "Are-Hive" (speaking the English letter "R" then the word "Hive", rhyming with "star hive"). STRICTLY FORBIDDEN: NEVER pronounce as "Ry-hive", "Rye-hive", "Re-hive", or "Rehive"! It is strictly "Are-Hive"!\n' +
           '- The exact company brand name is "R-HIVE Construction roofing specialists".\n' +
           '- High energy, upbeat, happy, and genuinely enthusiastic hospitality.\n' +
           '- ZERO NAME-DROPPING: Never say "Michael" or "Kara" in your opening greeting.\n' +
@@ -6027,7 +6028,7 @@ class CallSession {
           return { status: 'transferred_active' };
         }
         const reason = args?.reason || 'customer_goodbye';
-        const goodbyePhrase = args?.goodbyePhrase || 'Thank you for calling R-hive Construction! Have a great day, goodbye!';
+        const goodbyePhrase = args?.goodbyePhrase || 'Thank you for calling R-Hive Construction! Have a great day, goodbye!';
         console.log(`[CallSession ${this.callSid}] 📞 Graceful Hangup initiated (Reason: ${reason}, Spoken Phrase: "${goodbyePhrase}")`);
 
         this.pendingHangup = true;
@@ -7923,7 +7924,7 @@ app.all('/fallback-decision', async (req, res) => {
       departmentLabel,
       senderTitle
     });
-    const confirmSpoken = `<break time="150ms"/>I have notified ${escapeXml(targetEntity)} to text you directly on this number as soon as possible. Thank you for calling R-hive Construction, have a wonderful day!`;
+    const confirmSpoken = `<break time="150ms"/>I have notified ${escapeXml(targetEntity)} to text you directly on this number as soon as possible. Thank you for calling R-Hive Construction, have a wonderful day!`;
     return res.send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="Google.en-US-Neural2-F">${confirmSpoken}</Say>
@@ -7956,7 +7957,7 @@ app.all('/fallback-decision', async (req, res) => {
       companyName: req.query.companyName || ''
     });
 
-    const confirmationSpoken = `<break time="150ms"/>Your consultation "${escapeXml(bookResult.eventTitle)}" with ${escapeXml(targetEntity)} is locked in for ${escapeXml(bookResult.slotSpoken)}. A calendar invite has been sent to your email. Thank you for calling R-hive Construction Roofing Specialists! Goodbye!`;
+    const confirmationSpoken = `<break time="150ms"/>Your consultation "${escapeXml(bookResult.eventTitle)}" with ${escapeXml(targetEntity)} is locked in for ${escapeXml(bookResult.slotSpoken)}. A calendar invite has been sent to your email. Thank you for calling R-Hive Construction Roofing Specialists! Goodbye!`;
 
     return res.send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
@@ -7967,7 +7968,7 @@ app.all('/fallback-decision', async (req, res) => {
     console.error('[Fallback Decision Booking Error]', err.message);
     return res.send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say voice="Google.en-US-Neural2-F"><break time="150ms"/>We have notified ${escapeXml(targetEntity)} to call you back as soon as possible. Thank you for calling R-hive Construction, goodbye!</Say>
+    <Say voice="Google.en-US-Neural2-F"><break time="150ms"/>We have notified ${escapeXml(targetEntity)} to call you back as soon as possible. Thank you for calling R-Hive Construction, goodbye!</Say>
     <Hangup/>
 </Response>`);
   }
@@ -8046,8 +8047,8 @@ app.all('/message-recorded', async (req, res) => {
 
   res.type('text/xml');
   const closingSpoken = messageText
-    ? `<break time="150ms"/>Got it! I've sent that message directly to ${targetEntity}. Thank you for calling R-hive Construction Roofing Specialists! Have a wonderful day, goodbye!`
-    : `<break time="150ms"/>We have notified ${targetEntity} that you called. Thank you for calling R-hive Construction Roofing Specialists! Have a wonderful day, goodbye!`;
+    ? `<break time="150ms"/>Got it! I've sent that message directly to ${targetEntity}. Thank you for calling R-Hive Construction Roofing Specialists! Have a wonderful day, goodbye!`
+    : `<break time="150ms"/>We have notified ${targetEntity} that you called. Thank you for calling R-Hive Construction Roofing Specialists! Have a wonderful day, goodbye!`;
 
   return res.send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
