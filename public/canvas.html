@@ -267,7 +267,7 @@
     let dragOffset = { x: 0, y: 0 };
     let selectedNodeId = null;
 
-    // Full 17-Node Canonical Call Flow Map with Verbatim Honey Scripts
+    // Full Canonical Call Flow Map with Verbatim Honey Scripts & Real-Time Triggers
     const CANONICAL_FLOW = {
       nodes: [
         {
@@ -314,9 +314,9 @@
           x: 950,
           y: 200,
           timing: '⏱️ 280ms Gemini Live',
-          model: 'Gemini 3.1 Flash Live (Leda - Upbeat & Youthful)',
-          script: '"Thanks for calling R-HIVE Construction roofing specialists, this is Honey! Are you looking to schedule a certified roof assessment, or did you need a quick quote on an existing project?"',
-          branches: 'Active Water Leak ➔ Emergency Tarping | Replacement / Quote ➔ Address Validation | Spanish Caller ➔ Spanish Intake'
+          model: 'Gemini 3.1 Flash Live (Laomedeia - Fast 1.1x & Smiling)',
+          script: '"Hey there, thanks for calling R-Hive Construction! This is Honey—what can we help you take care of on your roof today?" Delivered with 1.1x speed, smiling prosody, zero robotic fillers.',
+          branches: 'Active Water Leak ➔ Emergency Tarping | Replacement / Quote ➔ Address Validation | Trade / Invoices ➔ Accounting Transfer | Solicitors ➔ Anti-Spam Gate'
         },
         {
           id: 'node_intent_router',
@@ -327,116 +327,140 @@
           y: 200,
           timing: '⏱️ Turn 1 Routing',
           model: 'Gemini 3.5 Flash-Lite',
-          script: 'Triages urgency: 1. Emergency leak (immediate escalation + $150 mobilization credit), 2. Replacement proposal, 3. Repair/storm check, 4. Commercial flat roof inquiry.',
-          branches: 'Replacement / Assessment ➔ Utah Grid Address Loop | Immediate Quote Only ➔ Direct Quote Link'
+          script: 'What Honey Asks: "Are you looking to replace an aging roof, is this for storm or insurance damage, an active leak, or a commercial building?" Triages caller intent into dedicated specialized pathways.',
+          branches: 'Option A: Quote / Replacement ➔ Utah Grid Address | Option B: Active Leak ➔ Emergency Tarping | Option C: Storm Damage ➔ Insurance Scope | Option D: Trade / Invoices ➔ Accounting'
+        },
+        {
+          id: 'node_emergency_leak',
+          title: 'Case 2: Active Leak Emergency Tarping',
+          category: 'Emergency Escalation',
+          badgeColor: 'bg-rose-100 text-rose-800 border-rose-300',
+          x: 1550,
+          y: -100,
+          timing: '⏱️ Immediate Priority',
+          model: 'dispatch_emergency_crew Tool',
+          script: 'What Honey Asks: "Is water actively dripping inside right now?" If yes: "Standard emergency mobilization is one hundred fifty dollars, and that entire amount is one hundred percent credited straight toward your permanent repair or replacement with us—so you\'re not paying a dime extra for emergency protection. Can we get our rapid stabilization crew scheduled for you right now?"',
+          branches: 'Trigger: Calls dispatch_emergency_crew tool ➔ Dispatches 3-hr rapid truck window ➔ SMS confirmation'
+        },
+        {
+          id: 'node_insurance_storm',
+          title: 'Case 3: Storm Damage & Insurance Restoration',
+          category: 'Insurance Pathway',
+          badgeColor: 'bg-amber-100 text-amber-800 border-amber-300',
+          x: 1550,
+          y: 60,
+          timing: '⏱️ UPPA Compliant',
+          model: 'Insurance Restoration Engine',
+          script: 'What Honey Asks: "Did you have hail or wind blow off shingles during the recent storm, or are you filing an insurance claim?" Explains: "For storm damage, we conduct an on-site roof damage inspection to document visible damage and build an objective scope of work report for your adjuster."',
+          branches: 'Trigger: Routes to On-Site Inspection Booking (book_inspection)'
+        },
+        {
+          id: 'node_trade_accounting',
+          title: 'Case 5: Trade Partners & Invoices',
+          category: 'Trade & Billing',
+          badgeColor: 'bg-blue-100 text-blue-800 border-blue-300',
+          x: 1550,
+          y: 480,
+          timing: '⏱️ Warm PBX Whisper',
+          model: 'transfer_to_specialist Tool',
+          script: 'What Honey Asks: "I would be happy to direct your call! May I ask who is calling, what company you\'re with, and which property or invoice this is regarding?" Executes zero name-dropping rule before pickup.',
+          branches: 'Trigger: Calls transfer_to_specialist (targetSpecialist: "kara") with whisper audio'
+        },
+        {
+          id: 'node_antispam_hangup',
+          title: 'Case 8: Solicitor & Vendor Quarantine',
+          category: 'Security Gate',
+          badgeColor: 'bg-slate-100 text-slate-800 border-slate-300',
+          x: 1250,
+          y: 480,
+          timing: '⏱️ Zero Admin Lag',
+          model: 'hangup_call Tool',
+          script: 'What Honey States: "At RHIVE Construction, all vendor proposals and sales solicitations must be submitted in writing to info@rhiveconstruction.com for executive review. Thank you, have a great day!"',
+          branches: 'Trigger: Calls hangup_call tool ➔ Terminates call immediately without transferring'
         },
         {
           id: 'node_stage2_address',
           title: 'Stage 2: Utah Grid Address & Tax Roll',
           category: 'Data Validation',
           badgeColor: 'bg-blue-100 text-blue-800 border-blue-300',
-          x: 1550,
+          x: 1850,
           y: 200,
           timing: '⏱️ 91ms Wasatch GIS',
-          model: 'Google Geocoding & Tax Parcel',
-          script: '"What is the street address for the property?" Validates against Salt Lake / Utah County parcel tax roll data (year built, building sqft, aerial pitch).',
-          branches: 'Address Confirmed ➔ Scope & Symptoms | Stalled >2x on 3 items in 4m ➔ SMART FALLBACK FORM'
+          model: 'verify_address Tool',
+          script: 'What Honey Asks: "Awesome! What\'s the address of the house you want us to look at?" Once tool returns: Reads numbers INDIVIDUALLY digit-by-digit (~15% slower cadence): "I have 9-9-1-7 South 3-2-0-0 West in South Jordan—does that match your property?"',
+          branches: 'Trigger: Calls verify_address tool ➔ Validates Salt Lake / Utah County parcel, year built, pitch, weather ➔ Unlocks MeasureCall Ping-Pong'
         },
         {
           id: 'node_fallback_pivot',
           title: 'Smart Fallback Web Form Protocol',
           category: 'Alternate Route',
           badgeColor: 'bg-purple-600 text-white border-purple-700 shadow-md',
-          x: 1550,
+          x: 1850,
           y: 480,
-          timing: '⏱️ 4-Min Rule Trigger',
-          model: 'Twilio SMS + Domain Short Link',
-          script: '"I want to make sure I don\'t misspell your address or project details! I just shot an instant 1-tap link directly to your cell phone right now. You can quickly tap your address while I stay right here with you."',
-          branches: 'Dispatches https://telephony.rhiveconstruction.com/v/:code ➔ Real-time Form Sync ➔ Resume Call'
-        },
-        {
-          id: 'node_direct_quote',
-          title: 'Direct Certified Quote Request',
-          category: 'Alternate Route',
-          badgeColor: 'bg-pink-600 text-white border-pink-700 shadow-md',
-          x: 1550,
-          y: -80,
-          timing: '⏱️ Instant Dispatch',
+          timing: '⏱️ Frictionless Escape',
           model: 'send_quote_verification_sms',
-          script: 'When caller directly asks to just text/email a quote: Honey confirms cell phone and dispatches branded short link /v/:code with all pre-filled aerial CAD measurements.',
-          branches: 'Short Link SMS Sent ➔ Customer Opens Portal ➔ Proposal Delivered'
+          script: 'What Honey Says: "No worries at all, let\'s not get stuck on that! I\'ll flag that question and text you a quick verification link at the end so we can keep moving." Stays on line while customer taps.',
+          branches: 'Trigger: Calls send_quote_verification_sms ➔ Dispatches /v/:code ➔ Real-time Form Sync'
         },
         {
           id: 'node_stage3_scope',
-          title: 'Stage 3: Scope & Diagnostic',
-          category: 'Voice Intake',
+          title: 'Stage 3: MeasureCall Technical Ping-Pong',
+          category: 'Technical Intake',
           badgeColor: 'bg-pink-100 text-rhive-pink border-pink-300',
-          x: 1850,
+          x: 2150,
           y: 200,
           timing: '⏱️ 250ms Gemini Live',
-          model: 'gemini-3.8-live',
-          script: '"Are you noticing any active leaks or wind-blown shingles, or are you looking ahead for a full Owens Corning Duration replacement?" Diagnoses roof age (>15 yr threshold) and shingle layers.',
-          branches: 'Scope Understood ➔ Solar Inspection Branch'
+          model: 'MeasureCall Engine',
+          script: 'What Honey Asks (1 question/turn, fast 1.1x smiling pace): 1. Solar: "Do you have solar panels on the roof?" 2. Skylights: "Do you have skylights you\'d like replaced under warranty?" 3. Layers: "Is this the original single layer, or has it been roofed over?" 4. Eave Vents: "Under your roof eaves, do you have perforated vent panels?" 5. Gutters & Ice Dams.',
+          branches: 'Trigger: Stored MeasureCall attributes in live transcript ➔ Advances to Quote Decision'
         },
         {
           id: 'node_branch_solar',
           title: 'Solar Panels Detach / Reset',
           category: 'Technical Branch',
           badgeColor: 'bg-amber-100 text-amber-800 border-amber-300',
-          x: 2150,
-          y: 100,
+          x: 2450,
+          y: 80,
           timing: '⏱️ Scope Branch',
-          model: 'Solar Coordination Matrix',
-          script: '"Do you have solar panels on the roof?" If yes: determines whether original installer handles detach & reset under their warranty or if RHIVE coordinates master solar technicians.',
-          branches: 'Solar Checked ➔ Skylights Branch'
-        },
-        {
-          id: 'node_branch_skylights',
-          title: 'Skylights Warranty Protocol',
-          category: 'Technical Branch',
-          badgeColor: 'bg-amber-100 text-amber-800 border-amber-300',
-          x: 2150,
-          y: 300,
-          timing: '⏱️ Scope Branch',
-          model: 'Skylight Options Protocol',
-          script: '"Do you have any skylights?" Presents three certified warranty options: 1. Replace with brand-new watertight factory warranty units, 2. Keep & reseal, 3. Cancel and deck over.',
-          branches: 'Skylights Checked ➔ Ventilation Branch'
+          model: 'Solar Matrix',
+          script: 'Honey checks: If installer warranty active, installer detaches. Otherwise, RHIVE master electricians coordinate certified detach & reset with new Owens Corning Duration roof.',
+          branches: 'Solar Checked ➔ Skylights & Ventilation'
         },
         {
           id: 'node_branch_ventilation',
-          title: 'Ventilation & Ice Damming',
+          title: 'Ventilation, SureNail & Ice Dams',
           category: 'Technical Branch',
           badgeColor: 'bg-amber-100 text-amber-800 border-amber-300',
           x: 2450,
-          y: 200,
+          y: 320,
           timing: '⏱️ Scope Branch',
           model: 'SureNail & Venting Protocol',
-          script: 'Checks eave/soffit intake, continuous ridge vent, and winter ice damming history along eaves to specify self-adhering WeatherLock Ice & Water shield and heat trace cables.',
-          branches: 'Diagnostic Complete ➔ Booking Decision'
+          script: 'Presents commercial-grade standard: Owens Corning Duration shingles with SureNail 130 MPH wind warranty. Checks soffit/ridge intake and specifies self-adhering WeatherLock Ice & Water shield for valleys.',
+          branches: 'Diagnostic Complete ➔ Decision Gate'
         },
         {
           id: 'node_stage4_decision',
-          title: 'Stage 4: On-Site vs CAD Proposal',
+          title: 'Stage 4: Quote Triage & Email Verification',
           category: 'Decision Gate',
           badgeColor: 'bg-purple-100 text-purple-800 border-purple-300',
           x: 2750,
           y: 200,
           timing: '⏱️ Turn 3 Decision',
           model: 'Gemini 3.8 Flash',
-          script: 'Determines closing branch: 1. Certified 100% Free On-Site Inspection (locks arrival window in Google Calendar), or 2. Precision Aerial CAD Quote via text & email.',
-          branches: 'Physical Inspection ➔ Google Calendar Lock | Remote Quote ➔ SMS CAD Dispatch'
+          script: 'What Honey Asks: "When you picture the finished roof, what matters most: bottom-line numbers, curb appeal aesthetics, or maximum warranty protection?" Then asks: "What\'s the best email for you so I can shoot that quote over?" Reads email phonetically (~15% slower).',
+          branches: 'Physical On-Site Inspection ➔ Google Calendar Lock | Remote CAD Quote ➔ Instant Certified SMS'
         },
         {
           id: 'node_stage5_booking',
-          title: 'Stage 5: Google Calendar 3-Hr Window',
+          title: 'Stage 5: Google Calendar 3-Hr Window Lock',
           category: 'Calendar Lock',
           badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
           x: 3050,
           y: 200,
           timing: '⏱️ 320ms Calendar API',
           model: 'book_inspection Tool',
-          script: '"I have tomorrow between 9 AM and 12 PM, or 1 PM and 4 PM open for Michael to evaluate your roof in person. Which arrival window works best for you?" Locks event and sends calendar invite.',
-          branches: 'Window Confirmed ➔ Twilio SMS Confirmation'
+          script: 'What Honey Asks: "We can have our specialist swing by tomorrow to check everything out in person. Does morning around 10 or early afternoon work best for you?" Locks arrival window.',
+          branches: 'Trigger: Calls book_inspection tool ➔ Writes Google Calendar event ➔ Twilio SMS confirmation'
         },
         {
           id: 'node_post_sms',
@@ -446,8 +470,8 @@
           x: 3350,
           y: 120,
           timing: '⏱️ <1200ms Twilio SMS',
-          model: 'sendMultiChannelSms',
-          script: 'Dispatches instant booking confirmation text from Michael Robinson (801-449-1451) with arrival window, address, and link to update details or upload photos.',
+          model: 'sendMultiChannelSms Tool',
+          script: 'Dispatches instant booking confirmation text from Michael Robinson (801-449-1451) with arrival window, address, 15-min ETA tracker, and photo upload portal link.',
           branches: 'SMS Fired ➔ Post-Call CRM Archival'
         },
         {
@@ -461,18 +485,6 @@
           model: 'Gemini 3.8 Flash & Firestore',
           script: 'Synthesizes dual-channel transcript, DISC psycholinguistic quadrant (D/I/S/C), homeowner sentiment, and saves immutable record with journeyNodes to Firestore.',
           branches: 'Call Concluded & Session Expired'
-        },
-        {
-          id: 'node_supervisor_hud',
-          title: 'Supervisor HUD & Silent Whisper',
-          category: 'Live Supervision',
-          badgeColor: 'bg-purple-100 text-purple-800 border-purple-300',
-          x: 1850,
-          y: -80,
-          timing: '⏱️ Real-time WebRTC',
-          model: 'Twilio Conference Barge',
-          script: 'Allows Michael to silently monitor any live call from the dialer HUD, view live transcript turns, and whisper coaching directives into Honey\'s ear without caller hearing.',
-          branches: 'Active During Any Live Call'
         }
       ],
       connections: [
@@ -480,15 +492,19 @@
         { from: 'node_preroll', to: 'node_media_stream' },
         { from: 'node_media_stream', to: 'node_stage1_greeting' },
         { from: 'node_stage1_greeting', to: 'node_intent_router' },
+        { from: 'node_intent_router', to: 'node_emergency_leak' },
+        { from: 'node_intent_router', to: 'node_insurance_storm' },
         { from: 'node_intent_router', to: 'node_stage2_address' },
-        { from: 'node_intent_router', to: 'node_direct_quote' },
+        { from: 'node_intent_router', to: 'node_trade_accounting' },
+        { from: 'node_intent_router', to: 'node_antispam_hangup' },
+        { from: 'node_insurance_storm', to: 'node_stage5_booking' },
+        { from: 'node_emergency_leak', to: 'node_post_sms' },
         { from: 'node_stage2_address', to: 'node_stage3_scope' },
         { from: 'node_stage2_address', to: 'node_fallback_pivot' },
         { from: 'node_fallback_pivot', to: 'node_stage3_scope' },
         { from: 'node_stage3_scope', to: 'node_branch_solar' },
-        { from: 'node_stage3_scope', to: 'node_branch_skylights' },
-        { from: 'node_branch_solar', to: 'node_branch_ventilation' },
-        { from: 'node_branch_skylights', to: 'node_branch_ventilation' },
+        { from: 'node_stage3_scope', to: 'node_branch_ventilation' },
+        { from: 'node_branch_solar', to: 'node_stage4_decision' },
         { from: 'node_branch_ventilation', to: 'node_stage4_decision' },
         { from: 'node_stage4_decision', to: 'node_stage5_booking' },
         { from: 'node_stage5_booking', to: 'node_post_sms' },
