@@ -2713,99 +2713,332 @@
       }
     }
 
-    // Load Recent Calls with Recordings & AI Intelligence
+    // ========================================================================
+    // RECENT CALLS, AUDIO PLAYBACK & INTERACTIVE TRANSCRIPT ENGINE
+    // ========================================================================
     let cachedCalls = [];
+    let activeDisplayCalls = [];
+
+    function parseTimestampToSeconds(tsStr) {
+      if (!tsStr) return 0;
+      const parts = tsStr.trim().split(':').map(Number);
+      if (parts.length === 3) {
+        return parts[0] * 3600 + parts[1] * 60 + parts[2];
+      }
+      if (parts.length === 2) {
+        return parts[0] * 60 + parts[1];
+      }
+      return parseInt(tsStr, 10) || 0;
+    }
+
+    function seekAudioPlayer(playerId, sec) {
+      const player = document.getElementById(playerId);
+      if (!player) return;
+      player.currentTime = Math.max(0, sec);
+      player.play().catch(() => {});
+    }
+
+    function formatDialogue(rawText, audioPlayerId) {
+      if (!rawText || !rawText.trim()) {
+        return '<div class="text-slate-400 italic text-[10px] py-2 text-center font-mono">No transcript dialogue recorded for this call.</div>';
+      }
+
+      const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
+      if (lines.length === 0) {
+        return '<div class="text-slate-400 italic text-[10px] py-2 text-center font-mono">No dialogue turns found.</div>';
+      }
+
+      let html = '';
+      for (let line of lines) {
+        if (/^this is (the|a) transcript/i.test(line.trim())) continue;
+        line = line.replace(/\*\*/g, '').trim();
+        let timeMatch = line.match(/\[(\d{1,2}:\d{2}(?::\d{2})?)\]/) || line.match(/\((\d{1,2}:\d{2}(?::\d{2})?)\)/);
+        let timeStr = timeMatch ? timeMatch[1] : '';
+        let sec = timeStr ? parseTimestampToSeconds(timeStr) : null;
+
+        let cleanLine = line.replace(/\[\d{1,2}:\d{2}(?::\d{2})?\]/, '').replace(/\(\d{1,2}:\d{2}(?::\d{2})?\)/, '').trim();
+
+        let speaker = 'Caller';
+        let avatar = '👤';
+        let bubbleClass = 'bg-white border-slate-200 text-slate-800';
+        let nameClass = 'text-slate-700 font-bold';
+        let text = cleanLine;
+
+        const lower = cleanLine.toLowerCase();
+        if (lower.startsWith('[honey]') || lower.startsWith('honey:') || lower.startsWith('honey -') || lower.startsWith('ai concierge:') || lower.includes('honey (rhive')) {
+          speaker = 'Honey (AI Concierge)';
+          avatar = '🐝';
+          bubbleClass = 'bg-pink-50/70 border-pink-200 text-slate-900';
+          nameClass = 'text-rhive-pink font-bold';
+          text = cleanLine.replace(/^\[?honey(?:\s+\(rhive.*?\))?\]?:?/i, '').replace(/^ai concierge:?/i, '').trim();
+        } else if (lower.startsWith('michael') || lower.startsWith('[michael]') || lower.includes('michael robinson')) {
+          speaker = 'Michael Robinson';
+          avatar = '👨💼';
+          bubbleClass = 'bg-amber-50/70 border-amber-200 text-slate-900';
+          nameClass = 'text-amber-800 font-bold';
+          text = cleanLine.replace(/^\[?michael(?:\s+robinson)?\]?:?/i, '').trim();
+        } else if (lower.startsWith('[caller]') || lower.startsWith('caller:') || lower.startsWith('[customer]') || lower.startsWith('customer:')) {
+          speaker = 'Caller / Customer';
+          avatar = '👤';
+          bubbleClass = 'bg-slate-100/90 border-slate-200 text-slate-800';
+          nameClass = 'text-slate-800 font-bold';
+          text = cleanLine.replace(/^\[?(caller|customer)\]?:?/i, '').trim();
+        } else if (cleanLine.includes(':')) {
+          const parts = cleanLine.split(':');
+          speaker = parts[0].replace(/[\[\]]/g, '').trim();
+          text = parts.slice(1).join(':').trim();
+        }
+
+        text = text.replace(/^["']|["']$/g, '');
+
+        const seekBtn = (sec !== null && audioPlayerId)
+          ? `<button type="button" onclick="seekAudioPlayer('${audioPlayerId}', ${sec})" class="px-1.5 py-0.5 rounded bg-slate-200/80 hover:bg-rhive-pink hover:text-white text-[9px] font-mono font-bold text-slate-600 transition flex items-center space-x-1" title="Jump audio playback to ${timeStr}">
+              <span>▶</span><span>${timeStr}</span>
+            </button>`
+          : (timeStr ? `<span class="text-[9px] font-mono text-slate-400 font-bold">${timeStr}</span>` : '');
+
+        html += `
+          <div class="p-2 rounded-[10px] border ${bubbleClass} text-[11px] leading-relaxed space-y-1 shadow-2xs">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-1.5">
+                <span class="text-xs">${avatar}</span>
+                <span class="${nameClass} text-[10px] font-mono">${escapeHtml(speaker)}</span>
+              </div>
+              ${seekBtn}
+            </div>
+            <div class="text-slate-800 text-[11px] pl-5 font-sans">${escapeHtml(text)}</div>
+          </div>
+        `;
+      }
+
+      return html;
+    }
+
+    function renderCallCard(c, index) {
+      const isWork = c.isWorkCell;
+      const isOut = c.direction === 'outbound-api' || c.direction === 'outbound';
+      const durSec = parseInt(c.duration, 10) || 0;
+      const durStr = durSec > 0 ? `${Math.floor(durSec / 60)}m ${durSec % 60}s` : 'Missed';
+      const dateStr = c.date_created ? new Date(c.date_created).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+      const hasRec = Boolean(c.recording_url);
+
+      return `
+        <div class="p-3 bg-white border border-slate-200 rounded-[14px] shadow-sm hover:border-pink-300 transition space-y-2" id="callCard_${index}">
+          <div class="flex items-center justify-between">
+            
+            <!-- Contact & Direction -->
+            <div class="flex items-center space-x-2.5">
+              <div class="w-8 h-8 rounded-full ${isOut ? 'bg-pink-50 text-rhive-pink' : 'bg-emerald-50 text-emerald-600'} flex items-center justify-center font-bold">
+                ${isOut ? '↗' : '↙'}
+              </div>
+              <div>
+                <div class="font-mono text-xs font-bold text-slate-900">${escapeHtml(c.contact_name || c.to || c.from || 'Customer')}</div>
+                <div class="text-[10px] font-mono text-slate-400 flex items-center space-x-1.5">
+                  <span>${dateStr}</span>
+                  <span>&bull;</span>
+                  <span>${durStr}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Line Identity Badge -->
+            <div>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-mono font-bold ${isWork ? 'bg-pink-100 text-rhive-pink border border-pink-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}">
+                ${isWork ? 'Michael Work Cell' : 'Honey AI'}
+              </span>
+            </div>
+
+          </div>
+
+          <!-- Quick Audio Player (If Recorded) -->
+          ${hasRec ? `
+            <div class="pt-1.5 border-t border-slate-100 space-y-1">
+              <div class="flex items-center justify-between text-[9px] font-mono font-bold text-slate-500 uppercase">
+                <span class="flex items-center space-x-1">
+                  <span>🔊 Recording Playback</span>
+                  <span class="text-rhive-pink font-bold">(${durStr})</span>
+                </span>
+                <a href="${c.recording_url}" target="_blank" download="call_${c.sid}.mp3" class="text-slate-400 hover:text-slate-700 underline text-[9px]">⬇ MP3</a>
+              </div>
+              <audio id="audioPlayer_${index}" controls preload="metadata" class="w-full h-8 rounded bg-slate-50 mt-0.5" src="${c.recording_url}"></audio>
+            </div>
+          ` : ''}
+
+          <!-- Action Row: Interactive Transcript, AI Intel, Journey & Contact -->
+          <div class="flex items-center justify-between pt-1 border-t border-slate-100 text-[10px] font-mono">
+            <div class="flex items-center space-x-1.5">
+              <button type="button" onclick="toggleCallTranscript(${index})" id="transcriptToggleBtn_${index}" class="px-2 py-1 bg-pink-50 hover:bg-pink-100 text-rhive-pink font-bold rounded-[8px] border border-pink-200 transition flex items-center space-x-1 shadow-xs">
+                <span>📜</span>
+                <span id="transcriptToggleText_${index}">Transcript ▾</span>
+              </button>
+              <button onclick="openAiModalByIndex(${index})" class="px-1.5 py-1 text-slate-600 hover:text-rhive-pink font-bold flex items-center space-x-1">
+                <span>🤖 AI Intel &rarr;</span>
+              </button>
+              <a href="/canvas?callSid=${encodeURIComponent(c.sid)}" target="_blank" class="px-1.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold rounded-[8px] border border-slate-200 transition flex items-center space-x-1" title="View Call Journey in Canvas">
+                <span>🗺️ Journey</span>
+              </a>
+            </div>
+            <div class="flex items-center space-x-1.5">
+              <button onclick="openSaveContactModal('${isOut ? c.to : c.from}', '${escapeHtml(c.contact_name || '')}', '${escapeHtml(c.property_address || '')}', '${escapeHtml(c.summary || c.notes || '')}')" class="px-2 py-1 bg-pink-50 hover:bg-rhive-pink hover:text-white text-rhive-pink border border-pink-200 rounded-[8px] font-bold transition flex items-center space-x-1" title="Save or Convert Call to Contact">
+                <span>👤</span>
+                <span>+ Contact</span>
+              </button>
+              <button onclick="redialNumber('${isOut ? c.to : c.from}')" class="px-2 py-1 bg-slate-100 hover:bg-black hover:text-white rounded-[8px] font-bold transition">
+                📞 Call
+              </button>
+              <button onclick="textNumber('${isOut ? c.to : c.from}')" class="px-2 py-1 bg-slate-100 hover:bg-rhive-pink hover:text-white rounded-[8px] font-bold transition">
+                💬 Text
+              </button>
+            </div>
+          </div>
+
+          <!-- Collapsible Interactive Transcript Drawer -->
+          <div id="transcriptDrawer_${index}" class="hidden pt-2 border-t border-pink-100 space-y-2 bg-slate-50/80 p-3 rounded-[14px] mt-1 text-[11px] font-mono">
+            <div class="flex items-center justify-between text-[10px]">
+              <div class="flex items-center space-x-1.5 font-bold text-slate-800">
+                <span>📜 INTERACTIVE TRANSCRIPT</span>
+                <span id="transcriptModelBadge_${index}" class="text-[8px] px-1.5 py-0.5 rounded bg-pink-100 text-rhive-pink font-bold">GEMINI 3.8</span>
+              </div>
+              <div class="flex items-center space-x-2">
+                <button type="button" onclick="copyCallTranscript(${index})" id="copyBtn_${index}" class="text-[9px] text-slate-500 hover:text-rhive-pink underline">📋 Copy</button>
+                <button type="button" onclick="toggleCallTranscript(${index})" class="text-[9px] text-slate-400 hover:text-slate-600 font-bold">✕ Close</button>
+              </div>
+            </div>
+
+            <!-- Live search/filter within this call transcript -->
+            <div class="relative">
+              <input type="text" placeholder="Search dialogue..." oninput="filterTranscriptDialogue(${index}, this.value)" class="w-full bg-white border border-slate-200 rounded-[8px] px-2.5 py-1 text-[10px] font-mono focus:outline-none focus:border-rhive-pink transition">
+            </div>
+
+            <!-- Structured Dialogue Stream -->
+            <div id="transcriptDialogue_${index}" class="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+        </div>
+      `;
+    }
+
     async function loadRecentCalls() {
       const container = document.getElementById('recentCallsList');
       try {
         const res = await fetch('/api/mobile/calls');
         const data = await res.json();
         cachedCalls = data.calls || [];
+        activeDisplayCalls = cachedCalls;
         if (cachedCalls.length === 0) {
           container.innerHTML = '<div class="text-center py-8 text-slate-400 font-mono text-[11px]">No recent calls recorded.</div>';
           return;
         }
 
-        container.innerHTML = cachedCalls.map((c, index) => {
-          const isWork = c.isWorkCell;
-          const isOut = c.direction === 'outbound-api' || c.direction === 'outbound';
-          const durSec = parseInt(c.duration, 10) || 0;
-          const durStr = durSec > 0 ? `${Math.floor(durSec / 60)}m ${durSec % 60}s` : 'Missed';
-          const dateStr = c.date_created ? new Date(c.date_created).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
-          const hasRec = Boolean(c.recording_url);
-
-          return `
-            <div class="p-3 bg-white border border-slate-200 rounded-[14px] shadow-sm hover:border-pink-300 transition space-y-2">
-              <div class="flex items-center justify-between">
-                
-                <!-- Contact & Direction -->
-                <div class="flex items-center space-x-2.5">
-                  <div class="w-8 h-8 rounded-full ${isOut ? 'bg-pink-50 text-rhive-pink' : 'bg-emerald-50 text-emerald-600'} flex items-center justify-center font-bold">
-                    ${isOut ? '↗' : '↙'}
-                  </div>
-                  <div>
-                    <div class="font-mono text-xs font-bold text-slate-900">${escapeHtml(c.contact_name || c.to || c.from || 'Customer')}</div>
-                    <div class="text-[10px] font-mono text-slate-400 flex items-center space-x-1.5">
-                      <span>${dateStr}</span>
-                      <span>&bull;</span>
-                      <span>${durStr}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Line Identity Badge -->
-                <div>
-                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-mono font-bold ${isWork ? 'bg-pink-100 text-rhive-pink border border-pink-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}">
-                    ${isWork ? 'Michael Work Cell' : 'Honey AI'}
-                  </span>
-                </div>
-
-              </div>
-
-              <!-- Quick Audio Player (If Recorded) -->
-              ${hasRec ? `
-                <div class="pt-1 border-t border-slate-100 flex items-center space-x-2">
-                  <span class="text-[9px] font-mono text-slate-400 font-bold uppercase">Recording:</span>
-                  <audio controls class="w-full h-7 rounded" src="${c.recording_url}"></audio>
-                </div>
-              ` : ''}
-
-              <!-- Action Row: AI Intelligence Modal, Canvas Journey & Redial -->
-              <div class="flex items-center justify-between pt-1 border-t border-slate-100 text-[10px] font-mono">
-                <div class="flex items-center space-x-2">
-                  <button onclick="openAiModalByIndex(${index})" class="text-rhive-pink font-bold hover:underline flex items-center space-x-1">
-                    <span>🤖 AI Intel &rarr;</span>
-                  </button>
-                  <a href="/canvas?callSid=${encodeURIComponent(c.sid)}" target="_blank" class="px-2 py-0.5 bg-pink-50 hover:bg-pink-100 text-rhive-pink font-bold rounded-[6px] border border-pink-200 transition flex items-center space-x-1" title="View Call Journey in Canvas">
-                    <span>🗺️ Journey</span>
-                  </a>
-                </div>
-                <div class="flex items-center space-x-1.5">
-                  <button onclick="openSaveContactModal('${isOut ? c.to : c.from}', '${escapeHtml(c.contact_name || '')}', '${escapeHtml(c.property_address || '')}', '${escapeHtml(c.summary || c.notes || '')}')" class="px-2 py-1 bg-pink-50 hover:bg-rhive-pink hover:text-white text-rhive-pink border border-pink-200 rounded-[8px] font-bold transition flex items-center space-x-1" title="Save or Convert Call to Contact">
-                    <span>👤</span>
-                    <span>+ Contact</span>
-                  </button>
-                  <button onclick="redialNumber('${isOut ? c.to : c.from}')" class="px-2 py-1 bg-slate-100 hover:bg-black hover:text-white rounded-[8px] font-bold transition">
-                    📞 Call
-                  </button>
-                  <button onclick="textNumber('${isOut ? c.to : c.from}')" class="px-2 py-1 bg-slate-100 hover:bg-rhive-pink hover:text-white rounded-[8px] font-bold transition">
-                    💬 Text
-                  </button>
-                </div>
-              </div>
-
-            </div>
-          `;
-        }).join('');
+        container.innerHTML = cachedCalls.map((c, index) => renderCallCard(c, index)).join('');
       } catch (err) {
         container.innerHTML = `<div class="text-center py-4 text-rose-500 font-mono text-[11px]">Failed to load recents: ${err.message}</div>`;
       }
     }
 
     function openAiModalByIndex(idx) {
-      if (cachedCalls[idx]) {
-        openAiModal(cachedCalls[idx]);
+      if (activeDisplayCalls[idx]) {
+        openAiModal(activeDisplayCalls[idx]);
       }
+    }
+
+    async function toggleCallTranscript(index) {
+      const c = activeDisplayCalls[index];
+      if (!c) return;
+
+      const drawer = document.getElementById(`transcriptDrawer_${index}`);
+      const toggleText = document.getElementById(`transcriptToggleText_${index}`);
+      const toggleBtn = document.getElementById(`transcriptToggleBtn_${index}`);
+      const dialogueContainer = document.getElementById(`transcriptDialogue_${index}`);
+      const audioPlayerId = `audioPlayer_${index}`;
+
+      if (!drawer) return;
+
+      const isHidden = drawer.classList.contains('hidden');
+      if (!isHidden) {
+        drawer.classList.add('hidden');
+        if (toggleText) toggleText.textContent = 'Transcript ▾';
+        if (toggleBtn) {
+          toggleBtn.classList.remove('bg-rhive-pink', 'text-white');
+          toggleBtn.classList.add('bg-pink-50', 'text-rhive-pink');
+        }
+        return;
+      }
+
+      // Open drawer
+      drawer.classList.remove('hidden');
+      if (toggleText) toggleText.textContent = 'Transcript ▴';
+      if (toggleBtn) {
+        toggleBtn.classList.add('bg-rhive-pink', 'text-white');
+        toggleBtn.classList.remove('bg-pink-50', 'text-rhive-pink');
+      }
+
+      // Check if transcript is already loaded
+      if (c.transcript && c.transcript.length > 20) {
+        dialogueContainer.innerHTML = formatDialogue(c.transcript, audioPlayerId);
+        return;
+      }
+
+      // Hydrate from Gemini 3.8 on demand
+      dialogueContainer.innerHTML = `
+        <div class="py-4 text-center space-y-1">
+          <div class="inline-block animate-spin text-rhive-pink text-base">⏳</div>
+          <div class="text-[10px] font-mono text-slate-500">Transcribing audio via Gemini 3.8 Flash...</div>
+        </div>
+      `;
+
+      try {
+        const res = await fetch(`/api/telephony/calls/${encodeURIComponent(c.sid)}/transcript`);
+        const data = await res.json();
+        if (data.success && data.transcript) {
+          c.transcript = data.transcript;
+          dialogueContainer.innerHTML = formatDialogue(c.transcript, audioPlayerId);
+        } else {
+          dialogueContainer.innerHTML = `<div class="text-rose-500 py-2 text-[10px] font-mono">Could not load transcript: ${escapeHtml(data.error || 'No transcript available.')}</div>`;
+        }
+      } catch (err) {
+        dialogueContainer.innerHTML = `<div class="text-rose-500 py-2 text-[10px] font-mono">Error loading transcript: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    function filterTranscriptDialogue(index, query) {
+      const c = activeDisplayCalls[index];
+      if (!c || !c.transcript) return;
+      const dialogueContainer = document.getElementById(`transcriptDialogue_${index}`);
+      if (!dialogueContainer) return;
+
+      const q = (query || '').toLowerCase().trim();
+      if (!q) {
+        dialogueContainer.innerHTML = formatDialogue(c.transcript, `audioPlayer_${index}`);
+        return;
+      }
+
+      const lines = c.transcript.split('\n').filter(l => l.toLowerCase().includes(q));
+      if (lines.length === 0) {
+        dialogueContainer.innerHTML = `<div class="text-slate-400 italic text-[10px] py-2 text-center font-mono">No dialogue matching "${escapeHtml(q)}"</div>`;
+        return;
+      }
+
+      dialogueContainer.innerHTML = formatDialogue(lines.join('\n'), `audioPlayer_${index}`);
+    }
+
+    function copyCallTranscript(index) {
+      const c = activeDisplayCalls[index];
+      if (!c || !c.transcript) {
+        alert('No transcript to copy yet. Open the transcript drawer first to load it.');
+        return;
+      }
+      navigator.clipboard.writeText(c.transcript).then(() => {
+        const btn = document.getElementById(`copyBtn_${index}`);
+        if (btn) {
+          btn.textContent = '✓ Copied!';
+          setTimeout(() => { btn.textContent = '📋 Copy'; }, 2000);
+        }
+      }).catch(() => {
+        alert('Could not copy transcript.');
+      });
     }
 
     // Modal with Full Contact History & Disposition Records
@@ -2829,7 +3062,30 @@
       document.getElementById('modalAiSummary').textContent = c.summary || 'Call conducted on Michael Robinson Work Line. Customer discussed roofing scope, warranty, and inspection requirements.';
       document.getElementById('modalDiscProfile').textContent = c.intent === 'WORK_CALL' ? 'Steady / Conscientious' : 'High Dominance / Fast Decision';
       document.getElementById('modalSentimentScore').textContent = c.sentiment || 'Positive (0.89)';
-      document.getElementById('modalTranscriptBox').textContent = c.transcript || `[00:01] Michael Robinson: "Hello, Michael with RHIVE Construction."\n[00:04] Customer: "Hi Michael, calling regarding the roofing estimate."\n[00:08] Michael Robinson: "Absolutely. I have your roof measurements and SureNail specs ready."\n[00:15] Customer: "Great, let's review the warranty and timeline."`;
+
+      const modalTranscriptBox = document.getElementById('modalTranscriptBox');
+      const renderModalTranscript = (tText) => {
+        if (!modalTranscriptBox) return;
+        modalTranscriptBox.innerHTML = formatDialogue(tText, 'modalAudioPlayer');
+      };
+
+      if (c.transcript && c.transcript.length > 20) {
+        renderModalTranscript(c.transcript);
+      } else {
+        renderModalTranscript(c.transcript || `[00:01] Michael Robinson: "Hello, Michael with RHIVE Construction."\n[00:04] Customer: "Hi Michael, calling regarding the roofing estimate."\n[00:08] Michael Robinson: "Absolutely. I have your roof measurements and SureNail specs ready."\n[00:15] Customer: "Great, let's review the warranty and timeline."`);
+        
+        if (c.sid && (c.recording_url || c.duration > 0)) {
+          fetch(`/api/telephony/calls/${encodeURIComponent(c.sid)}/transcript`)
+            .then(r => r.json())
+            .then(data => {
+              if (data.success && data.transcript && currentModalCall && currentModalCall.sid === c.sid) {
+                c.transcript = data.transcript;
+                renderModalTranscript(data.transcript);
+              }
+            })
+            .catch(() => {});
+        }
+      }
 
       // Set current disposition badge & notes
       const dispBadge = document.getElementById('currentDispositionBadge');
@@ -3067,7 +3323,8 @@
       if (!container || !cachedCalls) return;
       const q = (query || '').toLowerCase().trim();
       if (!q) {
-        loadRecentCalls();
+        activeDisplayCalls = cachedCalls;
+        container.innerHTML = cachedCalls.map((c, index) => renderCallCard(c, index)).join('');
         return;
       }
       const filtered = cachedCalls.filter(c => {
@@ -3077,64 +3334,12 @@
         const notes = (c.notes || c.summary || '').toLowerCase();
         return name.includes(q) || to.includes(q) || from.includes(q) || notes.includes(q);
       });
+      activeDisplayCalls = filtered;
       if (filtered.length === 0) {
         container.innerHTML = '<div class="text-center py-8 text-slate-400 font-mono text-[11px]">No call logs match your search.</div>';
         return;
       }
-      container.innerHTML = filtered.map((c, index) => {
-        const isWork = c.isWorkCell;
-        const isOut = c.direction === 'outbound-api' || c.direction === 'outbound';
-        const durSec = parseInt(c.duration, 10) || 0;
-        const durStr = durSec > 0 ? `${Math.floor(durSec / 60)}m ${durSec % 60}s` : 'Missed';
-        const dateStr = c.date_created ? new Date(c.date_created).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
-        const hasRec = Boolean(c.recording_url);
-
-        return `
-          <div class="p-3 bg-white border border-slate-200 rounded-[14px] shadow-sm hover:border-pink-300 transition space-y-2">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center space-x-2.5">
-                <div class="w-8 h-8 rounded-full ${isOut ? 'bg-pink-50 text-rhive-pink' : 'bg-emerald-50 text-emerald-600'} flex items-center justify-center font-bold">
-                  ${isOut ? '↗' : '↙'}
-                </div>
-                <div>
-                  <div class="font-mono text-xs font-bold text-slate-900">${escapeHtml(c.contact_name || c.to || c.from || 'Customer')}</div>
-                  <div class="text-[10px] font-mono text-slate-400 flex items-center space-x-1.5">
-                    <span>${dateStr}</span>
-                    <span>&bull;</span>
-                    <span>${durStr}</span>
-                  </div>
-                </div>
-              </div>
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-mono font-bold ${isWork ? 'bg-pink-100 text-rhive-pink border border-pink-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}">
-                ${isWork ? 'Michael Work Cell' : 'Honey AI'}
-              </span>
-            </div>
-            ${hasRec ? `
-              <div class="pt-1 border-t border-slate-100 flex items-center space-x-2">
-                <span class="text-[9px] font-mono text-slate-400 font-bold uppercase">Recording:</span>
-                <audio controls class="w-full h-7 rounded" src="${c.recording_url}"></audio>
-              </div>
-            ` : ''}
-            <div class="flex items-center justify-between pt-1 border-t border-slate-100 text-[10px] font-mono">
-              <button onclick="openAiModalByIndex(${index})" class="text-rhive-pink font-bold hover:underline">
-                🤖 AI Intel &rarr;
-              </button>
-              <div class="flex items-center space-x-1.5">
-                <button onclick="openSaveContactModal('${isOut ? c.to : c.from}', '${escapeHtml(c.contact_name || '')}', '${escapeHtml(c.property_address || '')}', '${escapeHtml(c.summary || c.notes || '')}')" class="px-2 py-1 bg-pink-50 hover:bg-rhive-pink hover:text-white text-rhive-pink border border-pink-200 rounded-[8px] font-bold transition flex items-center space-x-1">
-                  <span>👤</span>
-                  <span>+ Contact</span>
-                </button>
-                <button onclick="redialNumber('${isOut ? c.to : c.from}')" class="px-2 py-1 bg-slate-100 hover:bg-black hover:text-white rounded-[8px] font-bold transition">
-                  📞 Call
-                </button>
-                <button onclick="textNumber('${isOut ? c.to : c.from}')" class="px-2 py-1 bg-slate-100 hover:bg-rhive-pink hover:text-white rounded-[8px] font-bold transition">
-                  💬 Text
-                </button>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('');
+      container.innerHTML = filtered.map((c, index) => renderCallCard(c, index)).join('');
     }
 
     // Modal to Convert / Save Call to Contact
