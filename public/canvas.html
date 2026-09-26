@@ -121,10 +121,13 @@
         ⛶ FIT
       </button>
 
-      <a href="/dialer" class="px-2.5 py-1.5 bg-black hover:bg-slate-800 text-white text-xs font-mono font-bold rounded-[10px] transition flex items-center space-x-1">
-        <span>📞</span>
-        <span class="hidden sm:inline">SOVEREIGN DIALER</span>
-      </a>
+      <div class="flex items-center space-x-1.5">
+        <a href="/recents" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-mono font-bold rounded-[8px] border border-slate-200 transition">🏠 RECENTS</a>
+        <a href="/dialer" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-mono font-bold rounded-[8px] border border-slate-200 transition">🔢 KEYPAD</a>
+        <a href="/messages" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-mono font-bold rounded-[8px] border border-slate-200 transition">💬 MESSAGES</a>
+        <a href="/ai" class="px-2 py-1 bg-pink-50 hover:bg-pink-100 text-rhive-pink border border-pink-200 text-xs font-mono font-bold rounded-[8px] transition">⚡ AI STUDIO</a>
+        <a href="/canvas" class="px-2 py-1 bg-black text-white text-xs font-mono font-bold rounded-[8px] transition">📐 CANVAS</a>
+      </div>
     </div>
   </header>
 
@@ -308,27 +311,39 @@
         },
         {
           id: 'node_stage1_greeting',
-          title: 'Stage 1: Greeting & Intent Triage',
+          title: 'Stage 1: Greeting & Discovery',
           category: 'Voice Intake',
           badgeColor: 'bg-pink-100 text-rhive-pink border-pink-300',
           x: 950,
           y: 200,
           timing: '⏱️ 280ms Gemini Live',
-          model: 'Gemini 3.1 Flash Live (Laomedeia - Fast 1.1x & Smiling)',
-          script: '"Hey there, thanks for calling R-Hive Construction! This is Honey—what can we help you take care of on your roof today?" Delivered with 1.1x speed, smiling prosody, zero robotic fillers.',
-          branches: 'Active Water Leak ➔ Emergency Tarping | Replacement / Quote ➔ Address Validation | Trade / Invoices ➔ Accounting Transfer | Solicitors ➔ Anti-Spam Gate'
+          model: 'Gemini 3.8 Live (Laomedeia - Fast 1.1x & Smiling)',
+          script: '"Hi, this is Honey, RHIVE Construction\'s AI roofing specialist. What\'s your first name and how can I assist you today?" (Preserved manual alternate: "Hi this is Honey with R-hive Construction Roofing specialists, How may I assist!?") Delivered with 1.1x speed, smiling prosody, zero robotic fillers.',
+          branches: 'Caller Speaks Intent & Name ➔ Step 2A: Urgency Triage (Storm / Active Leak)'
         },
         {
-          id: 'node_intent_router',
-          title: 'Intent Decision Router',
-          category: 'Logic Routing',
-          badgeColor: 'bg-purple-100 text-purple-800 border-purple-300',
+          id: 'node_intent_urgency',
+          title: 'Step 2A: Urgency Triage (Storm / Leak)',
+          category: 'Urgency Triage',
+          badgeColor: 'bg-rose-100 text-rose-800 border-rose-300',
           x: 1250,
           y: 200,
-          timing: '⏱️ Turn 1 Routing',
-          model: 'Gemini 3.5 Flash-Lite',
-          script: 'What Honey Asks: "Are you looking to replace an aging roof, is this for storm or insurance damage, an active leak, or a commercial building?" Triages caller intent into dedicated specialized pathways.',
-          branches: 'Option A: Quote / Replacement ➔ Utah Grid Address | Option B: Active Leak ➔ Emergency Tarping | Option C: Storm Damage ➔ Insurance Scope | Option D: Trade / Invoices ➔ Accounting'
+          timing: '⏱️ Turn 1 (1-Question Rule)',
+          model: 'Gemini 3.8 Live (Single Question)',
+          script: 'What Honey Asks (1 Question): "Is this for storm or insurance damage or an active leak inside the house right now?" Isolates urgent water intrusion or insurance scopes immediately without cognitive overload.',
+          branches: 'YES (Active Leak) ➔ Emergency Tarping | YES (Storm Damage) ➔ Insurance Scope | NO (General Quote) ➔ Step 2B: Property Scope'
+        },
+        {
+          id: 'node_intent_scope',
+          title: 'Step 2B: Property Scope (Res / Comm)',
+          category: 'Property Scope',
+          badgeColor: 'bg-purple-100 text-purple-800 border-purple-300',
+          x: 1550,
+          y: 200,
+          timing: '⏱️ Turn 2 (1-Question Rule)',
+          model: 'Gemini 3.8 Live (Single Question)',
+          script: 'What Honey Asks (1 Question): "Understood! Is this for your residential home or a commercial building?" Clarifies project property type.',
+          branches: 'Residential ➔ Utah Grid Address & MeasureCall CAD | Commercial ➔ Accounting / Estimating Desk Transfer (Kara)'
         },
         {
           id: 'node_emergency_leak',
@@ -411,7 +426,7 @@
           y: 200,
           timing: '⏱️ 250ms Gemini Live',
           model: 'MeasureCall Engine',
-          script: 'What Honey Asks (1 question/turn, fast 1.1x smiling pace): 1. Solar: "Do you have solar panels on the roof?" 2. Skylights: "Do you have skylights you\'d like replaced under warranty?" 3. Layers: "Is this the original single layer, or has it been roofed over?" 4. Eave Vents: "Under your roof eaves, do you have perforated vent panels?" 5. Gutters & Ice Dams.',
+          script: 'What Honey Asks (1 question/turn, fast 1.1x smiling pace, Trade Dictionary): 1. Solar: "Do you have solar panels on the roof?" 2. Skylights: "Do you have skylights you\'d like replaced under warranty?" 3. Layers: "Is this the original single layer, or has it been roofed over?" 4. Ventilation & Pre-1972 Decking: Checks wood foundation and eave intake vents. 5. Gutters & Ice Dams. Uses concrete terms: anchor strip, protective metal edge, self-sealing waterproof shield, resilient synthetic shield, built-in fabric grip.',
           branches: 'Trigger: Stored MeasureCall attributes in live transcript ➔ Advances to Quote Decision'
         },
         {
@@ -486,17 +501,31 @@
           script: 'Synthesizes dual-channel transcript, DISC psycholinguistic quadrant (D/I/S/C), homeowner sentiment, and saves immutable record with journeyNodes to Firestore.',
           branches: 'Call Concluded & Session Expired'
         }
+        ,
+        {
+          id: 'node_lead_dossier',
+          title: 'Executive Lead Dossier & Drive Archival',
+          category: 'Executive Synthesis',
+          badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300 font-bold',
+          x: 3650,
+          y: 200,
+          timing: '⏱️ Instant Dispatch',
+          model: 'Gemini 3.8 Flash & Drive API',
+          script: 'Formats Rev 60/66 Lead Dossier YAML (Customer, Phone, Address, propertyName shorthand, Year Built/Era, Intent, Financial Range, MeasureCall Specs [Solar D&R, Layers, Eave Vents, Gutters/Ice Dams], Calendar Event, Drive Recording Link).',
+          branches: 'Dispatched to Google Chat Webhook + Executive Mobile SMS (801-449-1451)'
+        }
       ],
       connections: [
         { from: 'node_ingress', to: 'node_preroll' },
         { from: 'node_preroll', to: 'node_media_stream' },
         { from: 'node_media_stream', to: 'node_stage1_greeting' },
-        { from: 'node_stage1_greeting', to: 'node_intent_router' },
-        { from: 'node_intent_router', to: 'node_emergency_leak' },
-        { from: 'node_intent_router', to: 'node_insurance_storm' },
-        { from: 'node_intent_router', to: 'node_stage2_address' },
-        { from: 'node_intent_router', to: 'node_trade_accounting' },
-        { from: 'node_intent_router', to: 'node_antispam_hangup' },
+        { from: 'node_stage1_greeting', to: 'node_intent_urgency' },
+        { from: 'node_intent_urgency', to: 'node_emergency_leak' },
+        { from: 'node_intent_urgency', to: 'node_insurance_storm' },
+        { from: 'node_intent_urgency', to: 'node_intent_scope' },
+        { from: 'node_intent_urgency', to: 'node_antispam_hangup' },
+        { from: 'node_intent_scope', to: 'node_stage2_address' },
+        { from: 'node_intent_scope', to: 'node_trade_accounting' },
         { from: 'node_insurance_storm', to: 'node_stage5_booking' },
         { from: 'node_emergency_leak', to: 'node_post_sms' },
         { from: 'node_stage2_address', to: 'node_stage3_scope' },
@@ -508,7 +537,8 @@
         { from: 'node_branch_ventilation', to: 'node_stage4_decision' },
         { from: 'node_stage4_decision', to: 'node_stage5_booking' },
         { from: 'node_stage5_booking', to: 'node_post_sms' },
-        { from: 'node_stage5_booking', to: 'node_post_crm' }
+        { from: 'node_post_sms', to: 'node_post_crm' },
+        { from: 'node_post_crm', to: 'node_lead_dossier' }
       ]
     };
 

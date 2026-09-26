@@ -61,6 +61,18 @@
         "destination": "/dialer.html"
       },
       {
+        "source": "/ai",
+        "destination": "/ai.html"
+      },
+      {
+        "source": "/recents",
+        "destination": "/dialer.html"
+      },
+      {
+        "source": "/messages",
+        "destination": "/dialer.html"
+      },
+      {
         "source": "/canvas",
         "destination": "/canvas.html"
       },
