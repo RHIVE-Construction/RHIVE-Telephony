@@ -245,6 +245,14 @@
           </button>
         </div>
       </div>
+
+      <!-- Direct Voice Test with Honey Trigger Button -->
+      <div class="pt-1.5">
+        <button onclick="openHoneyVoiceTest()" class="w-full py-1.5 px-3 rounded-[12px] bg-pink-50 hover:bg-pink-100 text-rhive-pink border border-pink-200/90 text-[10px] font-mono font-bold transition flex items-center justify-center space-x-1.5 shadow-sm">
+          <span class="w-2 h-2 rounded-full bg-rhive-pink animate-pulse"></span>
+          <span>🎙️ SPEAK TO HONEY LIVE (BROWSER TEST $0)</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -398,6 +406,102 @@
                     class="w-full bg-slate-50 border border-slate-200 rounded-[10px] p-2 text-xs text-slate-900 focus:outline-none focus:border-rhive-pink"></textarea>
           <div id="notesSavedIndicator" class="text-[9px] font-mono text-emerald-600 text-right font-bold hidden">✓ Saved to Firestore</div>
         </div>
+      </div>
+
+      <!-- Honey AI Live Supervisor Watcher & Whisper Cockpit (Full Parity) -->
+      <div id="honeySupervisorCard" class="hidden bg-white border-2 border-pink-300 rounded-[20px] p-3.5 space-y-3 shadow-pink-glow-sm">
+        
+        <!-- Header: Live Status & Duration -->
+        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+          <div class="flex items-center space-x-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-rhive-pink animate-ping"></span>
+            <span class="text-[11px] font-mono font-black text-slate-900 uppercase">Honey AI Outbound Supervisor</span>
+          </div>
+          <div class="flex items-center space-x-2">
+            <span id="honeySupervisorTimer" class="text-xs font-mono font-bold text-rhive-pink">00:00</span>
+            <span id="honeyCallStatusBadge" class="text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold uppercase">
+              Connecting...
+            </span>
+          </div>
+        </div>
+
+        <!-- Target Phone Header Info -->
+        <div class="flex items-center justify-between text-[10px] font-mono bg-slate-50 px-2.5 py-1.5 rounded-[10px] border border-slate-200">
+          <span class="text-slate-500 font-bold">CALLED HOMEOWNER:</span>
+          <span id="honeyTargetDisplay" class="font-bold text-slate-900 font-mono">+1 (---) --- ----</span>
+        </div>
+
+        <!-- Active 5-Stage Indicator -->
+        <div class="space-y-1">
+          <div class="flex items-center justify-between text-[9px] font-mono text-slate-500 font-bold uppercase">
+            <span id="honeyActiveStageTitle">Stage 1/5: Greeting & Discovery</span>
+            <span class="text-rhive-pink font-black">AI Lead Progression</span>
+          </div>
+          <div class="grid grid-cols-5 gap-1 text-[9px] font-mono font-bold text-center">
+            <div id="hStage0" class="py-1 rounded-[6px] bg-rhive-pink text-white shadow-sm transition">1. GREET</div>
+            <div id="hStage1" class="py-1 rounded-[6px] bg-slate-100 text-slate-600 transition">2. ADDR</div>
+            <div id="hStage2" class="py-1 rounded-[6px] bg-slate-100 text-slate-600 transition">3. ROOF</div>
+            <div id="hStage3" class="py-1 rounded-[6px] bg-slate-100 text-slate-600 transition">4. PITCH</div>
+            <div id="hStage4" class="py-1 rounded-[6px] bg-slate-100 text-slate-600 transition">5. BOOK</div>
+          </div>
+        </div>
+
+        <!-- Dual-Channel Live Verbatim Transcript Container -->
+        <div class="space-y-1">
+          <div class="flex items-center justify-between text-[9px] font-mono text-slate-400 font-bold uppercase">
+            <span>Verbatim Live Dual-Channel Transcript:</span>
+            <span class="text-slate-500">Auto-Scrolling</span>
+          </div>
+          <div id="honeyLiveTranscriptContainer" class="bg-slate-50 border border-slate-200 rounded-[14px] p-3 max-h-48 overflow-y-auto font-mono text-xs space-y-2">
+            <div class="text-slate-400 text-[10px] italic">Honey AI is placing the call...</div>
+          </div>
+        </div>
+
+        <!-- Supervisor In-Call Whisper Console -->
+        <div class="bg-gradient-to-r from-pink-50/80 to-purple-50/80 border border-pink-200 rounded-[14px] p-2.5 space-y-2">
+          <div class="flex items-center justify-between text-[9px] font-mono font-bold uppercase text-rhive-pink">
+            <span class="flex items-center space-x-1">
+              <span>🔒 SILENT SUPERVISOR WHISPER (INAUDIBLE TO CALLER)</span>
+            </span>
+            <span class="text-slate-400 text-[8px]">Injected into Honey Prompt</span>
+          </div>
+          <div class="flex items-center space-x-1.5">
+            <input type="text" id="honeyWhisperInput" placeholder="Whisper directive to Honey..."
+                   onkeydown="if(event.key==='Enter') sendHoneyWhisper()"
+                   class="flex-1 bg-white border border-pink-200 rounded-[10px] px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-rhive-pink font-sans">
+            <button onclick="startVoiceWhisper()" title="Voice Whisper" class="p-2 rounded-[10px] bg-white hover:bg-pink-100 text-slate-700 hover:text-rhive-pink border border-pink-200 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+            </button>
+            <button onclick="sendHoneyWhisper()" class="px-3 py-1.5 rounded-[10px] bg-rhive-pink hover:bg-pink-600 text-white text-xs font-mono font-bold shadow-sm transition">
+              WHISPER
+            </button>
+          </div>
+
+          <!-- Quick 1-Tap Injection Chips -->
+          <div class="flex flex-wrap gap-1 text-[9px] font-mono font-bold">
+            <button onclick="quickWhisper('Emphasize Owens Corning SureNail with 130 MPH wind warranty')" class="px-2 py-0.5 rounded-[6px] bg-white hover:bg-pink-100 text-slate-700 hover:text-rhive-pink border border-pink-200 transition">🏷️ SureNail 130 MPH</button>
+            <button onclick="quickWhisper('Offer $500 seasonal roofing discount if booked on this call')" class="px-2 py-0.5 rounded-[6px] bg-white hover:bg-pink-100 text-slate-700 hover:text-rhive-pink border border-pink-200 transition">💰 $500 Discount</button>
+            <button onclick="quickWhisper('Ask if they have ice damming or eave attic ventilation issues')" class="px-2 py-0.5 rounded-[6px] bg-white hover:bg-pink-100 text-slate-700 hover:text-rhive-pink border border-pink-200 transition">❄️ Ice Damming</button>
+            <button onclick="quickWhisper('Lock in free CAD scan inspection for tomorrow 10 AM to 1 PM')" class="px-2 py-0.5 rounded-[6px] bg-white hover:bg-pink-100 text-slate-700 hover:text-rhive-pink border border-pink-200 transition">📅 Lock Tomorrow</button>
+          </div>
+        </div>
+
+        <!-- Emergency Executive Overrides -->
+        <div class="space-y-1">
+          <div class="text-[9px] font-mono text-slate-400 font-bold uppercase">Executive Overrides:</div>
+          <div class="grid grid-cols-3 gap-1.5 text-[9px] font-mono font-bold">
+            <button onclick="sendHoneyOverride('FORCE_BOOK')" class="py-1.5 px-2 rounded-[8px] bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition text-center">
+              ⏩ FORCE BOOK
+            </button>
+            <button onclick="sendHoneyOverride('TAKE_OVER')" class="py-1.5 px-2 rounded-[8px] bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition text-center">
+              🚨 TAKE OVER
+            </button>
+            <button onclick="sendHoneyOverride('HANGUP')" class="py-1.5 px-2 rounded-[8px] bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 transition text-center">
+              ⏹ HANG UP
+            </button>
+          </div>
+        </div>
+
       </div>
 
       <!-- Tactile Chamfered Keypad with Bold Black Numbers -->
@@ -749,6 +853,86 @@
     </div>
   </div>
 
+  <!-- Direct Voice Test with Honey Modal ($0 In-Browser Full-Duplex Web Call) -->
+  <div id="honeyVoiceTestModal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-[24px] max-w-md w-full p-4 border border-pink-300 shadow-2xl space-y-3 relative animate-in fade-in zoom-in-95 duration-200">
+      
+      <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+        <div class="flex items-center space-x-2">
+          <span class="w-3 h-3 rounded-full bg-rhive-pink animate-pulse"></span>
+          <h3 class="font-mono font-black text-sm text-slate-900 uppercase">Direct Voice Test with Honey</h3>
+        </div>
+        <button onclick="closeHoneyVoiceTest()" class="text-slate-400 hover:text-slate-700 text-sm font-bold p-1">✕</button>
+      </div>
+
+      <!-- Telephony Telemetry Pill -->
+      <div class="flex items-center justify-between text-[10px] font-mono bg-slate-50 p-2 rounded-[12px] border border-slate-200">
+        <div class="flex items-center space-x-1.5">
+          <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">FULL-DUPLEX WEBRTC</span>
+          <span id="testVoiceLatency" class="text-slate-500 font-bold">⚡ &lt;280ms</span>
+        </div>
+        <div id="testVoiceTimer" class="font-bold text-rhive-pink">00:00</div>
+      </div>
+
+      <!-- Active Audio Waveform Visualizer -->
+      <div class="bg-slate-900 rounded-[14px] p-3 text-center space-y-2">
+        <div class="text-[9px] font-mono text-pink-300 font-bold tracking-widest uppercase">Microphone & Speech Activity</div>
+        <div class="flex items-center justify-center space-x-1.5 h-10">
+          <span id="wave1" class="w-1.5 bg-rhive-pink rounded-full h-3 transition-all duration-75"></span>
+          <span id="wave2" class="w-1.5 bg-pink-400 rounded-full h-6 transition-all duration-75"></span>
+          <span id="wave3" class="w-1.5 bg-pink-300 rounded-full h-8 transition-all duration-75"></span>
+          <span id="wave4" class="w-1.5 bg-rose-400 rounded-full h-4 transition-all duration-75"></span>
+          <span id="wave5" class="w-1.5 bg-rhive-pink rounded-full h-7 transition-all duration-75"></span>
+          <span id="wave6" class="w-1.5 bg-pink-400 rounded-full h-5 transition-all duration-75"></span>
+          <span id="wave7" class="w-1.5 bg-pink-300 rounded-full h-3 transition-all duration-75"></span>
+        </div>
+        <div id="testSpeakingStatus" class="text-[10px] font-mono text-emerald-400 font-bold">Connecting audio stream...</div>
+      </div>
+
+      <!-- 5-Stage Tracker for Test Call -->
+      <div class="space-y-1">
+        <div class="flex items-center justify-between text-[9px] font-mono text-slate-500 font-bold uppercase">
+          <span>Intake Flow Detection:</span>
+          <span class="text-rhive-pink font-bold">Auto-Detected</span>
+        </div>
+        <div class="grid grid-cols-5 gap-1 text-[9px] font-mono font-bold text-center">
+          <div id="tvStage0" class="py-1 rounded-[6px] bg-rhive-pink text-white">1. GREET</div>
+          <div id="tvStage1" class="py-1 rounded-[6px] bg-slate-100 text-slate-600">2. ADDR</div>
+          <div id="tvStage2" class="py-1 rounded-[6px] bg-slate-100 text-slate-600">3. ROOF</div>
+          <div id="tvStage3" class="py-1 rounded-[6px] bg-slate-100 text-slate-600">4. PITCH</div>
+          <div id="tvStage4" class="py-1 rounded-[6px] bg-slate-100 text-slate-600">5. BOOK</div>
+        </div>
+      </div>
+
+      <!-- Test Transcript Container -->
+      <div id="testVoiceTranscript" class="bg-slate-50 border border-slate-200 rounded-[12px] p-2.5 max-h-36 overflow-y-auto font-mono text-[11px] space-y-1.5 text-slate-800">
+        <div class="text-slate-400 italic text-[10px]">Speak into your microphone to test call flows with Honey...</div>
+      </div>
+
+      <!-- Quick Scenario Test Prompts (1-Click Speak for testing) -->
+      <div class="space-y-1">
+        <span class="text-[9px] font-mono text-slate-400 uppercase font-bold">Or click to send test scenario phrase:</span>
+        <div class="flex flex-wrap gap-1 text-[9px] font-mono font-bold">
+          <button onclick="injectTestAudioPhrase('Hi Honey, we have curling shingles on our 20-year roof in Sandy.')" class="px-2 py-0.5 rounded-[6px] bg-slate-100 hover:bg-pink-100 text-slate-700 hover:text-rhive-pink border border-slate-200 transition">Curling shingles (Sandy)</button>
+          <button onclick="injectTestAudioPhrase('Water is leaking through our kitchen ceiling right now!')" class="px-2 py-0.5 rounded-[6px] bg-slate-100 hover:bg-pink-100 text-slate-700 hover:text-rhive-pink border border-slate-200 transition">Active leak emergency</button>
+          <button onclick="injectTestAudioPhrase('What warranty do you offer on your Owens Corning roofs?')" class="px-2 py-0.5 rounded-[6px] bg-slate-100 hover:bg-pink-100 text-slate-700 hover:text-rhive-pink border border-slate-200 transition">SureNail warranty question</button>
+          <button onclick="injectTestAudioPhrase('Tomorrow at 10 AM works great for the inspection.')" class="px-2 py-0.5 rounded-[6px] bg-slate-100 hover:bg-pink-100 text-slate-700 hover:text-rhive-pink border border-slate-200 transition">Book 10 AM window</button>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="pt-1 flex items-center justify-between">
+        <button onclick="toggleTestMute()" id="btnTestMute" class="px-3 py-2 rounded-[12px] bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-mono font-bold transition border border-slate-200 flex items-center space-x-1">
+          <span>🎤 Mute Mic</span>
+        </button>
+        <button onclick="closeHoneyVoiceTest()" class="px-4 py-2 rounded-[12px] bg-rose-500 hover:bg-rose-600 text-white text-xs font-mono font-bold transition shadow-sm">
+          End Test Call
+        </button>
+      </div>
+
+    </div>
+  </div>
+
   </main>
 
   <!-- Bottom Workspace Dock (5 Tabs) -->
@@ -858,6 +1042,9 @@
     let currentUser = null;
     let currentModalCall = null;
     let notesSaveTimeout = null;
+    let activeHoneyCallSid = null;
+    let honeyLivePollInterval = null;
+    let renderedHoneyTranscriptCount = 0;
 
     // Check Auth State on Boot
     function verifyAuthentication() {
@@ -893,12 +1080,23 @@
       selectedCallerId = phone;
       const honeyBtn = document.getElementById('cidHoneyBtn');
       const openBtn = document.getElementById('cidOpenBtn');
+      const mainBtn = document.getElementById('mainCallBtn');
+      const callText = document.getElementById('callBtnText');
+
       if (phone === '+18017833317') {
         openBtn.className = 'flex-1 px-3 py-1.5 rounded-[11px] bg-white text-slate-900 shadow-sm transition text-left flex items-center justify-between border border-pink-200/80';
         honeyBtn.className = 'flex-1 px-3 py-1.5 rounded-[11px] text-slate-500 hover:text-slate-900 transition text-left flex items-center justify-between border border-transparent';
+        if (!isCallActive) {
+          mainBtn.className = 'flex-1 max-w-[200px] h-14 sm:h-16 rounded-[16px] bg-emerald-500 hover:bg-emerald-600 text-white font-mono font-bold text-base tracking-wider flex items-center justify-center space-x-2 shadow-green-glow transition transform active:scale-95';
+          callText.textContent = currentCallMode === 'webrtc' ? 'CALL VOIP' : 'CELL BRIDGE';
+        }
       } else {
         honeyBtn.className = 'flex-1 px-3 py-1.5 rounded-[11px] bg-white text-slate-900 shadow-sm transition text-left flex items-center justify-between border border-pink-200/80';
         openBtn.className = 'flex-1 px-3 py-1.5 rounded-[11px] text-slate-500 hover:text-slate-900 transition text-left flex items-center justify-between border border-transparent';
+        if (!isCallActive) {
+          mainBtn.className = 'flex-1 max-w-[240px] h-14 sm:h-16 rounded-[16px] bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 hover:from-pink-600 hover:to-rose-700 text-white font-mono font-bold text-xs sm:text-sm tracking-wider flex items-center justify-center space-x-1.5 shadow-pink-glow transition transform active:scale-95';
+          callText.innerHTML = '<span>🐝 CALL WITH HONEY AI</span>';
+        }
       }
       console.log('[Caller ID Selected]', selectedCallerId);
     }
@@ -913,11 +1111,11 @@
       if (mode === 'webrtc') {
         webrtcBtn.className = 'px-2.5 py-0.5 rounded-full bg-emerald-500 text-white font-bold transition shadow-sm';
         carrierBtn.className = 'px-2.5 py-0.5 rounded-full text-slate-600 font-bold hover:text-slate-900 transition';
-        if (!isCallActive) callText.textContent = 'CALL VOIP';
+        if (!isCallActive && selectedCallerId === '+18017833317') callText.textContent = 'CALL VOIP';
       } else {
         carrierBtn.className = 'px-2.5 py-0.5 rounded-full bg-emerald-500 text-white font-bold transition shadow-sm';
         webrtcBtn.className = 'px-2.5 py-0.5 rounded-full text-slate-600 font-bold hover:text-slate-900 transition';
-        if (!isCallActive) callText.textContent = 'CELL BRIDGE';
+        if (!isCallActive && selectedCallerId === '+18017833317') callText.textContent = 'CELL BRIDGE';
       }
       console.log('[Routing Mode Set]', currentCallMode);
     }
@@ -1035,6 +1233,38 @@
       // Ensure AudioContext is ready for in-ear ringback & audio
       getAudioCtx();
 
+      // Honey AI Outbound Calling Mode (CallerId is Honey Line +18398676637)
+      if (selectedCallerId === '+18398676637') {
+        console.log(`[Honey AI Outbound Initiating] Target=${target}, CallerId=+18398676637`);
+        updateCallUIState('dialing');
+        const badge = document.getElementById('callStateBadge');
+        if (badge) {
+          badge.textContent = 'HONEY AI INITIATING...';
+          badge.className = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-pink-100 text-pink-800 animate-pulse';
+        }
+        try {
+          const res = await fetch('/api/telephony/honey-call/outbound', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: target,
+              callerId: '+18398676637'
+            })
+          });
+          const data = await res.json();
+          if (data.success && data.callSid) {
+            startHoneyCallWatcher(data.callSid, target);
+          } else {
+            alert('Honey AI Call failed: ' + (data.error || 'Server error'));
+            resetCallUIState();
+          }
+        } catch (err) {
+          alert('Honey AI Call failed: ' + err.message);
+          resetCallUIState();
+        }
+        return;
+      }
+
       updateCallUIState('dialing');
 
       // Routing Mode: Cellular Carrier Bridge (Mobile Cell Call)
@@ -1133,6 +1363,10 @@
     }
 
     function endCall() {
+      if (activeHoneyCallSid) {
+        endHoneyCall();
+        return;
+      }
       if (activeCall) {
         try {
           activeCall.disconnect();
@@ -1186,7 +1420,17 @@
       isMuted = false;
       clearInterval(callTimerInterval);
       clearInterval(coachingInterval);
+      clearInterval(honeyLivePollInterval);
+      honeyLivePollInterval = null;
+      activeHoneyCallSid = null;
+      renderedHoneyTranscriptCount = 0;
       callSeconds = 0;
+
+      // Restore Keypad & Hide Honey Supervisor Card
+      const supervisorCard = document.getElementById('honeySupervisorCard');
+      const keypadGrid = document.getElementById('dialerKeypadGrid');
+      if (supervisorCard) supervisorCard.classList.add('hidden');
+      if (keypadGrid) keypadGrid.classList.remove('hidden');
 
       const callBtn = document.getElementById('mainCallBtn');
       const callText = document.getElementById('callBtnText');
@@ -1196,8 +1440,14 @@
       const recIndicator = document.getElementById('recIndicator');
       const coachingCard = document.getElementById('liveCallCoachingCard');
 
-      callBtn.className = 'flex-1 max-w-[200px] h-14 sm:h-16 rounded-[16px] bg-emerald-500 hover:bg-emerald-600 text-white font-mono font-bold text-base tracking-wider flex items-center justify-center space-x-2 shadow-green-glow transition transform active:scale-95';
-      callText.textContent = currentCallMode === 'carrier' ? 'CELL BRIDGE' : 'CALL VOIP';
+      if (selectedCallerId === '+18398676637') {
+        callBtn.className = 'flex-1 max-w-[240px] h-14 sm:h-16 rounded-[16px] bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 hover:from-pink-600 hover:to-rose-700 text-white font-mono font-bold text-xs sm:text-sm tracking-wider flex items-center justify-center space-x-1.5 shadow-pink-glow transition transform active:scale-95';
+        callText.innerHTML = '<span>🐝 CALL WITH HONEY AI</span>';
+      } else {
+        callBtn.className = 'flex-1 max-w-[200px] h-14 sm:h-16 rounded-[16px] bg-emerald-500 hover:bg-emerald-600 text-white font-mono font-bold text-base tracking-wider flex items-center justify-center space-x-2 shadow-green-glow transition transform active:scale-95';
+        callText.textContent = currentCallMode === 'carrier' ? 'CELL BRIDGE' : 'CALL VOIP';
+      }
+
       badge.textContent = 'SOVEREIGN VOIP READY';
       badge.className = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-200 text-slate-600';
       timer.classList.add('hidden');
@@ -1217,6 +1467,590 @@
         const secs = String(callSeconds % 60).padStart(2, '0');
         timer.textContent = `${mins}:${secs}`;
       }, 1000);
+    }
+
+    // ==========================================
+    // HONEY AI SUPERVISOR WATCHER & WHISPER COCKPIT
+    // ==========================================
+    function startHoneyCallWatcher(callSid, targetNumber) {
+      activeHoneyCallSid = callSid;
+      isCallActive = true;
+      renderedHoneyTranscriptCount = 0;
+
+      // Show Supervisor Card & Hide Keypad
+      const card = document.getElementById('honeySupervisorCard');
+      const keypad = document.getElementById('dialerKeypadGrid');
+      if (card) card.classList.remove('hidden');
+      if (keypad) keypad.classList.add('hidden');
+
+      const targetDisplay = document.getElementById('honeyTargetDisplay');
+      if (targetDisplay) targetDisplay.textContent = targetNumber;
+
+      const badge = document.getElementById('honeyCallStatusBadge');
+      if (badge) {
+        badge.textContent = 'RINGING...';
+        badge.className = 'text-[9px] font-mono px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold uppercase animate-pulse';
+      }
+
+      const transcriptContainer = document.getElementById('honeyLiveTranscriptContainer');
+      if (transcriptContainer) {
+        transcriptContainer.innerHTML = `<div class="text-slate-400 text-[10px] italic">🐝 Honey AI is dialing ${escapeHtml(targetNumber)}... Remote phone ringing.</div>`;
+      }
+
+      // Update Call Button to Red "HANG UP HONEY CALL"
+      const callBtn = document.getElementById('mainCallBtn');
+      const callText = document.getElementById('callBtnText');
+      if (callBtn) callBtn.className = 'flex-1 max-w-[240px] h-14 sm:h-16 rounded-[16px] bg-rose-500 hover:bg-rose-600 text-white font-mono font-bold text-xs sm:text-sm tracking-wider flex items-center justify-center space-x-1.5 shadow-lg transition transform active:scale-95';
+      if (callText) callText.textContent = 'HANG UP HONEY';
+
+      // Start live polling every 1000ms
+      clearInterval(honeyLivePollInterval);
+      pollHoneyLiveCall();
+      honeyLivePollInterval = setInterval(pollHoneyLiveCall, 1000);
+    }
+
+    async function pollHoneyLiveCall() {
+      if (!activeHoneyCallSid) return;
+      try {
+        const res = await fetch(`/api/telephony/honey-call/live?callSid=${encodeURIComponent(activeHoneyCallSid)}`);
+        const data = await res.json();
+        if (!data.success || !data.call) return;
+
+        const call = data.call;
+
+        // 1. Timer
+        const timerEl = document.getElementById('honeySupervisorTimer');
+        if (timerEl && typeof call.duration === 'number') {
+          const m = String(Math.floor(call.duration / 60)).padStart(2, '0');
+          const s = String(call.duration % 60).padStart(2, '0');
+          timerEl.textContent = `${m}:${s}`;
+        }
+
+        // 2. Status Badge
+        const badge = document.getElementById('honeyCallStatusBadge');
+        if (badge) {
+          const st = (call.status || 'in-progress').toLowerCase();
+          if (st === 'in-progress') {
+            badge.textContent = 'LIVE ON CALL';
+            badge.className = 'text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold uppercase';
+          } else if (st === 'ringing' || st === 'queued') {
+            badge.textContent = 'RINGING...';
+            badge.className = 'text-[9px] font-mono px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold uppercase animate-pulse';
+          } else if (['completed', 'busy', 'no-answer', 'failed', 'canceled'].includes(st)) {
+            badge.textContent = 'CALL ENDED';
+            badge.className = 'text-[9px] font-mono px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-bold uppercase';
+            clearInterval(honeyLivePollInterval);
+          }
+        }
+
+        // 3. Stage Highlight
+        if (typeof call.stage === 'number') {
+          updateHoneySupervisorStage(call.stage);
+        }
+
+        // 4. Transcripts & Whispers
+        const transcriptContainer = document.getElementById('honeyLiveTranscriptContainer');
+        if (transcriptContainer && Array.isArray(call.transcript)) {
+          // Combine transcript & whispers chronologically
+          const allItems = [...call.transcript];
+          if (Array.isArray(call.whispers)) {
+            call.whispers.forEach(w => {
+              allItems.push({
+                role: 'supervisor_whisper',
+                text: w.text,
+                timestamp: w.timestamp || Date.now()
+              });
+            });
+          }
+          allItems.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+          if (allItems.length > 0 && allItems.length !== renderedHoneyTranscriptCount) {
+            renderedHoneyTranscriptCount = allItems.length;
+            transcriptContainer.innerHTML = allItems.map(item => {
+              if (item.role === 'honey') {
+                return `
+                  <div class="flex items-start justify-end space-x-2">
+                    <div class="px-3 py-2 rounded-2xl bg-pink-50 border border-pink-200 text-slate-900 text-xs max-w-[85%] shadow-2xs">
+                      <div class="text-[9px] font-bold text-rhive-pink uppercase flex items-center justify-between">
+                        <span>🐝 Honey AI</span>
+                        <span class="text-[8px] text-slate-400 font-mono">${item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], { minute: '2-digit', second: '2-digit' }) : ''}</span>
+                      </div>
+                      <div class="font-sans mt-0.5 leading-relaxed">${escapeHtml(item.text)}</div>
+                    </div>
+                  </div>
+                `;
+              } else if (item.role === 'supervisor_whisper') {
+                return `
+                  <div class="flex items-start justify-center">
+                    <div class="px-3 py-1.5 rounded-xl bg-purple-100 border border-purple-300 text-purple-900 text-[10px] font-mono shadow-2xs">
+                      <span class="font-bold">🔒 SUPERVISOR WHISPER:</span> "${escapeHtml(item.text)}"
+                    </div>
+                  </div>
+                `;
+              } else {
+                return `
+                  <div class="flex items-start space-x-2">
+                    <div class="px-3 py-2 rounded-2xl bg-white border border-slate-200 text-slate-800 text-xs max-w-[85%] shadow-2xs">
+                      <div class="text-[9px] font-bold text-slate-500 uppercase">Homeowner</div>
+                      <div class="font-sans mt-0.5 leading-relaxed">${escapeHtml(item.text)}</div>
+                    </div>
+                  </div>
+                `;
+              }
+            }).join('');
+            transcriptContainer.scrollTop = transcriptContainer.scrollHeight;
+          }
+        }
+
+      } catch(err) {
+        console.warn('[HoneyLivePoll Error]', err.message);
+      }
+    }
+
+    function updateHoneySupervisorStage(stageIdx) {
+      const titles = [
+        "Stage 1/5: Greeting & Discovery",
+        "Stage 2/5: Address & Utah Grid Qualification",
+        "Stage 3/5: Roof Age & Damage Symptoms",
+        "Stage 4/5: SureNail Wind Tech Pitch",
+        "Stage 5/5: On-Site Inspection Booking Lock"
+      ];
+      const titleEl = document.getElementById('honeyActiveStageTitle');
+      if (titleEl && titles[stageIdx]) {
+        titleEl.textContent = titles[stageIdx];
+      }
+
+      for (let i = 0; i < 5; i++) {
+        const el = document.getElementById(`hStage${i}`);
+        if (el) {
+          if (i === stageIdx) {
+            el.className = 'py-1 rounded-[6px] bg-rhive-pink text-white shadow-sm transition';
+          } else {
+            el.className = 'py-1 rounded-[6px] bg-slate-100 text-slate-600 transition';
+          }
+        }
+      }
+    }
+
+    async function sendHoneyWhisper(customText) {
+      const input = document.getElementById('honeyWhisperInput');
+      const text = customText || input?.value.trim();
+      if (!text) return;
+      if (input) input.value = '';
+
+      if (!activeHoneyCallSid) {
+        alert('No active Honey AI call to whisper into.');
+        return;
+      }
+
+      // Optimistic append to live transcript
+      const container = document.getElementById('honeyLiveTranscriptContainer');
+      if (container) {
+        const whisperEl = document.createElement('div');
+        whisperEl.className = 'flex items-start justify-center animate-in fade-in duration-150';
+        whisperEl.innerHTML = `<div class="px-3 py-1.5 rounded-xl bg-purple-100 border border-purple-300 text-purple-900 text-[10px] font-mono shadow-2xs"><span class="font-bold">🔒 SUPERVISOR WHISPER SENT:</span> "${escapeHtml(text)}"</div>`;
+        container.appendChild(whisperEl);
+        container.scrollTop = container.scrollHeight;
+      }
+
+      try {
+        const res = await fetch('/api/telephony/honey-call/whisper', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            callSid: activeHoneyCallSid,
+            whisper: text
+          })
+        });
+        const data = await res.json();
+        if (!data.success) {
+          console.warn('Whisper note:', data.error);
+        }
+      } catch (e) {
+        console.error('Whisper failed:', e.message);
+      }
+    }
+
+    function quickWhisper(text) {
+      sendHoneyWhisper(text);
+    }
+
+    let speechRec = null;
+    function startVoiceWhisper() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert('Voice speech recognition not supported in this browser. Please type your whisper.');
+        return;
+      }
+      if (!speechRec) {
+        speechRec = new SpeechRecognition();
+        speechRec.continuous = false;
+        speechRec.interimResults = false;
+        speechRec.lang = 'en-US';
+
+        speechRec.onresult = (event) => {
+          const transcript = event.results[0][0].transcript;
+          const input = document.getElementById('honeyWhisperInput');
+          if (input) input.value = transcript;
+          sendHoneyWhisper(transcript);
+        };
+
+        speechRec.onerror = (e) => {
+          console.warn('Speech rec error:', e.error);
+        };
+      }
+
+      try {
+        speechRec.start();
+        const input = document.getElementById('honeyWhisperInput');
+        if (input) input.placeholder = '🎙️ Listening... Speak your whisper now...';
+        setTimeout(() => {
+          if (input) input.placeholder = 'Whisper directive to Honey...';
+        }, 4000);
+      } catch(e) {
+        console.warn('Speech rec start:', e.message);
+      }
+    }
+
+    async function sendHoneyOverride(action) {
+      if (!activeHoneyCallSid) {
+        alert('No active Honey AI call.');
+        return;
+      }
+      if (action === 'HANGUP') {
+        endHoneyCall();
+        return;
+      }
+      try {
+        const res = await fetch('/api/telephony/honey-call/override', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            callSid: activeHoneyCallSid,
+            action
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          const container = document.getElementById('honeyLiveTranscriptContainer');
+          if (container) {
+            const el = document.createElement('div');
+            el.className = 'text-center my-1';
+            el.innerHTML = `<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 font-mono text-[9px] font-bold">⚡ OVERRIDE INJECTED: ${escapeHtml(action)}</span>`;
+            container.appendChild(el);
+            container.scrollTop = container.scrollHeight;
+          }
+        }
+      } catch(e) {
+        alert('Override failed: ' + e.message);
+      }
+    }
+
+    async function endHoneyCall() {
+      if (activeHoneyCallSid) {
+        try {
+          await fetch('/api/telephony/honey-call/override', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callSid: activeHoneyCallSid,
+              action: 'HANGUP'
+            })
+          });
+        } catch(e) {}
+      }
+      clearInterval(honeyLivePollInterval);
+      honeyLivePollInterval = null;
+      activeHoneyCallSid = null;
+      resetCallUIState();
+    }
+
+    // ==========================================
+    // DIRECT VOICE TEST WITH HONEY ($0 IN-BROWSER)
+    // ==========================================
+    let testWs = null;
+    let testAudioCtx = null;
+    let testMicStream = null;
+    let testAudioProcessor = null;
+    let testVoiceTimerInterval = null;
+    let testVoiceSeconds = 0;
+    let isTestMuted = false;
+    let testNextPlayTime = 0;
+
+    function getWebSocketUrl(path) {
+      const isHttps = window.location.protocol === 'https:';
+      const protocol = isHttps ? 'wss:' : 'ws:';
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return `${protocol}//${window.location.host}${path}`;
+      }
+      // Production Cloud Run direct domain for WebSockets (bypasses Firebase edge limit)
+      return `wss://rhive-voice-live-bridge-910835773728.us-central1.run.app${path}`;
+    }
+
+    async function openHoneyVoiceTest() {
+      const modal = document.getElementById('honeyVoiceTestModal');
+      if (modal) modal.classList.remove('hidden');
+
+      const transcript = document.getElementById('testVoiceTranscript');
+      if (transcript) transcript.innerHTML = '<div class="text-slate-400 italic text-[10px]">Connecting to Honey AI neural voice stream...</div>';
+
+      const status = document.getElementById('testSpeakingStatus');
+      if (status) status.textContent = 'Connecting audio stream...';
+
+      testVoiceSeconds = 0;
+      clearInterval(testVoiceTimerInterval);
+      testVoiceTimerInterval = setInterval(() => {
+        testVoiceSeconds++;
+        const m = String(Math.floor(testVoiceSeconds / 60)).padStart(2, '0');
+        const s = String(testVoiceSeconds % 60).padStart(2, '0');
+        const el = document.getElementById('testVoiceTimer');
+        if (el) el.textContent = `${m}:${s}`;
+      }, 1000);
+
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        testAudioCtx = new AudioContext({ sampleRate: 24000 });
+        testNextPlayTime = testAudioCtx.currentTime;
+
+        testMicStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            channelCount: 1,
+            sampleRate: 16000,
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        });
+
+        const wsUrl = getWebSocketUrl('/web-voice-stream?agent=intake&callerName=Michael+Robinson');
+        testWs = new WebSocket(wsUrl);
+
+        testWs.onopen = () => {
+          console.log('[TestVoice] Connected to /web-voice-stream');
+          if (status) status.textContent = 'Honey is listening... Speak now!';
+          startMicStreamPipeline();
+        };
+
+        testWs.onmessage = async (evt) => {
+          try {
+            const msg = JSON.parse(evt.data);
+            if (msg.event === 'audio' && msg.pcm24) {
+              playTestPcm24(msg.pcm24);
+              if (status) status.textContent = '🐝 Honey is speaking...';
+              animateWaveform(0.8);
+              if (msg.latencyMs) {
+                const latEl = document.getElementById('testVoiceLatency');
+                if (latEl) latEl.textContent = `⚡ ${msg.latencyMs}ms`;
+              }
+            } else if (msg.event === 'transcript') {
+              appendTestTranscript(msg.role, msg.text, msg.latencyMs);
+              autoDetectTestStage(msg.text);
+            } else if (msg.event === 'interrupted') {
+              testNextPlayTime = testAudioCtx ? testAudioCtx.currentTime : 0;
+              if (status) status.textContent = 'Barge-in detected! Honey paused.';
+            } else if (msg.event === 'turn_complete') {
+              if (status) status.textContent = 'Honey is listening... Speak now!';
+              animateWaveform(0.1);
+            }
+          } catch(e) {
+            console.error('[TestVoice] Parse message error:', e);
+          }
+        };
+
+        testWs.onerror = (e) => {
+          console.error('[TestVoice] WS Error:', e);
+          if (status) status.textContent = 'Connection error. Check server.';
+        };
+
+        testWs.onclose = () => {
+          console.log('[TestVoice] WS Closed');
+          if (status) status.textContent = 'Call ended.';
+        };
+
+      } catch (err) {
+        alert('Microphone access required: ' + err.message);
+        closeHoneyVoiceTest();
+      }
+    }
+
+    function startMicStreamPipeline() {
+      if (!testMicStream || !testAudioCtx) return;
+
+      const micSource = testAudioCtx.createMediaStreamSource(testMicStream);
+      const bufferSize = 2048;
+      testAudioProcessor = testAudioCtx.createScriptProcessor(bufferSize, 1, 1);
+
+      testAudioProcessor.onaudioprocess = (e) => {
+        if (isTestMuted || !testWs || testWs.readyState !== WebSocket.OPEN) return;
+
+        const inputData = e.inputBuffer.getChannelData(0);
+        let sum = 0;
+        const pcm16 = new Int16Array(inputData.length);
+        for (let i = 0; i < inputData.length; i++) {
+          let s = Math.max(-1, Math.min(1, inputData[i]));
+          sum += s * s;
+          pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        }
+        const rms = Math.sqrt(sum / inputData.length);
+        if (rms > 0.02) {
+          animateWaveform(rms * 5);
+          const status = document.getElementById('testSpeakingStatus');
+          if (status && !status.textContent.includes('speaking')) {
+            status.textContent = '🎙️ You are speaking...';
+          }
+        }
+
+        let binary = '';
+        const bytes = new Uint8Array(pcm16.buffer);
+        for (let i = 0; i < bytes.byteLength; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        const base64Audio = btoa(binary);
+
+        testWs.send(JSON.stringify({
+          event: 'audio',
+          data: base64Audio
+        }));
+      };
+
+      micSource.connect(testAudioProcessor);
+      testAudioProcessor.connect(testAudioCtx.destination);
+    }
+
+    function playTestPcm24(base64Pcm24) {
+      if (!testAudioCtx) return;
+      const binaryString = atob(base64Pcm24);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const int16Array = new Int16Array(bytes.buffer);
+      const float32Array = new Float32Array(int16Array.length);
+      for (let i = 0; i < int16Array.length; i++) {
+        float32Array[i] = int16Array[i] / 32768.0;
+      }
+
+      const audioBuffer = testAudioCtx.createBuffer(1, float32Array.length, 24000);
+      audioBuffer.getChannelData(0).set(float32Array);
+
+      const sourceNode = testAudioCtx.createBufferSource();
+      sourceNode.buffer = audioBuffer;
+      sourceNode.connect(testAudioCtx.destination);
+
+      const now = testAudioCtx.currentTime;
+      if (testNextPlayTime < now) {
+        testNextPlayTime = now;
+      }
+      sourceNode.start(testNextPlayTime);
+      testNextPlayTime += audioBuffer.duration;
+    }
+
+    function appendTestTranscript(role, text, latencyMs) {
+      const container = document.getElementById('testVoiceTranscript');
+      if (!container || !text) return;
+
+      const isHoney = role === 'honey';
+      const bubble = document.createElement('div');
+      bubble.className = `p-2 rounded-[10px] text-xs font-mono ${isHoney ? 'bg-pink-50 border border-pink-200 text-pink-900 ml-4' : 'bg-white border border-slate-200 text-slate-800 mr-4'}`;
+      bubble.innerHTML = `
+        <div class="flex items-center justify-between text-[9px] font-bold ${isHoney ? 'text-rhive-pink' : 'text-slate-500'} uppercase mb-0.5">
+          <span>${isHoney ? '🐝 Honey AI' : '👤 You (Michael)'}</span>
+          ${latencyMs ? `<span class="text-slate-400 font-mono">${latencyMs}ms</span>` : ''}
+        </div>
+        <div class="font-sans text-[11px] leading-relaxed">${escapeHtml(text)}</div>
+      `;
+      container.appendChild(bubble);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function autoDetectTestStage(text) {
+      const lower = (text || '').toLowerCase();
+      let stageIdx = 0;
+      if (lower.includes('window') || lower.includes('book') || lower.includes('tomorrow') || lower.includes('calendar') || lower.includes('schedule')) {
+        stageIdx = 4;
+      } else if (lower.includes('surenail') || lower.includes('duration') || lower.includes('130') || lower.includes('warranty') || lower.includes('shingle')) {
+        stageIdx = 3;
+      } else if (lower.includes('leak') || lower.includes('year') || lower.includes('storm') || lower.includes('crease') || lower.includes('damage') || lower.includes('old')) {
+        stageIdx = 2;
+      } else if (lower.includes('address') || lower.includes('street') || lower.includes('sandy') || lower.includes('draper') || lower.includes('south') || lower.includes('grid')) {
+        stageIdx = 1;
+      }
+
+      for (let i = 0; i < 5; i++) {
+        const el = document.getElementById(`tvStage${i}`);
+        if (el) {
+          if (i === stageIdx) {
+            el.className = 'py-1 rounded-[6px] bg-rhive-pink text-white shadow-xs';
+          } else {
+            el.className = 'py-1 rounded-[6px] bg-slate-100 text-slate-600';
+          }
+        }
+      }
+    }
+
+    function injectTestAudioPhrase(text) {
+      if (!testWs || testWs.readyState !== WebSocket.OPEN) {
+        alert('Please wait for the test call connection to open first.');
+        return;
+      }
+      appendTestTranscript('user', text);
+      testWs.send(JSON.stringify({
+        event: 'text',
+        text
+      }));
+    }
+
+    function animateWaveform(magnitude) {
+      const heights = [
+        Math.min(32, Math.max(4, Math.floor(magnitude * 28 + Math.random() * 8))),
+        Math.min(32, Math.max(6, Math.floor(magnitude * 36 + Math.random() * 6))),
+        Math.min(32, Math.max(8, Math.floor(magnitude * 40 + Math.random() * 10))),
+        Math.min(32, Math.max(5, Math.floor(magnitude * 30 + Math.random() * 8))),
+        Math.min(32, Math.max(8, Math.floor(magnitude * 38 + Math.random() * 10))),
+        Math.min(32, Math.max(6, Math.floor(magnitude * 32 + Math.random() * 8))),
+        Math.min(32, Math.max(4, Math.floor(magnitude * 24 + Math.random() * 6)))
+      ];
+      for (let i = 1; i <= 7; i++) {
+        const bar = document.getElementById(`wave${i}`);
+        if (bar) bar.style.height = `${heights[i - 1]}px`;
+      }
+    }
+
+    function toggleTestMute() {
+      isTestMuted = !isTestMuted;
+      const btn = document.getElementById('btnTestMute');
+      if (btn) {
+        if (isTestMuted) {
+          btn.innerHTML = '<span>🔇 Unmute Mic</span>';
+          btn.className = 'px-3 py-2 rounded-[12px] bg-rose-500 text-white text-xs font-mono font-bold transition shadow-sm';
+        } else {
+          btn.innerHTML = '<span>🎤 Mute Mic</span>';
+          btn.className = 'px-3 py-2 rounded-[12px] bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-mono font-bold transition border border-slate-200 flex items-center space-x-1';
+        }
+      }
+    }
+
+    function closeHoneyVoiceTest() {
+      clearInterval(testVoiceTimerInterval);
+      if (testMicStream) {
+        testMicStream.getTracks().forEach(t => t.stop());
+        testMicStream = null;
+      }
+      if (testAudioProcessor) {
+        try { testAudioProcessor.disconnect(); } catch(e) {}
+        testAudioProcessor = null;
+      }
+      if (testAudioCtx) {
+        try { testAudioCtx.close(); } catch(e) {}
+        testAudioCtx = null;
+      }
+      if (testWs) {
+        try { testWs.close(); } catch(e) {}
+        testWs = null;
+      }
+      const modal = document.getElementById('honeyVoiceTestModal');
+      if (modal) modal.classList.add('hidden');
     }
 
     // Honey AI Call Flow Teleprompter (5-Stage Lead Flow Guidance)

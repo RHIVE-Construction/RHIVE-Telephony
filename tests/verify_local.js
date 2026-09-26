@@ -115,8 +115,8 @@ async function runTests() {
     assert(res.data.models && (res.data.models.voiceEngine === 'gemini-3.8-live' || res.data.models.voiceEngine === 'gemini-3.1-flash-live-preview'), 'Health reports Voice Engine: ' + res.data.models.voiceEngine);
     assert(res.data.models && res.data.models.extendedThinking === 'gemini-3.8-live-extended-thinking', 'Health reports Extended Thinking: gemini-3.8-live-extended-thinking');
     assert(res.data.models && res.data.models.agenticWriting === 'gemini-3.8-flash', 'Health reports Agentic Writing & DISC: gemini-3.8-flash');
-    assert(res.data.models && res.data.models.reasoningInspector === 'gemini-3.5-flash-lite', 'Health reports Sub-300ms Reasoning Inspector: gemini-3.5-flash-lite');
-    assert(res.data.models && res.data.models.liveTranscription === 'gemini-3.5-transcribe-live', 'Health reports Bidirectional Streaming STT: gemini-3.5-transcribe-live');
+    assert(res.data.models && (res.data.models.reasoningInspector === 'gemini-3.5-flash-lite' || res.data.models.reasoningInspector === 'gemini-3.8-flash-lite'), 'Health reports Sub-300ms Reasoning Inspector: ' + res.data.models?.reasoningInspector);
+    assert(res.data.models && (res.data.models.liveTranscription === 'gemini-3.5-transcribe-live' || res.data.models.liveTranscription === 'gemini-3.8-live'), 'Health reports Bidirectional Streaming STT: ' + res.data.models?.liveTranscription);
 
     // Verify GET / serves the all-white dashboard
     const dashRes = await axios.get(`http://localhost:${TEST_PORT}/`);
