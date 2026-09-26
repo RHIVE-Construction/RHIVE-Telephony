@@ -8498,7 +8498,14 @@ app.get('/api/agent/live-settings', (req, res) => {
     tone: AGENT_PROFILES.intake.tone || 'smiling_high_energy',
     bargeInSensitivity: AGENT_PROFILES.intake.bargeInThreshold || 500,
     systemInstruction: AGENT_PROFILES.intake.systemInstruction,
-    availableVoices: ['Laomedeia', 'Aoede', 'Callirrhoe', 'Zephyr', 'Fenrir', 'Puck', 'Charon', 'Kore']
+    availableVoices: [
+      { id: 'Laomedeia', name: 'Laomedeia', title: 'Honey Default (Warm & Bright)', desc: 'Warm, Bright, High-Energy Woman (1.1x speed & vocal smile)', previewUrl: '/audio/voices/laomedeia.wav', avatar: '👩' },
+      { id: 'Aoede', name: 'Aoede', title: 'Executive Operations', desc: 'Deep, Polished Executive Specialist with poised authority', previewUrl: '/audio/voices/aoede.wav', avatar: '👩‍💼' },
+      { id: 'Callirrhoe', name: 'Callirrhoe', title: 'Customer Care Lead', desc: 'Relaxed, Approachable, Empathetic Homeowner Care', previewUrl: '/audio/voices/callirrhoe.wav', avatar: '🌿' },
+      { id: 'Zephyr', name: 'Zephyr', title: 'Tech & Drone Specialist', desc: 'Modern, Upbeat Technology and Satellite Inspection Lead', previewUrl: '/audio/voices/zephyr.wav', avatar: '⚡' },
+      { id: 'Fenrir', name: 'Fenrir', title: 'Commercial Estimator', desc: 'Authoritative, Deep, Resonant Commercial Structural Lead', previewUrl: '/audio/voices/fenrir.wav', avatar: '🛡️' },
+      { id: 'Puck', name: 'Puck', title: 'Rapid Dispatch', desc: 'Brisk, Punchy, Fast-Paced Emergency Response Lead', previewUrl: '/audio/voices/puck.wav', avatar: '🚀' }
+    ]
   });
 });
 
@@ -9317,6 +9324,23 @@ app.use('/audio', express.static(path.join(__dirname, 'audio'), {
     if (filePath.endsWith('.wav')) res.set('Content-Type', 'audio/wav');
   }
 }));
+
+// Direct handler for neural voice preview samples
+app.get('/audio/voices/:voiceFile', (req, res) => {
+  const voiceFile = path.basename(req.params.voiceFile);
+  const candidatePaths = [
+    path.join(__dirname, 'public', 'audio', 'voices', voiceFile),
+    path.join(__dirname, 'audio', 'voices', voiceFile)
+  ];
+  for (const cPath of candidatePaths) {
+    if (fs.existsSync(cPath)) {
+      res.set('Content-Type', 'audio/wav');
+      res.set('Cache-Control', 'public, max-age=86400');
+      return res.status(200).sendFile(cPath);
+    }
+  }
+  return res.status(404).send(`Voice preview ${voiceFile} not found`);
+});
 
 app.get('/audio/rhive_hold_option:opt.:ext', (req, res) => {
   const opt = req.params.opt;
