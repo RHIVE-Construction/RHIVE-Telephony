@@ -8461,30 +8461,54 @@ app.post(['/api/auth/verify', '/api/auth/google'], async (req, res) => {
   let verifiedEmail = null;
   let verifiedName = name || null;
 
-  // 1. Verify Real Google ID Token (GIS Credential JWT with Audience & Verification Enforcement)
+  // 1. Verify Real Google ID Token (Firebase Auth ID Token or GIS Credential JWT)
   if (tokenToVerify) {
+    // 1a. Try Firebase Auth ID Token verification via Identity Toolkit
     try {
-      const verifyOpts = { idToken: tokenToVerify };
-      const configuredClientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
-      if (configuredClientId && !configuredClientId.includes('dummy')) {
-        verifyOpts.audience = configuredClientId;
-      }
-      const ticket = await googleAuthClient.verifyIdToken(verifyOpts);
-      const payload = ticket.getPayload();
-      if (payload && payload.email) {
-        if (payload.email_verified === false) {
+      const fbApiKey = process.env.FIREBASE_API_KEY || 'AIzaSyCGzack1aR1tqLEBFIHRjL2JkgUyfGRPQI';
+      const fbRes = await axios.post(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${fbApiKey}`, {
+        idToken: tokenToVerify
+      }, { timeout: 4000 });
+      if (fbRes.data && fbRes.data.users && fbRes.data.users.length > 0) {
+        const fbUser = fbRes.data.users[0];
+        if (fbUser.emailVerified === false) {
           recordFailedAuth(clientIp);
           return res.status(403).json({ authorized: false, error: 'Google account email is not verified by Google.' });
         }
-        verifiedEmail = payload.email.toLowerCase().trim();
-        verifiedName = payload.name || verifiedName;
+        verifiedEmail = (fbUser.email || '').toLowerCase().trim();
+        verifiedName = fbUser.displayName || verifiedName;
+        console.log(`[Auth Verification] Successfully verified Firebase Auth token for: ${verifiedEmail}`);
       }
-    } catch(err) {
-      console.warn('[Google Auth Token Verification Note]', err.message);
-      // In strict production, an invalid credential fails unless bypass applies
-      if (process.env.NODE_ENV !== 'test' && String(process.env.PORT) !== '8996') {
-        recordFailedAuth(clientIp);
-        return res.status(401).json({ authorized: false, error: 'Invalid Google authentication token: ' + err.message });
+    } catch(fbErr) {
+      // If not a Firebase token, proceed to GIS verification below
+    }
+
+    // 1b. If not verified via Firebase, try Google GIS ID Token
+    if (!verifiedEmail) {
+      try {
+        const verifyOpts = { idToken: tokenToVerify };
+        const configuredClientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+        if (configuredClientId && !configuredClientId.includes('dummy')) {
+          verifyOpts.audience = configuredClientId;
+        }
+        const ticket = await googleAuthClient.verifyIdToken(verifyOpts);
+        const payload = ticket.getPayload();
+        if (payload && payload.email) {
+          if (payload.email_verified === false) {
+            recordFailedAuth(clientIp);
+            return res.status(403).json({ authorized: false, error: 'Google account email is not verified by Google.' });
+          }
+          verifiedEmail = payload.email.toLowerCase().trim();
+          verifiedName = payload.name || verifiedName;
+          console.log(`[Auth Verification] Successfully verified GIS token for: ${verifiedEmail}`);
+        }
+      } catch(err) {
+        console.warn('[Google Auth Token Verification Note]', err.message);
+        // In strict production, an invalid credential fails unless bypass applies
+        if (process.env.NODE_ENV !== 'test' && String(process.env.PORT) !== '8996') {
+          recordFailedAuth(clientIp);
+          return res.status(401).json({ authorized: false, error: 'Invalid Google authentication token: ' + err.message });
+        }
       }
     }
   }
@@ -8727,11 +8751,11 @@ const DEFAULT_CANVAS_GRAPH = {
       timingMs: 280,
       x: 880,
       y: 180,
-      model: 'gemini-3.8-live',
-      voice: 'Aoede',
+      model: 'gemini-3.1-flash-live-preview',
+      voice: 'Leda',
       maxWords: '20',
       ringCount: '2.5',
-      prompt: '"Thanks for calling RHIVE Construction, this is Michael. How can I help you with your roof today?" Identify emergency leak vs replacement quote.'
+      prompt: '"Thanks for calling R-HIVE Construction roofing specialists, this is Honey! Are you looking to schedule a certified roof assessment, or did you need a quick quote on an existing project?" Identify emergency leak vs replacement quote.'
     },
     {
       id: 'node_stage2_address',
@@ -9206,9 +9230,9 @@ app.all(['/twiml', '/voice', '/ivr'], (req, res) => {
   const called = req.query.To || req.body.To || '';
   const callSid = req.query.CallSid || req.body.CallSid || ('CALL_' + Date.now());
 
-  // 1. Direct Open Voice Line (+1 801-783-3317) -> Forward directly to Michael's personal cell
+  // 1. Direct Open Voice Line (+1 801-783-3317) - Optional forward override
   const normCalled = called.replace(/[^0-9]/g, '');
-  if (normCalled.endsWith('7833317')) {
+  if (normCalled.endsWith('7833317') && req.query.mode === 'forward') {
     console.log(`[Open Voice Line] Inbound call ${callSid} to ${called} from ${caller} -> Forwarding directly to Michael (${MICHAEL_CELL})`);
     res.type('text/xml');
     return res.send(`<?xml version="1.0" encoding="UTF-8"?>
@@ -9220,17 +9244,19 @@ app.all(['/twiml', '/voice', '/ivr'], (req, res) => {
 </Response>`);
   }
 
-  // 2. Honey AI Line (+1 839-867-6637) -> Connect to Gemini Live Full-Duplex Agent
+  // 2. Honey AI Intake (Answers both +1 839-867-6637 and +1 801-783-3317)
   // Trigger dual-channel recording on Twilio carrier level
   startCallRecording(callSid).catch(() => {});
 
   // Default ambient mode to none (studio quality voice, 0 mu-law carrier hiss)
   const ambientMode = req.query.ambient || 'none';
 
-  const ringAudioUrl = 'https://' + host + '/audio/transfer_ring.wav';
-  const wsUrl = wsProtocol + '://' + host + '/media-stream';
+  const cloudRunHost = 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
+  const directHost = (process.env.NODE_ENV === 'test' || host.includes('localhost')) ? host : cloudRunHost;
+  const ringAudioUrl = 'https://' + directHost + '/audio/transfer_ring.wav';
+  const wsUrl = (directHost.includes('localhost') ? 'ws://' : 'wss://') + directHost + '/media-stream';
 
-  console.log('[Inbound Call] Call ' + callSid + ' from ' + caller + ' to ' + called + '. Playing 2.5 rings (' + ringAudioUrl + ') then connecting to Honey AI Roofing Specialist (Ambient Mode: ' + ambientMode + ').');
+  console.log('[Inbound Call] Call ' + callSid + ' from ' + caller + ' to ' + called + '. Connecting directly to Honey AI Roofing Specialist via ' + wsUrl);
 
   res.type('text/xml');
   return res.send('<?xml version="1.0" encoding="UTF-8"?>\n' +
@@ -9286,8 +9312,10 @@ app.all('/ivr-select', (req, res) => {
     selectionLabel = 'billing, accounts payable and operations with Kara';
   }
 
-  const ringAudioUrl = 'https://' + host + '/audio/transfer_ring.wav';
-  const wsUrl = wsProtocol + '://' + host + '/media-stream';
+  const cloudRunHost = 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
+  const directHost = (process.env.NODE_ENV === 'test' || host.includes('localhost')) ? host : cloudRunHost;
+  const ringAudioUrl = 'https://' + directHost + '/audio/transfer_ring.wav';
+  const wsUrl = (directHost.includes('localhost') ? 'ws://' : 'wss://') + directHost + '/media-stream';
 
   console.log('[IVR Select] Transferring Call ' + callSid + ' to Honey (Option ' + selection + ': ' + selectionLabel + '). Playing PBX transfer rings first: ' + ringAudioUrl);
 
@@ -9518,9 +9546,9 @@ app.all('/transfer-completed', (req, res) => {
 
 // 4. Transfer Fallback Endpoint: Dispatches instant follow-up SMS from specialist department, then reconnects caller directly to Honey Live (Leda voice)
 app.all('/transfer-fallback', async (req, res) => {
-  const host = req.headers['x-forwarded-host'] || req.headers.host || 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
-  const wsProtocol = req.headers['x-forwarded-proto'] === 'https' ? 'wss' : 'ws';
-  const wsUrl = `${wsProtocol}://${host}/media-stream`;
+  const cloudRunHost = 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
+  const directHost = (process.env.NODE_ENV === 'test' || host.includes('localhost')) ? host : cloudRunHost;
+  const wsUrl = (directHost.includes('localhost') ? 'ws://' : 'wss://') + directHost + '/media-stream';
   const targetSpecialist = req.query.target || 'Specialist';
   const callerName = req.query.callerName || 'Customer';
   const companyName = req.query.companyName || '';
