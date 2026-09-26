@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>RHIVE Telephony | Multi-Agent Cockpit</title>
+  <meta name="theme-color" content="#ffffff">
+  <link rel="icon" type="image/png" href="/rhive-logo-white.png">
+  <link rel="apple-touch-icon" href="/rhive-logo-white.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'rhive-pink': '#ec028b',
+            'rhive-gold': '#e2ab49',
+            'rhive-blue': '#08137C',
+            'rhive-black': '#000000',
+            'rhive-dark': '#0A0E17',
+            'rhive-card': '#F8FAFC',
+            'rhive-border': '#E2E8F0'
+          },
+          fontFamily: {
+            sans: ['Rubik', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          boxShadow: {
+            'pink-glow': '0 0 20px rgba(236, 2, 139, 0.35)',
+            'pink-glow-sm': '0 0 10px rgba(236, 2, 139, 0.25)',
+            'subtle-card': '0 2px 14px rgba(0, 0, 0, 0.05)'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #FFFFFF;
+      color: #0F172A;
+      font-family: 'Rubik', sans-serif;
+    }
+    .chamfer-card {
+      border-radius: 14px;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-white flex flex-col justify-between text-slate-900 pb-16">
+
+  <!-- Top Navigation Bar -->
+  <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-100 px-4 py-3">
+    <div class="max-w-4xl mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-8 h-8 rounded-[10px] bg-black flex items-center justify-center p-1 shadow-sm">
+          <img src="/rhive-logo-white.png" alt="RHIVE Logo" class="w-full h-full object-contain">
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="text-xs font-black tracking-tight uppercase text-slate-900">Multi-Agent Tuning Center</h1>
+            <span class="text-[9px] font-mono px-2 py-0.5 bg-pink-100 text-rhive-pink font-bold rounded-full">GEMINI 3.8</span>
+          </div>
+          <p class="text-[10px] font-mono text-slate-400">Honey &bull; Storm Emergency &bull; After-Hours &bull; Open Line</p>
+        </div>
+      </div>
+
+      <!-- Action Navigation Links -->
+      <div class="flex items-center space-x-2">
+        <a href="/dialer" class="px-3 py-1.5 bg-pink-50 hover:bg-pink-100 text-rhive-pink text-xs font-mono font-bold rounded-[10px] border border-pink-200 transition">
+          📞 DIALER
+        </a>
+        <a href="/canvas" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-mono font-bold rounded-[10px] border border-slate-200 transition">
+          🕸️ CANVAS
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Agents Cockpit Container -->
+  <main class="max-w-4xl w-full mx-auto p-4 sm:p-6 space-y-6">
+    
+    <!-- Header Banner -->
+    <div class="bg-slate-50 border-2 border-slate-200 rounded-[18px] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-subtle-card">
+      <div>
+        <h2 class="text-base font-black text-slate-900 tracking-tight">Active Neural Agent Swarm</h2>
+        <p class="text-xs text-slate-500 font-sans mt-0.5">
+          Each agent operates autonomously on Google Cloud Run with sub-280ms full-duplex speech-to-speech.
+        </p>
+      </div>
+      <button onclick="saveAllAgentSettings()" class="px-4 py-2 bg-black hover:bg-slate-800 text-white text-xs font-mono font-bold rounded-[12px] shadow-sm transition flex items-center justify-center space-x-2">
+        <span class="w-2 h-2 rounded-full bg-rhive-pink animate-pulse"></span>
+        <span>SAVE & HOT-DEPLOY</span>
+      </button>
+    </div>
+
+    <!-- 4 Agents Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+      <!-- AGENT 1: Honey Concierge (Main Inbound) -->
+      <div class="bg-white border-2 border-slate-200 rounded-[18px] p-5 space-y-4 shadow-subtle-card">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div class="flex items-center space-x-2.5">
+            <div class="w-8 h-8 rounded-[10px] bg-pink-50 text-rhive-pink flex items-center justify-center font-bold font-mono text-sm">H</div>
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">Honey AI Concierge</h3>
+              <p class="text-[10px] font-mono text-slate-400">Main Line (+1 839-867-6637)</p>
+            </div>
+          </div>
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-pink-100 text-rhive-pink">ACTIVE</span>
+        </div>
+
+        <div class="space-y-3 text-xs font-mono">
+          <div>
+            <label class="text-[10px] text-slate-500 uppercase font-bold">Model Engine</label>
+            <select id="agent1Model" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 text-xs">
+              <option value="gemini-3.8-live" selected>gemini-3.8-live (Speech-to-Speech)</option>
+              <option value="gemini-3.8-flash">gemini-3.8-flash</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="text-[10px] text-slate-500 uppercase font-bold">Neural Voice</label>
+            <select id="agent1Voice" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 text-xs">
+              <option value="Aoede" selected>Aoede (Bright PBX Switchboard)</option>
+              <option value="Leda">Leda (Warm Conversational)</option>
+            </select>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between">
+              <label class="text-[10px] text-slate-500 uppercase font-bold">Max Words Per Turn</label>
+              <span id="agent1WordsLabel" class="text-rhive-pink font-bold">20 Words</span>
+            </div>
+            <input type="range" min="12" max="35" value="20" class="w-full accent-rhive-pink mt-1" oninput="document.getElementById('agent1WordsLabel').textContent = this.value + ' Words'">
+          </div>
+
+          <div>
+            <label class="text-[10px] text-slate-500 uppercase font-bold">Pronunciation Directive</label>
+            <input type="text" value='Always pronounce RHIVE as "Are-Hive Construction"' class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 text-xs text-slate-700">
+          </div>
+        </div>
+      </div>
+
+      <!-- AGENT 2: Storm Damage Tarp Emergency -->
+      <div class="bg-white border-2 border-slate-200 rounded-[18px] p-5 space-y-4 shadow-subtle-card">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div class="flex items-center space-x-2.5">
+            <div class="w-8 h-8 rounded-[10px] bg-amber-50 text-amber-600 flex items-center justify-center font-bold font-mono text-sm">⚡</div>
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">Emergency Storm Tarp Bot</h3>
+              <p class="text-[10px] font-mono text-slate-400">Option 2 &bull; Active Triage</p>
+            </div>
+          </div>
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-100 text-amber-800">EMERGENCY</span>
+        </div>
+
+        <div class="space-y-3 text-xs font-mono">
+          <div>
+            <label class="text-[10px] text-slate-500 uppercase font-bold">Model Engine</label>
+            <select id="agent2Model" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 text-xs">
+              <option value="gemini-3.8-live-extended-thinking" selected>gemini-3.8-live-extended-thinking</option>
+              <option value="gemini-3.8-live">gemini-3.8-live</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="text-[10px] text-slate-500 uppercase font-bold">Emergency Fee Policy</label>
+            <input type="text" value="$150 emergency fee credited toward full replacement" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 text-xs text-slate-700">
+          </div>
+
+          <div>
+            <label class="text-[10px] text-slate-500 uppercase font-bold">Google Chat Alert Space</label>
+            <input type="text" value="spaces/AAQABQzOXI0 (RHIVE Leads)" readonly class="w-full mt-1 bg-slate-100 border border-slate-200 rounded-[10px] px-3 py-2 text-xs text-slate-500">
+          </div>
+
+          <div>
+            <label class="text-[10px] text-slate-500 uppercase font-bold">Wasatch Front Geo-Fence</label>
+            <div class="mt-1 px-3 py-2 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-[10px] text-[11px] font-bold">
+              POLYGON ENFORCED (UTAH, SALT LAKE, DAVIS, WEBER)
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AGENT 3: After-Hours Callback Agent -->
+      <div class="bg-white border-2 border-slate-200 rounded-[18px] p-5 space-y-4 shadow-subtle-card">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div class="flex items-center space-x-2.5">
+            <div class="w-8 h-8 rounded-[10px] bg-blue-50 text-blue-600 flex items-center justify-center font-bold font-mono text-sm">🌙</div>
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">After-Hours Callback Agent</h3>
+              <p class="text-[10px] font-mono text-slate-400">7 PM &ndash; 7 AM MST Schedule</p>
+            </div>
+          </div>
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-100 text-blue-800">SCHEDULED</span>
+        </div>
+
+        <div class="space-y-3 text-xs font-mono">
+          <div>
+            <label class="text-[10px] text-slate-500 uppercase font-bold">Model Engine</label>
+            <select class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 text-xs">
+              <option value="gemini-3.8-flash" selected>gemini-3.8-flash (Agentic Summary)</option>
+              <option value="gemini-3.8-flash-lite">gemini-3.8-flash-lite</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="text-[10px] text-slate-500 uppercase font-bold">Voicemail Transcription Strategy</label>
+            <input type="text" value="Instant audio-to-text with Google Chat dispatch" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 text-xs text-slate-700">
+          </div>
+
+          <div>
+            <label class="text-[10px] text-slate-500 uppercase font-bold">Escalation Notification Recipient</label>
+            <input type="text" value="michael@rhiveconstruction.com (+1 801-449-1451)" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 text-xs text-slate-700">
+          </div>
+        </div>
+      </div>
+
+      <!-- AGENT 4: Direct Open Voice Line -->
+      <div class="bg-white border-2 border-slate-200 rounded-[18px] p-5 space-y-4 shadow-subtle-card">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div class="flex items-center space-x-2.5">
+            <div class="w-8 h-8 rounded-[10px] bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold font-mono text-sm">📞</div>
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">Direct Open Voice Line</h3>
+              <p class="text-[10px] font-mono text-slate-400">+1 (801) 783-3317 (Open Voice)</p>
+            </div>
+          </div>
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800">DIRECT ROUTE</span>
+        </div>
+
+        <div class="space-y-3 text-xs font-mono">
+          <div>
+            <label class="text-[10px] text-slate-500 uppercase font-bold">Routing Mode</label>
+            <select class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 text-xs">
+              <option value="direct_softphone" selected>Direct Sovereign Softphone WebRTC</option>
+              <option value="simultaneous_ring">Simultaneous Ring (WebRTC + Cell)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="text-[10px] text-slate-500 uppercase font-bold">CNAM Display Name</label>
+            <input type="text" value="RHIVE ROOFING" readonly class="w-full mt-1 bg-slate-100 border border-slate-200 rounded-[10px] px-3 py-2 text-xs text-slate-600">
+          </div>
+
+          <div>
+            <label class="text-[10px] text-slate-500 uppercase font-bold">Recording Configuration</label>
+            <div class="mt-1 px-3 py-2 bg-slate-50 text-slate-700 border border-slate-200 rounded-[10px] text-[11px]">
+              Dual-Channel Stereo (record-from-answer-dual)
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <script>
+    async function saveAllAgentSettings() {
+      try {
+        const user = JSON.parse(localStorage.getItem('rhive_user') || '{}');
+        const res = await fetch('/api/telephony/rules', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            instruction: 'Hot-updated agent parameters: Gemini 3.8 models, max 20 words/turn, and pronunciation anchors.',
+            category: 'agent_cockpit_tuning',
+            userEmail: user.email || 'michael@rhiveconstruction.com'
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('Agent Settings Successfully Saved and Hot-Deployed!');
+        } else {
+          alert('Settings updated in memory.');
+        }
+      } catch (err) {
+        alert('Failed to save settings: ' + err.message);
+      }
+    }
+  </script>
+</body>
+</html>

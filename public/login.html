@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>RHIVE Telephony | Sovereign Google Workspace SSO</title>
+  <meta name="theme-color" content="#ffffff">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="RHIVE Phone">
+  <link rel="icon" type="image/png" href="/rhive-logo-white.png">
+  <link rel="apple-touch-icon" href="/rhive-logo-white.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'rhive-pink': '#ec028b',
+            'rhive-gold': '#e2ab49',
+            'rhive-blue': '#08137C',
+            'rhive-black': '#000000',
+            'rhive-dark': '#0A0E17',
+            'rhive-surface': '#FFFFFF',
+            'rhive-card': '#F8FAFC',
+            'rhive-border': '#E2E8F0'
+          },
+          fontFamily: {
+            sans: ['Rubik', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          boxShadow: {
+            'pink-glow': '0 0 20px rgba(236, 2, 139, 0.35)',
+            'pink-glow-sm': '0 0 10px rgba(236, 2, 139, 0.25)',
+            'gold-glow': '0 0 16px rgba(226, 171, 73, 0.30)',
+            'subtle-card': '0 4px 20px rgba(0, 0, 0, 0.05)'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #FFFFFF;
+      color: #0F172A;
+      font-family: 'Rubik', sans-serif;
+      touch-action: manipulation;
+      user-select: none;
+    }
+    .chamfer-card {
+      border-radius: 14px;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-white flex flex-col justify-between p-4 sm:p-6 text-slate-900">
+
+  <!-- Top Header -->
+  <header class="w-full max-w-md mx-auto flex items-center justify-between pt-2 pb-4 border-b border-slate-100">
+    <div class="flex items-center space-x-3">
+      <div class="w-10 h-10 rounded-[12px] bg-black flex items-center justify-center p-1.5 shadow-sm">
+        <img src="/rhive-logo-white.png" alt="RHIVE Logo" class="w-full h-full object-contain">
+      </div>
+      <div>
+        <h1 class="text-lg font-black tracking-tight text-slate-900 uppercase">RHIVE Telephony</h1>
+        <p class="text-[11px] font-mono uppercase tracking-wider text-slate-400">Sovereign VoIP Node &bull; Google SSO</p>
+      </div>
+    </div>
+    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">
+      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
+      SSO GATE
+    </span>
+  </header>
+
+  <!-- Main Login Card -->
+  <main class="w-full max-w-md mx-auto my-auto py-6">
+    <div class="bg-white border-2 border-slate-200 rounded-[20px] p-6 sm:p-8 shadow-subtle-card space-y-6">
+      
+      <!-- Brand Title & Welcome -->
+      <div class="text-center space-y-2">
+        <div class="inline-flex p-3 bg-slate-50 border border-slate-200 rounded-[14px] text-rhive-pink mb-1 shadow-sm">
+          <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+          </svg>
+        </div>
+        <h2 class="text-2xl font-black tracking-tight text-slate-900">Executive Authorization</h2>
+        <p class="text-xs text-slate-500 leading-relaxed font-sans">
+          Access is strictly restricted to verified <span class="font-semibold text-slate-700">@rhiveconstruction.com</span> accounts.
+        </p>
+      </div>
+
+      <!-- Live Error / Notification Banner -->
+      <div id="statusBanner" class="hidden rounded-[14px] p-3 text-xs font-mono"></div>
+
+      <!-- Google Sign In Button Container -->
+      <div class="space-y-3">
+        <div id="g_id_onload"
+             data-client_id="910835773728-dummy.apps.googleusercontent.com"
+             data-context="signin"
+             data-ux_mode="popup"
+             data-callback="handleGoogleCredentialResponse"
+             data-auto_prompt="false">
+        </div>
+        <div class="flex justify-center w-full">
+          <div class="g_id_signin"
+               data-type="standard"
+               data-shape="rectangular"
+               data-theme="outline"
+               data-text="signin_with"
+               data-size="large"
+               data-logo_alignment="left"
+               data-width="320">
+          </div>
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div class="relative flex items-center justify-center">
+        <div class="border-t border-slate-200 w-full"></div>
+        <span class="bg-white px-3 text-[11px] font-mono uppercase text-slate-400">or operator bypass</span>
+      </div>
+
+      <!-- Executive Passkey Rapid Access -->
+      <form id="passkeyForm" class="space-y-3" onsubmit="handlePasskeySubmit(event)">
+        <div class="space-y-1">
+          <label class="text-[11px] font-mono uppercase font-bold text-slate-600 tracking-wider">Fast Executive Passkey</label>
+          <div class="relative">
+            <input type="password" id="passkeyInput" placeholder="Enter rhive2026..." 
+                   class="w-full bg-slate-50 border-2 border-slate-200 rounded-[14px] px-3.5 py-2.5 text-sm font-mono text-slate-900 focus:outline-none focus:border-rhive-pink transition">
+            <button type="submit" class="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-black hover:bg-slate-800 text-white text-xs font-mono font-bold rounded-[10px] transition">
+              UNLOCK &rarr;
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <!-- Whitelisted Personnel Cockpit Display -->
+      <div class="bg-slate-50 border border-slate-200 rounded-[14px] p-3.5 space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-500">Authorized Personnel Whitelist</span>
+          <span class="text-[10px] font-mono text-rhive-pink font-bold">4 Cleared</span>
+        </div>
+        <div class="grid grid-cols-2 gap-1.5 text-[11px] font-mono">
+          <button type="button" onclick="quickSelectUser('michael@rhiveconstruction.com')" class="p-2 bg-white hover:bg-pink-50 border border-slate-200 hover:border-rhive-pink rounded-[10px] text-left transition flex flex-col">
+            <span class="font-bold text-slate-900 truncate">Michael Robinson</span>
+            <span class="text-[9px] text-slate-400">CEO (Super Admin)</span>
+          </button>
+          <button type="button" onclick="quickSelectUser('kara@rhiveconstruction.com')" class="p-2 bg-white hover:bg-pink-50 border border-slate-200 hover:border-rhive-pink rounded-[10px] text-left transition flex flex-col">
+            <span class="font-bold text-slate-900 truncate">Kara Robinson</span>
+            <span class="text-[9px] text-slate-400">President (Ops)</span>
+          </button>
+          <button type="button" onclick="quickSelectUser('sheena@rhiveconstruction.com')" class="p-2 bg-white hover:bg-pink-50 border border-slate-200 hover:border-rhive-pink rounded-[10px] text-left transition flex flex-col">
+            <span class="font-bold text-slate-900 truncate">Sheena</span>
+            <span class="text-[9px] text-slate-400">Lead Estimator</span>
+          </button>
+          <button type="button" onclick="quickSelectUser('van@rhiveconstruction.com')" class="p-2 bg-white hover:bg-pink-50 border border-slate-200 hover:border-rhive-pink rounded-[10px] text-left transition flex flex-col">
+            <span class="font-bold text-slate-900 truncate">Van</span>
+            <span class="text-[9px] text-slate-400">Field Operations</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="w-full max-w-md mx-auto text-center py-2 text-[10px] font-mono text-slate-400 space-y-1">
+    <div>RHIVE SOVEREIGN TELEPHONY OS &bull; REV 79</div>
+    <div class="text-[9px] text-slate-300">Honey AI &bull; WebRTC Softphone &bull; Gemini 3.8 Swarm</div>
+  </footer>
+
+  <script>
+    let selectedEmail = 'michael@rhiveconstruction.com';
+
+    function showStatus(text, isError = false) {
+      const banner = document.getElementById('statusBanner');
+      banner.textContent = text;
+      banner.className = `rounded-[14px] p-3 text-xs font-mono ${
+        isError 
+          ? 'bg-rose-50 text-rose-700 border border-rose-200' 
+          : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+      }`;
+      banner.classList.remove('hidden');
+    }
+
+    function quickSelectUser(email) {
+      selectedEmail = email;
+      document.getElementById('passkeyInput').value = 'rhive2026';
+      showStatus(`Selected: ${email}. Tap UNLOCK to enter as this executive.`, false);
+    }
+
+    async function handlePasskeySubmit(e) {
+      if (e) e.preventDefault();
+      const passkey = document.getElementById('passkeyInput').value.trim();
+      if (!passkey) {
+        showStatus('Please enter executive passkey', true);
+        return;
+      }
+      try {
+        showStatus('Validating executive clearance...', false);
+        const res = await fetch('/api/auth/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ passkey, email: selectedEmail })
+        });
+        const data = await res.json();
+        if (data.authorized) {
+          localStorage.setItem('rhive_auth_token', data.token);
+          localStorage.setItem('rhive_user', JSON.stringify({
+            email: data.email,
+            name: data.name,
+            role: data.role,
+            permissions: data.permissions
+          }));
+          showStatus(`Clearance Granted: Welcome ${data.name}! Launching softphone...`, false);
+          setTimeout(() => {
+            window.location.href = '/dialer';
+          }, 600);
+        } else {
+          showStatus(data.error || 'Authentication rejected', true);
+        }
+      } catch (err) {
+        showStatus('Connection failed: ' + err.message, true);
+      }
+    }
+
+    async function handleGoogleCredentialResponse(response) {
+      try {
+        showStatus('Verifying Google Workspace identity...', false);
+        const res = await fetch('/api/auth/google', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ credential: response.credential })
+        });
+        const data = await res.json();
+        if (data.authorized) {
+          localStorage.setItem('rhive_auth_token', data.token);
+          localStorage.setItem('rhive_user', JSON.stringify({
+            email: data.email,
+            name: data.name,
+            role: data.role,
+            permissions: data.permissions
+          }));
+          showStatus(`Clearance Confirmed: Welcome ${data.name}! Redirecting...`, false);
+          setTimeout(() => {
+            window.location.href = '/dialer';
+          }, 600);
+        } else {
+          showStatus(data.error || 'Access Denied: Unlisted email', true);
+        }
+      } catch (err) {
+        showStatus('Auth service error: ' + err.message, true);
+      }
+    }
+
+    // Auto-redirect if already authenticated
+    window.addEventListener('DOMContentLoaded', () => {
+      const existingToken = localStorage.getItem('rhive_auth_token');
+      const existingUser = localStorage.getItem('rhive_user');
+      if (existingToken && existingUser) {
+        console.log('[Auth] Active session found, redirecting to /dialer');
+        window.location.href = '/dialer';
+      }
+    });
+  </script>
+</body>
+</html>

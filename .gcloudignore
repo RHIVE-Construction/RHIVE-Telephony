@@ -2,3 +2,5 @@ node_modules/
 .git/
 npm-debug.log*
 .DS_Store
+
+scratch/

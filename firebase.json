@@ -1,0 +1,78 @@
+{
+  "hosting": {
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "headers": [
+      {
+        "source": "**/*.@(html|js)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/sw.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "/dialer",
+        "destination": "/dialer.html"
+      },
+      {
+        "source": "/canvas",
+        "destination": "/canvas.html"
+      },
+      {
+        "source": "/agents",
+        "destination": "/agents.html"
+      },
+      {
+        "source": "/login",
+        "destination": "/login.html"
+      },
+      {
+        "source": "/mobile",
+        "destination": "/mobile.html"
+      },
+      {
+        "source": "/manifest.json",
+        "destination": "/manifest.json"
+      },
+      {
+        "source": "/sw.js",
+        "destination": "/sw.js"
+      },
+      {
+        "source": "/api/**",
+        "run": {
+          "serviceId": "rhive-voice-live-bridge",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/twiml/**",
+        "run": {
+          "serviceId": "rhive-voice-live-bridge",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "**",
+        "destination": "/dialer.html"
+      }
+    ]
+  }
+}
