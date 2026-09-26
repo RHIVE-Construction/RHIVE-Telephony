@@ -32,6 +32,7 @@ const { WebSocketServer, WebSocket } = require('ws');
 const { GoogleGenAI } = require('@google/genai');
 const { google } = require('googleapis');
 const googleAuthClient = new (require('google-auth-library').OAuth2Client)();
+const { fetchGoogleContacts, lookupContactByPhone: lookupGoogleContact } = require('./services/googleContacts');
 
 try { require('dotenv').config(); } catch(e) {}
 
@@ -343,6 +344,29 @@ async function lookupContactByPhone(rawPhone) {
         const d = qSnap.docs[0];
         contactDoc = d.data();
         contactId = d.id;
+      }
+    }
+
+    // 3. Fallback to synchronized Google Contacts (Google People API)
+    if (!contactDoc && typeof lookupGoogleContact === 'function') {
+      try {
+        const gContact = await lookupGoogleContact(rawPhone);
+        if (gContact) {
+          return {
+            contactId: gContact.resourceName,
+            fullName: gContact.name,
+            firstName: gContact.givenName,
+            lastName: gContact.familyName,
+            companyName: gContact.organization,
+            phone: phoneE164,
+            emails: gContact.emails,
+            addresses: gContact.addresses,
+            activeContext: null,
+            isGoogleContact: true
+          };
+        }
+      } catch (gErr) {
+        console.warn('[Google Contact Lookup Warning]', gErr.message);
       }
     }
 
@@ -1614,6 +1638,38 @@ async function sendMultiChannelSms({ to, body, preferredSender = 'kara' }) {
  * personal follow-up SMS from Michael's number if not completed within 10 minutes.
  */
 const pendingVerifications = new Map();
+const verificationSessions = new Map();
+
+function generateShortCode(length = 6) {
+  const chars = '23456789abcdefghjkmnpqrstuvwxyz';
+  let code = '';
+  for (let i = 0; i < length; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+function registerVerificationSession({ code, callSid, phone, callerName, propertyAddress, flaggedQuestions }) {
+  const now = Date.now();
+  const session = {
+    code,
+    callSid,
+    phone,
+    callerName,
+    propertyAddress,
+    flaggedQuestions: flaggedQuestions || [],
+    status: 'in_progress',
+    createdAt: now,
+    expiresAt: now + (60 * 60 * 1000),
+    callActive: true
+  };
+  verificationSessions.set(code, session);
+  if (phone) {
+    const digits = String(phone).replace(/[^0-9]/g, '');
+    verificationSessions.set(digits, session);
+  }
+  return session;
+}
 
 function registerVerificationTimer({ phone, cleanPhone, callerName, propertyAddress, callSid }) {
   if (!phone || isSimulationOrTest(phone)) return;
@@ -4424,6 +4480,24 @@ Never mention any CRM. All call records are saved automatically to Google Drive 
             }
           },
           {
+            name: 'record_field_denial',
+            description: 'Call this function whenever the caller denies, disputes, or fails to confirm a specific detail (e.g. address, roof age, scope, email, name). If caller denies confirmation >2 times on 3 different fields within 4 minutes, the system immediately returns the Smart Fallback Short Link on our domain and verbal pivot instructions.',
+            parameters: {
+              type: 'OBJECT',
+              properties: {
+                field: {
+                  type: 'STRING',
+                  description: 'The field denied: "address", "roofAge", "scope", "email", "name", or "inspectionSlot".'
+                },
+                callerReason: {
+                  type: 'STRING',
+                  description: 'What the caller said when denying or disputing the data.'
+                }
+              },
+              required: ['field']
+            }
+          },
+          {
             name: 'send_photo_upload_sms',
             description: 'Sends an instant photo request text message from Michael Robinson (801-449-1451) to the caller for roof damage photos.',
             parameters: {
@@ -4752,6 +4826,20 @@ class CallSession {
       toolsExecuted: []
     };
 
+    // Call Timing, Smart Fallback & Journey Telemetry
+    this.callStartTime = Date.now();
+    this.fieldDenials = {
+      address: 0,
+      scope: 0,
+      roofAge: 0,
+      email: 0,
+      name: 0,
+      inspectionSlot: 0
+    };
+    this.fallbackFormTriggered = false;
+    this.fallbackVerificationCode = null;
+    this.journeyNodes = ['node_ingress', 'node_preroll', 'node_media_stream', 'node_stage1_greeting'];
+
     // Voice Activity Detection (VAD) & Anti-False-Barge-in State
     this.isUserSpeaking = false;
     this.isModelSpeaking = false;
@@ -4768,6 +4856,65 @@ class CallSession {
     this.disconnectTimer = null;
     this.hangupReason = null;
     this.goodbyePhrase = null;
+  }
+
+  recordJourneyNode(nodeId) {
+    if (!this.journeyNodes.includes(nodeId)) {
+      this.journeyNodes.push(nodeId);
+      console.log(`[CallSession ${this.callSid}] 🗺️ Traversed node: ${nodeId}`);
+    }
+  }
+
+  recordFieldDenial(fieldName, callerReason = '') {
+    const key = String(fieldName || 'unknown').toLowerCase().trim();
+    this.fieldDenials[key] = (this.fieldDenials[key] || 0) + 1;
+    console.log(`[CallSession ${this.callSid}] Denial on "${key}" (count: ${this.fieldDenials[key]}). Reason: ${callerReason}`);
+
+    const elapsedSec = (Date.now() - this.callStartTime) / 1000;
+    // Strict User Rule: caller denies confirmation >2 times on 3 different fields within 4 minutes (240s)
+    const failedFields = Object.keys(this.fieldDenials).filter(k => this.fieldDenials[k] > 2);
+
+    if (!this.fallbackFormTriggered && elapsedSec <= 240 && failedFields.length >= 3) {
+      console.log(`[Smart Fallback Triggered] Call ${this.callSid}: 3+ fields denied >2 times within ${Math.round(elapsedSec)}s:`, failedFields);
+      this.fallbackFormTriggered = true;
+      this.recordJourneyNode('node_fallback_pivot');
+
+      const shortCode = generateShortCode();
+      this.fallbackVerificationCode = shortCode;
+
+      registerVerificationSession({
+        code: shortCode,
+        callSid: this.callSid,
+        phone: this.callerPhone,
+        callerName: this.resolveCallerNameForDispatch() || 'Customer',
+        propertyAddress: this.sessionData.verifiedAddress || '',
+        flaggedQuestions: failedFields
+      });
+
+      const hostUrl = process.env.PUBLIC_SERVICE_URL || 'https://telephony.rhiveconstruction.com';
+      const shortUrl = `${hostUrl}/v/${shortCode}`;
+
+      sendMultiChannelSms({
+        to: this.callerPhone,
+        body: `RHIVE: Hi ${this.resolveCallerNameForDispatch() || 'there'}, to make sure we don't misspell your project details, please tap this 1-click link on your screen right now while we're on the phone: ${shortUrl}`,
+        preferredSender: 'michael'
+      }).catch(e => console.warn('[Fallback SMS Warning]', e.message));
+
+      return {
+        triggered: true,
+        shortCode,
+        shortUrl,
+        failedFields,
+        verbalPivotDirective: "Honey says warmly: 'I want to make sure I don't misspell your address or project details! I just shot an instant 1-tap link directly to your cell phone right now. You can quickly tap your address while I stay right here with you.'"
+      };
+    }
+
+    return {
+      triggered: false,
+      field: key,
+      currentDenials: this.fieldDenials[key],
+      elapsedSec
+    };
   }
 
   /**
@@ -5426,7 +5573,17 @@ class CallSession {
         this.sessionData.outcome = 'inspection';
         this.sessionData.inspectionBooked = true;
         this.sessionData.inspectionSlot = args?.inspectionSlot;
+        this.recordJourneyNode('node_stage5_booking');
+        this.recordJourneyNode('node_post_sms');
+        this.recordJourneyNode('node_post_crm');
         return bookingResult;
+      }
+
+      if (name === 'record_field_denial') {
+        const fieldName = args?.field || 'unknown';
+        const callerReason = args?.callerReason || '';
+        const denialResult = this.recordFieldDenial(fieldName, callerReason);
+        return denialResult;
       }
 
       if (name === 'send_quote_verification_sms') {
@@ -5439,6 +5596,10 @@ class CallSession {
             reason: 'Inspection already locked in for this property. Single consolidated inspection dossier dispatched.'
           };
         }
+
+        this.recordJourneyNode('node_direct_quote');
+        this.recordJourneyNode('node_post_sms');
+        this.recordJourneyNode('node_post_crm');
 
         const targetPhone = args?.customerPhone || this.callerPhone;
         const passedName = args?.callerName;
@@ -5479,15 +5640,27 @@ class CallSession {
 
         // 1. Dispatch customer SMS with verification link & register 10-minute follow-up timer
         if (targetPhone && !targetPhone.startsWith('SIM_')) {
-          const hostUrl = process.env.PUBLIC_SERVICE_URL || 'https://rhive-voice-live-bridge-910835773728.us-central1.run.app';
+          const hostUrl = process.env.PUBLIC_SERVICE_URL || 'https://telephony.rhiveconstruction.com';
+          const shortCode = generateShortCode();
+          this.fallbackVerificationCode = shortCode;
+
           if (args?.flaggedQuestions) {
-          const rawFlags = Array.isArray(args.flaggedQuestions) ? args.flaggedQuestions : String(args.flaggedQuestions).split(',');
-          this.sessionData.flaggedQuestions = Array.from(new Set([...(this.sessionData.flaggedQuestions || []), ...rawFlags.map(f => String(f).trim().toLowerCase())]));
-        }
-        const flaggedQuery = (this.sessionData.flaggedQuestions && this.sessionData.flaggedQuestions.length > 0) ? `&flagged=${encodeURIComponent(this.sessionData.flaggedQuestions.join(','))}` : '';
-        const verifyUrl = `${hostUrl}/verify?phone=${encodeURIComponent(targetPhone)}&address=${encodeURIComponent(propertyAddress)}${flaggedQuery}`;
+            const rawFlags = Array.isArray(args.flaggedQuestions) ? args.flaggedQuestions : String(args.flaggedQuestions).split(',');
+            this.sessionData.flaggedQuestions = Array.from(new Set([...(this.sessionData.flaggedQuestions || []), ...rawFlags.map(f => String(f).trim().toLowerCase())]));
+          }
+
+          registerVerificationSession({
+            code: shortCode,
+            callSid: this.callSid,
+            phone: targetPhone,
+            callerName: cleanCallerName,
+            propertyAddress,
+            flaggedQuestions: this.sessionData.flaggedQuestions || []
+          });
+
+          const shortUrl = `${hostUrl}/v/${shortCode}`;
           const greetingName = cleanCallerName ? ' ' + cleanCallerName : '';
-          const smsBody = `RHIVE: Hi${greetingName}, your roof quote for ${propertyAddress} is in progress. Please confirm your project details & preferences here: ${verifyUrl} — Text or call anytime!`;
+          const smsBody = `RHIVE: Hi${greetingName}, your certified roof quote for ${propertyAddress} is in progress. View & confirm live with Honey here: ${shortUrl} — Call or text anytime!`;
           sendMultiChannelSms({
             to: targetPhone,
             body: smsBody,
@@ -6346,8 +6519,34 @@ class CallSession {
         callerPhone: this.callerPhone,
         conversationTurns: this.conversationTurns,
         sessionData: this.sessionData,
+        journeyNodes: this.journeyNodes || [],
         closedAt: Date.now()
       }, 150);
+
+      // Mark any active verification sessions as call completed with 15-min post-call expiry
+      for (const [key, session] of verificationSessions.entries()) {
+        if (session.callSid === this.callSid) {
+          session.callActive = false;
+          session.status = 'completed';
+          session.expiresAt = Date.now() + (15 * 60 * 1000);
+        }
+      }
+
+      // Update Firestore with final traversed journeyNodes
+      const db = initFirestore();
+      if (db) {
+        db.collection('call_logs').doc(this.callSid).update({
+          journeyNodes: this.journeyNodes || [],
+          callStatus: 'completed',
+          updatedAt: new Date().toISOString()
+        }).catch(e => console.warn('[Firestore call_logs journey update note]', e.message));
+
+        db.collection('telephony_calls').doc(this.callSid).update({
+          journeyNodes: this.journeyNodes || [],
+          callStatus: 'completed',
+          updatedAt: new Date().toISOString()
+        }).catch(e => console.warn('[Firestore telephony_calls journey update note]', e.message));
+      }
     }
 
     // Trigger Google Drive archival organized by caller phone number
@@ -7021,6 +7220,7 @@ app.use((req, res, next) => {
   const allowedOrigins = [
     'https://rhiveconstruction.com',
     'https://www.rhiveconstruction.com',
+    'https://telephony.rhiveconstruction.com',
     'https://rhive-quantum-quoter.web.app',
     'https://rhive-quantum-quoter.firebaseapp.com'
   ];
@@ -7124,12 +7324,99 @@ app.get('/api/mobile/calls', async (req, res) => {
         intent: fsData.aiParsed?.intent || (isWorkCell ? 'WORK_CALL' : 'ROOFING_INQUIRY'),
         sentiment: fsData.sentiment || (c.status === 'completed' ? 'Positive (Call Connected)' : 'Unanswered / Missed'),
         disposition: fsData.disposition || (c.status === 'completed' ? 'QUOTE_SENT' : 'MISSED_CALL'),
+        journeyNodes: fsData.journeyNodes || ['node_ingress', 'node_preroll', 'node_media_stream', 'node_stage1_greeting'],
         notes: fsData.notes || ''
       };
     });
     res.json({ success: true, calls });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Domain Short Link Route: /v/:code
+app.get('/v/:code', (req, res) => {
+  const code = (req.params.code || '').toLowerCase().trim();
+  const entry = verificationSessions.get(code);
+  if (!entry) {
+    return res.redirect('/verify?session=' + encodeURIComponent(code));
+  }
+  if (entry.expiresAt && Date.now() > entry.expiresAt) {
+    return res.redirect('/verify?session=' + encodeURIComponent(code) + '&expired=true');
+  }
+  return res.redirect(`/verify?session=${encodeURIComponent(code)}&phone=${encodeURIComponent(entry.phone || '')}`);
+});
+
+// Verification Session Status Polling / Real-Time Sync
+app.get('/api/verify/session/:code', (req, res) => {
+  const code = (req.params.code || '').toLowerCase().trim();
+  const entry = verificationSessions.get(code);
+  if (!entry) {
+    return res.json({ found: false, expired: false, status: 'unknown' });
+  }
+  const isExpired = Boolean(entry.expiresAt && Date.now() > entry.expiresAt);
+  return res.json({
+    found: true,
+    code: entry.code,
+    phone: entry.phone,
+    callerName: entry.callerName,
+    propertyAddress: entry.propertyAddress,
+    flaggedQuestions: entry.flaggedQuestions,
+    status: entry.status,
+    callActive: entry.callActive,
+    expired: isExpired,
+    expiresAt: entry.expiresAt
+  });
+});
+
+// Google Contacts API: Returns synchronized Google Contacts from rhive_token.json
+app.get('/api/contacts', async (req, res) => {
+  try {
+    const contacts = await fetchGoogleContacts();
+    return res.json({ success: true, count: contacts.length, contacts });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message, contacts: [] });
+  }
+});
+
+// Call Journey Visualizer Endpoint: Returns exact traversed nodes for Canvas Replayer
+app.get('/api/telephony/calls/:callSid/journey', async (req, res) => {
+  try {
+    const callSid = req.params.callSid;
+    const completedSession = completedCallSessions.get(callSid);
+    if (completedSession && completedSession.journeyNodes) {
+      return res.json({
+        success: true,
+        callSid,
+        journeyNodes: completedSession.journeyNodes,
+        callerPhone: completedSession.callerPhone,
+        sessionData: completedSession.sessionData
+      });
+    }
+
+    const db = initFirestore();
+    if (db) {
+      const doc = await db.collection('call_logs').doc(callSid).get();
+      if (doc.exists) {
+        const d = doc.data();
+        return res.json({
+          success: true,
+          callSid,
+          journeyNodes: d.journeyNodes || ['node_ingress', 'node_preroll', 'node_media_stream', 'node_stage1_greeting', 'node_stage2_address', 'node_stage3_symptoms', 'node_stage4_pitch', 'node_stage5_booking'],
+          callerPhone: d.phone,
+          customerName: d.contact_name,
+          disposition: d.disposition
+        });
+      }
+    }
+
+    return res.json({
+      success: true,
+      callSid,
+      journeyNodes: ['node_ingress', 'node_preroll', 'node_media_stream', 'node_stage1_greeting', 'node_stage2_address', 'node_stage3_symptoms', 'node_stage4_pitch', 'node_stage5_booking', 'node_post_sms', 'node_post_crm']
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
 

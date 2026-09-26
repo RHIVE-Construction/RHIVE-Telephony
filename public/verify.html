@@ -1155,6 +1155,41 @@
       <div class="brand-tagline">R-HIVE <span>CONSTRUCTION</span> • UTAH ROOFING</div>
     </header>
 
+    <!-- Live Call Status Banner (Synchronized with Honey) -->
+    <div id="liveCallPill" style="display: none; background: #ECFDF5; border: 1.5px solid #10B981; border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; font-size: 11.5px; font-weight: 700; color: #065F46; box-shadow: 0 2px 8px rgba(16,185,129,0.15);">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #10B981; box-shadow: 0 0 8px #10B981;"></span>
+          <span style="letter-spacing: 0.05em; text-transform: uppercase;">Honey AI Live Call Connected</span>
+        </div>
+        <span id="liveCallStatusText" style="font-size: 10px; background: #10B981; color: #fff; padding: 2px 8px; border-radius: 999px;">SYNCING</span>
+      </div>
+      <div id="liveCallDetail" style="margin-top: 6px; font-size: 11px; color: #047857; font-weight: 500;">
+        Follow along as Honey verifies your project specifications.
+      </div>
+    </div>
+
+    <!-- Expired Card (Shown when TTL expires post-call) -->
+    <div id="expiredCard" class="chamfer-card" style="display: none; background: #FFFFFF; border: 1.5px solid #E2E8F0; padding: 32px 20px; text-align: center; box-shadow: var(--shadow-lg); margin-bottom: 20px;">
+      <div style="font-size: 48px; margin-bottom: 12px;">⏱️</div>
+      <h2 style="font-size: 18px; font-weight: 800; color: var(--primary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: -0.01em;">Session Expired</h2>
+      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">
+        This verification link was active during your live call with Honey and has now expired for your privacy and security.
+      </p>
+      <div style="background: #F8FAFC; border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 20px; text-align: left;">
+        <div style="font-size: 11px; font-weight: 800; color: var(--primary); margin-bottom: 4px; text-transform: uppercase;">Your Quote Specs Are Saved</div>
+        <div style="font-size: 12px; color: #334155; line-height: 1.4;">Michael Robinson and the RHIVE estimating team have your property measurements on file.</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <a href="tel:+18014491451" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--accent); color: #fff; font-weight: 700; font-size: 13px; padding: 12px 18px; border-radius: 10px; text-decoration: none; box-shadow: 0 4px 12px rgba(236,2,139,0.25);">
+          <span>📞 Call Michael Robinson: (801) 449-1451</span>
+        </a>
+        <a href="https://rhiveconstruction.com/estimate" target="_blank" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--primary); color: #fff; font-weight: 700; font-size: 13px; padding: 12px 18px; border-radius: 10px; text-decoration: none;">
+          <span>🏠 Visit Estimate Portal</span>
+        </a>
+      </div>
+    </div>
+
     <!-- Stepper Progress Header (Chamfered) -->
     <div class="stepper-container" id="stepperContainer">
       <div class="stepper-header">
@@ -2337,6 +2372,8 @@
       formCard.style.display = 'none';
       stepperContainer.style.display = 'none';
       successCard.style.display = 'block';
+      if (liveCallPill) liveCallPill.style.display = 'none';
+      if (expiredCard) expiredCard.style.display = 'none';
       confirmedEmail.textContent = email;
 
       document.getElementById('summaryAddress').textContent = currentAddress || 'Utah Property';
@@ -2348,6 +2385,83 @@
       document.getElementById('summaryGutters').textContent = gutters || 'Existing Gutters OK';
       document.getElementById('summaryPriority').textContent = prio || 'Max Warranty';
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Session Detection, Live Call Sync & TTL Expiration Gate
+    const sessionCode = urlParams.get('session');
+    const isExpiredParam = urlParams.get('expired') === 'true';
+    const liveCallPill = document.getElementById('liveCallPill');
+    const expiredCard = document.getElementById('expiredCard');
+    const liveCallStatusText = document.getElementById('liveCallStatusText');
+    const liveCallDetail = document.getElementById('liveCallDetail');
+
+    function showExpiredCard() {
+      if (formCard) formCard.style.display = 'none';
+      if (stepperContainer) stepperContainer.style.display = 'none';
+      if (successCard) successCard.style.display = 'none';
+      if (liveCallPill) liveCallPill.style.display = 'none';
+      if (expiredCard) expiredCard.style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    if (isExpiredParam) {
+      showExpiredCard();
+    } else if (sessionCode) {
+      initSessionSync(sessionCode);
+    }
+
+    let sessionPollTimer = null;
+    async function initSessionSync(code) {
+      if (liveCallPill) liveCallPill.style.display = 'block';
+
+      async function checkSession() {
+        try {
+          const res = await fetch(`/api/verify/session/${encodeURIComponent(code)}`);
+          const data = await res.json();
+          if (!data || data.expired || !data.success) {
+            clearInterval(sessionPollTimer);
+            showExpiredCard();
+            return;
+          }
+
+          if (data.status === 'completed') {
+            clearInterval(sessionPollTimer);
+            showSuccess(
+              data.email || 'customer@verified.com',
+              data.propertyType || 'Residential Home',
+              data.projectScope || 'Full Roof Replacement',
+              data.solarStatus || 'No Solar',
+              data.skylights || 'No Skylights',
+              data.equipmentRemoval || 'Everything Staying',
+              data.gutterScope || 'Existing Gutters OK',
+              data.priority || 'Max Warranty'
+            );
+            return;
+          }
+
+          // Live session updates from Honey on active call
+          if (data.callerName && nameInput && !nameInput.value) {
+            nameInput.value = data.callerName;
+          }
+          if (data.propertyAddress && (!currentAddress || currentAddress === 'South Jordan, UT')) {
+            currentAddress = data.propertyAddress;
+            if (displayAddress) displayAddress.textContent = currentAddress;
+            if (editAddressInput) editAddressInput.value = currentAddress;
+            refreshStreetView(currentAddress);
+          }
+          if (data.callerPhone && phoneInput && !phoneInput.value) {
+            phoneInput.value = data.callerPhone;
+          }
+          if (Array.isArray(data.flaggedFields) && data.flaggedFields.length > 0) {
+            applyFlags(data.flaggedFields);
+          }
+        } catch (err) {
+          console.warn('[Session Sync Note]', err.message);
+        }
+      }
+
+      checkSession();
+      sessionPollTimer = setInterval(checkSession, 2500);
     }
   </script>
 </body>
