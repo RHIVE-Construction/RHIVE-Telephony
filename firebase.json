@@ -8,6 +8,35 @@
     ],
     "headers": [
       {
+        "source": "**",
+        "headers": [
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "SAMEORIGIN"
+          },
+          {
+            "key": "Strict-Transport-Security",
+            "value": "max-age=31536000; includeSubDomains; preload"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "strict-origin-when-cross-origin"
+          },
+          {
+            "key": "Permissions-Policy",
+            "value": "microphone=(self), camera=(), geolocation=()"
+          },
+          {
+            "key": "Content-Security-Policy",
+            "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://accounts.google.com https://apis.google.com https://sdk.twilio.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://maps.googleapis.com https://lh3.googleusercontent.com https://*.googleusercontent.com; connect-src 'self' https://* wss://* blob:; frame-src 'self' https://accounts.google.com; media-src 'self' blob: data:; frame-ancestors 'self';"
+          }
+        ]
+      },
+      {
         "source": "**/*.@(html|js)",
         "headers": [
           {
@@ -74,5 +103,9 @@
         "destination": "/dialer.html"
       }
     ]
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
   }
 }
