@@ -96,20 +96,59 @@
           <span id="saveBadge" class="hidden text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">SAVED LIVE</span>
         </div>
 
-        <!-- Voice Selection -->
-        <div class="space-y-1">
-          <label class="text-[11px] font-mono font-bold text-slate-700 uppercase flex items-center justify-between">
-            <span>Neural Voice Model</span>
-            <span class="text-rhive-pink font-bold" id="currentVoiceBadge">Laomedeia (Active)</span>
-          </label>
-          <select id="voiceSelect" onchange="markUnsaved()" class="w-full bg-slate-50 border border-slate-200 rounded-[12px] p-2.5 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-rhive-pink transition">
-            <option value="Laomedeia" selected>Laomedeia (Default - Warm, Bright, High-Energy Woman)</option>
-            <option value="Aoede">Aoede (Deep, Polished Executive Specialist)</option>
-            <option value="Callirrhoe">Callirrhoe (Relaxed, Approachable Customer Care)</option>
-            <option value="Zephyr">Zephyr (Modern, Upbeat Tech Specialist)</option>
-            <option value="Fenrir">Fenrir (Authoritative Deep Specialist)</option>
-            <option value="Puck">Puck (Brisk, Punchy Rapid Dispatch)</option>
+        <!-- Neural Voice Selector with Live Previews -->
+        <div class="space-y-2 bg-slate-50 p-3 rounded-[16px] border border-slate-200">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-1.5">
+              <span class="text-xs">🎙️</span>
+              <label class="text-[11px] font-mono font-bold text-slate-800 uppercase">Neural Voice Model</label>
+              <span class="text-[9px] font-mono px-1.5 py-0.5 rounded bg-pink-100 text-rhive-pink font-bold">GEMINI 3.8</span>
+            </div>
+            <button type="button" onclick="openVoiceAuditionModal()" class="text-[10px] font-mono font-bold text-rhive-pink hover:text-pink-700 underline flex items-center space-x-1">
+              <span>🎧 Studio Modal</span>
+            </button>
+          </div>
+
+          <!-- Active Voice Showcase Card -->
+          <div id="activeVoiceHero" class="bg-white border-2 border-rhive-pink/40 rounded-[12px] p-2.5 flex items-center justify-between shadow-xs">
+            <div class="flex items-center space-x-2.5 min-w-0">
+              <span id="activeVoiceAvatar" class="text-2xl">👩</span>
+              <div class="min-w-0">
+                <div class="flex items-center space-x-1.5">
+                  <span id="activeVoiceTitle" class="font-mono font-black text-xs text-slate-900">Laomedeia</span>
+                  <span id="currentVoiceBadge" class="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-pink-100 text-rhive-pink truncate">Laomedeia (Active)</span>
+                </div>
+                <div id="activeVoiceTag" class="text-[10px] font-mono text-slate-500 truncate">Warm · Bright · High-Energy (Honey Default)</div>
+              </div>
+            </div>
+            <div class="flex items-center space-x-1 shrink-0">
+              <button type="button" id="heroPreviewBtn" onclick="toggleVoicePreview('Laomedeia', this)" class="px-2.5 py-1.5 rounded-[8px] bg-pink-50 hover:bg-pink-100 border border-pink-300 text-rhive-pink font-mono font-bold text-[10px] shadow-xs flex items-center space-x-1 transition">
+                <span class="preview-icon">▶</span>
+                <span class="preview-text">Preview</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Hidden Native Select (Synchronized for full backwards compatibility) -->
+          <select id="voiceSelect" onchange="selectVoiceModel(this.value)" class="sr-only">
+            <option value="Laomedeia" selected>Laomedeia</option>
+            <option value="Aoede">Aoede</option>
+            <option value="Callirrhoe">Callirrhoe</option>
+            <option value="Zephyr">Zephyr</option>
+            <option value="Fenrir">Fenrir</option>
+            <option value="Puck">Puck</option>
           </select>
+
+          <!-- Voice Audition List: Previews Available For Each Before Selection -->
+          <div class="space-y-1">
+            <div class="flex items-center justify-between text-[10px] font-mono font-bold text-slate-500 uppercase px-0.5">
+              <span>Audition Voices (Click ▶ to listen):</span>
+              <span class="text-[9px] text-rhive-pink font-bold">6 Voices Available</span>
+            </div>
+            <div class="space-y-1.5 max-h-48 overflow-y-auto pr-1" id="inlineVoiceDeck">
+              <!-- Dynamically rendered -->
+            </div>
+          </div>
         </div>
 
         <!-- Pacing Slider -->
@@ -285,6 +324,279 @@
   </nav>
 
   <script>
+    // --------------------------------------------------------------------------
+    // NEURAL VOICE MODELS (GEMINI 3.8 SUITE) WITH PREVIEW SAMPLES
+    // --------------------------------------------------------------------------
+    const NEURAL_VOICES = [
+      {
+        id: 'Laomedeia',
+        name: 'Laomedeia',
+        role: 'Honey Lead Voice (Default)',
+        tag: 'Warm · Bright · High-Energy',
+        desc: 'Upbeat feminine specialist with crisp 1.1x cadence, cheerful optimism, and natural vocal smile.',
+        quote: '“Hi! This is Honey with R-HIVE Construction. How can I assist you with your roofing project today?”',
+        previewUrl: '/audio/voices/laomedeia.wav',
+        avatar: '👩'
+      },
+      {
+        id: 'Aoede',
+        name: 'Aoede',
+        role: 'Executive Switchboard',
+        tag: 'Poised · Polished · Professional',
+        desc: 'Refined executive voice with crisp articulation for corporate operations and formal routing.',
+        quote: '“Good day, this is Aoede with R-HIVE Construction executive operations. How may I direct your project consultation today?”',
+        previewUrl: '/audio/voices/aoede.wav',
+        avatar: '👩‍💼'
+      },
+      {
+        id: 'Callirrhoe',
+        name: 'Callirrhoe',
+        role: 'Homeowner Care Lead',
+        tag: 'Empathetic · Calm · Reassuring',
+        desc: 'Gentle, reassuring tone that calms anxious homeowners dealing with emergency leaks.',
+        quote: '“Hello, thank you for calling R-HIVE Construction. My name is Callirrhoe, and I am right here to take great care of your home.”',
+        previewUrl: '/audio/voices/callirrhoe.wav',
+        avatar: '🌿'
+      },
+      {
+        id: 'Zephyr',
+        name: 'Zephyr',
+        role: 'Tech & Drone Specialist',
+        tag: 'Modern · Upbeat · Analytical',
+        desc: 'Contemporary, agile tech voice for satellite measurements and 3D drone roof analysis.',
+        quote: '“Hey there! This is Zephyr with R-HIVE Construction tech support and drone analysis. What can I look up for your roof?”',
+        previewUrl: '/audio/voices/zephyr.wav',
+        avatar: '⚡'
+      },
+      {
+        id: 'Fenrir',
+        name: 'Fenrir',
+        role: 'Commercial Structural Lead',
+        tag: 'Authoritative · Deep · Resonant',
+        desc: 'Commanding baritone presence for commercial flat roof contracts and engineered systems.',
+        quote: '“Welcome to R-HIVE Construction. This is Fenrir, commercial estimating and structural integrity lead. How can we fortify your building?”',
+        previewUrl: '/audio/voices/fenrir.wav',
+        avatar: '🛡️'
+      },
+      {
+        id: 'Puck',
+        name: 'Puck',
+        role: 'Rapid Dispatch Lead',
+        tag: 'Brisk · Punchy · High-Cadence',
+        desc: 'Fast, punchy dispatcher for instant storm mobilization and immediate technician routing.',
+        quote: '“Hey! Puck here with R-HIVE rapid emergency dispatch. Where is the roof leak, and how fast do you need our crew?”',
+        previewUrl: '/audio/voices/puck.wav',
+        avatar: '🚀'
+      }
+    ];
+
+    let activePreviewAudio = null;
+    let activePlayingVoiceId = null;
+
+    // Toggle Preview Playback for any voice
+    function toggleVoicePreview(voiceId, btnEl) {
+      if (activePlayingVoiceId === voiceId && activePreviewAudio && !activePreviewAudio.paused) {
+        activePreviewAudio.pause();
+        activePreviewAudio.currentTime = 0;
+        updateAllPreviewButtons(null);
+        activePlayingVoiceId = null;
+        return;
+      }
+
+      if (activePreviewAudio) {
+        activePreviewAudio.pause();
+        activePreviewAudio.currentTime = 0;
+        activePreviewAudio = null;
+      }
+
+      updateAllPreviewButtons(voiceId);
+
+      const voice = NEURAL_VOICES.find(v => v.id === voiceId);
+      const audioUrl = voice ? voice.previewUrl : `/audio/voices/${voiceId.toLowerCase()}.wav`;
+
+      activePreviewAudio = new Audio(audioUrl);
+      activePlayingVoiceId = voiceId;
+
+      activePreviewAudio.onended = () => {
+        updateAllPreviewButtons(null);
+        activePlayingVoiceId = null;
+        activePreviewAudio = null;
+      };
+
+      activePreviewAudio.onerror = (e) => {
+        console.error('Audio playback error for voice:', voiceId, e);
+        updateAllPreviewButtons(null);
+        activePlayingVoiceId = null;
+        activePreviewAudio = null;
+      };
+
+      activePreviewAudio.play().catch(err => {
+        console.warn('Playback intercepted/blocked:', err);
+        updateAllPreviewButtons(null);
+        activePlayingVoiceId = null;
+      });
+    }
+
+    function updateAllPreviewButtons(playingVoiceId) {
+      document.querySelectorAll('.voice-preview-btn').forEach(btn => {
+        const vId = btn.getAttribute('data-voice-id');
+        const iconSpan = btn.querySelector('.preview-icon');
+        const textSpan = btn.querySelector('.preview-text');
+        if (vId === playingVoiceId) {
+          btn.classList.add('bg-pink-100', 'text-rhive-pink', 'border-pink-400');
+          if (iconSpan) iconSpan.textContent = '⏸';
+          if (textSpan) textSpan.textContent = 'Stop';
+        } else {
+          btn.classList.remove('bg-pink-100', 'text-rhive-pink', 'border-pink-400');
+          if (iconSpan) iconSpan.textContent = '▶';
+          if (textSpan) textSpan.textContent = 'Preview';
+        }
+      });
+
+      const heroBtn = document.getElementById('heroPreviewBtn');
+      if (heroBtn) {
+        const curVoice = document.getElementById('voiceSelect').value;
+        const icon = heroBtn.querySelector('.preview-icon');
+        const text = heroBtn.querySelector('.preview-text');
+        if (playingVoiceId === curVoice) {
+          heroBtn.classList.add('bg-pink-100');
+          if (icon) icon.textContent = '⏸';
+          if (text) text.textContent = 'Stop';
+        } else {
+          heroBtn.classList.remove('bg-pink-100');
+          if (icon) icon.textContent = '▶';
+          if (text) text.textContent = 'Preview';
+        }
+      }
+    }
+
+    function selectVoiceModel(voiceId) {
+      document.getElementById('voiceSelect').value = voiceId;
+      syncVoiceUI(voiceId);
+      markUnsaved();
+    }
+
+    function syncVoiceUI(selectedVoiceId) {
+      const voice = NEURAL_VOICES.find(v => v.id === selectedVoiceId) || NEURAL_VOICES[0];
+      
+      const avatarEl = document.getElementById('activeVoiceAvatar');
+      const titleEl = document.getElementById('activeVoiceTitle');
+      const tagEl = document.getElementById('activeVoiceTag');
+      const badgeEl = document.getElementById('currentVoiceBadge');
+      
+      if (avatarEl) avatarEl.textContent = voice.avatar;
+      if (titleEl) titleEl.textContent = voice.name;
+      if (tagEl) tagEl.textContent = `${voice.tag} (${voice.role})`;
+      if (badgeEl) badgeEl.textContent = `${voice.name} (Active)`;
+      
+      const heroBtn = document.getElementById('heroPreviewBtn');
+      if (heroBtn) {
+        heroBtn.setAttribute('onclick', `toggleVoicePreview('${voice.id}', this)`);
+      }
+
+      renderVoiceDeck(selectedVoiceId);
+      renderModalVoiceDeck(selectedVoiceId);
+    }
+
+    function renderVoiceDeck(selectedVoiceId) {
+      const container = document.getElementById('inlineVoiceDeck');
+      if (!container) return;
+      const current = selectedVoiceId || document.getElementById('voiceSelect').value || 'Laomedeia';
+
+      container.innerHTML = NEURAL_VOICES.map(v => {
+        const isSelected = v.id === current;
+        const isPlaying = activePlayingVoiceId === v.id;
+        return `
+          <div class="p-2 rounded-[12px] border transition ${isSelected ? 'border-rhive-pink bg-pink-50/50 shadow-xs ring-1 ring-pink-300' : 'border-slate-200 bg-white hover:border-slate-300'} flex items-center justify-between space-x-2">
+            <div class="flex items-center space-x-2 min-w-0 flex-1 cursor-pointer" onclick="selectVoiceModel('${v.id}')">
+              <span class="text-base">${v.avatar}</span>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center space-x-1.5 truncate">
+                  <span class="font-mono font-bold text-xs text-slate-900">${v.name}</span>
+                  <span class="text-[9px] font-mono px-1 rounded ${isSelected ? 'bg-rhive-pink text-white font-bold' : 'bg-slate-100 text-slate-500'}">${v.role}</span>
+                </div>
+                <div class="text-[9px] font-mono text-slate-400 truncate">${v.tag}</div>
+              </div>
+            </div>
+            <div class="flex items-center space-x-1 shrink-0">
+              <button type="button" 
+                      data-voice-id="${v.id}"
+                      onclick="toggleVoicePreview('${v.id}', this)" 
+                      class="voice-preview-btn px-2 py-1 rounded-[8px] bg-slate-100 hover:bg-pink-50 text-slate-700 hover:text-rhive-pink font-mono font-bold text-[10px] border border-slate-200 transition flex items-center space-x-1 ${isPlaying ? 'bg-pink-100 text-rhive-pink border-pink-400' : ''}">
+                <span class="preview-icon">${isPlaying ? '⏸' : '▶'}</span>
+                <span class="preview-text">${isPlaying ? 'Stop' : 'Preview'}</span>
+              </button>
+              <button type="button" 
+                      onclick="selectVoiceModel('${v.id}')" 
+                      class="px-2 py-1 rounded-[8px] font-mono font-bold text-[10px] transition ${isSelected ? 'bg-black text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}">
+                ${isSelected ? '✓ ACTIVE' : 'SELECT'}
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderModalVoiceDeck(selectedVoiceId) {
+      const container = document.getElementById('modalVoiceDeck');
+      if (!container) return;
+      const current = selectedVoiceId || document.getElementById('voiceSelect').value || 'Laomedeia';
+
+      container.innerHTML = NEURAL_VOICES.map(v => {
+        const isSelected = v.id === current;
+        const isPlaying = activePlayingVoiceId === v.id;
+        return `
+          <div class="p-3.5 rounded-[16px] border ${isSelected ? 'border-rhive-pink bg-pink-50/50 shadow-sm ring-1 ring-rhive-pink' : 'border-slate-200 bg-white hover:border-slate-300'} transition space-y-2">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div class="flex items-center space-x-3">
+                <span class="text-3xl">${v.avatar}</span>
+                <div>
+                  <div class="flex items-center space-x-2">
+                    <h4 class="font-mono font-black text-sm text-slate-900">${v.name}</h4>
+                    <span class="text-[10px] font-mono px-2 py-0.5 rounded-full ${isSelected ? 'bg-rhive-pink text-white font-bold' : 'bg-slate-100 text-slate-600 font-medium'}">${v.role}</span>
+                  </div>
+                  <p class="text-[11px] font-mono text-slate-500">${v.tag}</p>
+                </div>
+              </div>
+              <div class="flex items-center space-x-2 shrink-0">
+                <button type="button" 
+                        data-voice-id="${v.id}"
+                        onclick="toggleVoicePreview('${v.id}', this)" 
+                        class="voice-preview-btn px-3 py-1.5 rounded-[10px] bg-pink-50 hover:bg-pink-100 text-rhive-pink font-mono font-bold text-xs border border-pink-200 shadow-xs transition flex items-center space-x-1.5 ${isPlaying ? 'bg-pink-200 border-pink-500' : ''}">
+                  <span class="preview-icon text-sm">${isPlaying ? '⏸' : '▶'}</span>
+                  <span class="preview-text">${isPlaying ? 'Stop Preview' : 'Play Sample'}</span>
+                </button>
+                <button type="button" 
+                        onclick="selectVoiceModel('${v.id}'); closeVoiceAuditionModal();" 
+                        class="px-3 py-1.5 rounded-[10px] font-mono font-bold text-xs uppercase tracking-wider transition ${isSelected ? 'bg-black text-white cursor-default' : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-green-glow'}">
+                  ${isSelected ? '✓ ACTIVE VOICE' : 'USE THIS VOICE'}
+                </button>
+              </div>
+            </div>
+            <div class="bg-slate-50 rounded-[10px] p-2.5 border border-slate-100 text-xs font-mono text-slate-700 italic">
+              ${v.quote}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openVoiceAuditionModal() {
+      document.getElementById('voiceAuditionModal').classList.remove('hidden');
+      renderModalVoiceDeck();
+    }
+
+    function closeVoiceAuditionModal() {
+      document.getElementById('voiceAuditionModal').classList.add('hidden');
+      if (activePreviewAudio) {
+        activePreviewAudio.pause();
+        activePreviewAudio.currentTime = 0;
+        updateAllPreviewButtons(null);
+        activePlayingVoiceId = null;
+        activePreviewAudio = null;
+      }
+    }
+
     // Live Agent Settings State
     let currentSettings = {};
     let isTestSpeakerOn = true;
@@ -306,15 +618,18 @@
         if (data.success) {
           currentSettings = data;
           document.getElementById('voiceSelect').value = data.voice || 'Laomedeia';
-          document.getElementById('currentVoiceBadge').textContent = `${data.voice || 'Laomedeia'} (Active)`;
+          syncVoiceUI(data.voice || 'Laomedeia');
           document.getElementById('paceSlider').value = data.speed || 1.1;
           document.getElementById('paceValue').textContent = `${data.speed || 1.1}x`;
           document.getElementById('bargeSlider').value = data.bargeInSensitivity || 500;
           updateBargeDisplay(data.bargeInSensitivity || 500);
           document.getElementById('promptEditor').value = data.systemInstruction || '';
+        } else {
+          syncVoiceUI('Laomedeia');
         }
       } catch (err) {
         console.error('Failed to load agent settings:', err);
+        syncVoiceUI('Laomedeia');
       }
     }
 
@@ -360,7 +675,7 @@
           const badge = document.getElementById('saveBadge');
           badge.textContent = 'SAVED LIVE';
           badge.className = 'text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800';
-          document.getElementById('currentVoiceBadge').textContent = `${payload.voice} (Active)`;
+          syncVoiceUI(payload.voice);
         }
       } catch (err) {
         alert('Failed to save settings: ' + err.message);
@@ -382,6 +697,15 @@
 
     // Start Live WebRTC/WebSocket Testing
     async function startHoneyLiveWebTest() {
+      // Immediately stop any active voice preview playback
+      if (activePreviewAudio) {
+        activePreviewAudio.pause();
+        activePreviewAudio.currentTime = 0;
+        updateAllPreviewButtons(null);
+        activePlayingVoiceId = null;
+        activePreviewAudio = null;
+      }
+
       const btnStart = document.getElementById('btnStartTest');
       const btnEnd = document.getElementById('btnEndTest');
       const status = document.getElementById('testSpeakingStatus');
@@ -584,5 +908,35 @@
 
     window.addEventListener('DOMContentLoaded', loadLiveSettings);
   </script>
+
+  <!-- FULL SCREEN / POPUP VOICE AUDITION STUDIO MODAL -->
+  <div id="voiceAuditionModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-fade-in font-mono">
+    <div class="bg-white rounded-[24px] shadow-2xl max-w-2xl w-full border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+      <!-- Modal Header -->
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="text-lg">🎧</span>
+            <h3 class="font-bold text-sm text-slate-900 uppercase">Audition Neural Voice Models (Gemini 3.8 Suite)</h3>
+          </div>
+          <p class="text-[10px] text-slate-500 mt-0.5">Listen to high-fidelity audio previews of all 6 voices before selecting for Honey</p>
+        </div>
+        <button onclick="closeVoiceAuditionModal()" class="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 flex items-center justify-center font-bold text-xs transition">✕</button>
+      </div>
+
+      <!-- Modal Voice List -->
+      <div class="p-4 sm:p-5 overflow-y-auto space-y-3 flex-1" id="modalVoiceDeck">
+        <!-- Rendered dynamically by renderModalVoiceDeck() -->
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-5 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-xs">
+        <div class="text-[10px] text-slate-400">⚡ Google Gemini 3.8 Multimodal Live Speech Engine</div>
+        <button onclick="closeVoiceAuditionModal()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-[12px] font-bold text-xs uppercase tracking-wider transition">
+          Done / Close
+        </button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

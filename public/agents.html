@@ -121,10 +121,20 @@
           </div>
 
           <div>
-            <label class="text-[10px] text-slate-500 uppercase font-bold">Neural Voice</label>
-            <select id="agent1Voice" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 text-xs">
+            <div class="flex items-center justify-between">
+              <label class="text-[10px] text-slate-500 uppercase font-bold">Neural Voice</label>
+              <button type="button" id="agent1PreviewBtn" onclick="playVoicePreviewQuick(document.getElementById('agent1Voice').value, this)" class="text-[10px] text-rhive-pink hover:underline font-bold flex items-center space-x-1">
+                <span class="preview-icon">▶</span>
+                <span class="preview-text">Preview Voice</span>
+              </button>
+            </div>
+            <select id="agent1Voice" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 text-xs font-mono">
               <option value="Laomedeia" selected>Laomedeia (Fast 1.1x, Smiling & Upbeat)</option>
-              <option value="Aoede">Aoede (Bright PBX Switchboard)</option>
+              <option value="Aoede">Aoede (Poised PBX Switchboard)</option>
+              <option value="Callirrhoe">Callirrhoe (Empathetic Care Lead)</option>
+              <option value="Zephyr">Zephyr (Tech & Drone Specialist)</option>
+              <option value="Fenrir">Fenrir (Commercial Structural Lead)</option>
+              <option value="Puck">Puck (Rapid Dispatch Lead)</option>
             </select>
           </div>
 
@@ -259,6 +269,52 @@
   </main>
 
   <script>
+    let activeQuickAudio = null;
+    let activeQuickVoiceId = null;
+
+    function playVoicePreviewQuick(voiceId, btnEl) {
+      if (activeQuickVoiceId === voiceId && activeQuickAudio && !activeQuickAudio.paused) {
+        activeQuickAudio.pause();
+        activeQuickAudio.currentTime = 0;
+        activeQuickVoiceId = null;
+        if (btnEl) {
+          const icon = btnEl.querySelector('.preview-icon');
+          const text = btnEl.querySelector('.preview-text');
+          if (icon) icon.textContent = '▶';
+          if (text) text.textContent = 'Preview Voice';
+        }
+        return;
+      }
+
+      if (activeQuickAudio) {
+        activeQuickAudio.pause();
+        activeQuickAudio.currentTime = 0;
+      }
+
+      const audioUrl = `/audio/voices/${voiceId.toLowerCase()}.wav`;
+      activeQuickAudio = new Audio(audioUrl);
+      activeQuickVoiceId = voiceId;
+
+      if (btnEl) {
+        const icon = btnEl.querySelector('.preview-icon');
+        const text = btnEl.querySelector('.preview-text');
+        if (icon) icon.textContent = '⏸';
+        if (text) text.textContent = 'Stop Voice';
+      }
+
+      activeQuickAudio.onended = () => {
+        activeQuickVoiceId = null;
+        if (btnEl) {
+          const icon = btnEl.querySelector('.preview-icon');
+          const text = btnEl.querySelector('.preview-text');
+          if (icon) icon.textContent = '▶';
+          if (text) text.textContent = 'Preview Voice';
+        }
+      };
+
+      activeQuickAudio.play().catch(e => console.warn('Audio play error:', e));
+    }
+
     async function saveAllAgentSettings() {
       try {
         const user = JSON.parse(localStorage.getItem('rhive_user') || '{}');
