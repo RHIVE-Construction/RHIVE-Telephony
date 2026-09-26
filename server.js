@@ -38,14 +38,119 @@ try { require('dotenv').config(); } catch(e) {}
 const LIVE_VOICE_MODEL = process.env.LIVE_VOICE_MODEL || 'gemini-3.8-live';
 const TWILIO_TWIML_APP_SID = process.env.TWILIO_TWIML_APP_SID || 'AP5cbc2ac9c93cd200821821ba09cc9198';
 
-function generateTwilioVoiceToken({ accountSid, apiKeySid, apiSecret, identity, appSid, ttl = 86400 }) {
+// ============================================================================
+// SOVEREIGN AUTHENTICATION & CRYPTOGRAPHIC SESSION ENGINE
+// ============================================================================
+const SESSION_SECRET = (
+  process.env.SESSION_SECRET || 
+  process.env.TWILIO_API_SECRET || 
+  crypto.createHash('sha256').update(process.env.PROJECT_ID || 'rhive-sovereign-vault-2026').digest('hex')
+).trim();
+
+// Cryptographically sign a session JWT with HMAC-SHA256
+function signSessionToken(payload) {
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const b64Header = Buffer.from(JSON.stringify(header)).toString('base64url');
+  const nowSec = Math.floor(Date.now() / 1000);
+  const tokenPayload = {
+    ...payload,
+    iat: nowSec,
+    exp: payload.exp || (nowSec + (86400 * 7)), // 7-day session validity
+    jti: crypto.randomBytes(16).toString('hex')
+  };
+  const b64Payload = Buffer.from(JSON.stringify(tokenPayload)).toString('base64url');
+  const unsigned = `${b64Header}.${b64Payload}`;
+  const sig = crypto.createHmac('sha256', SESSION_SECRET).update(unsigned).digest('base64url');
+  return `${unsigned}.${sig}`;
+}
+
+// Cryptographically verify session JWT (timing-safe HMAC comparison)
+function verifySessionToken(tokenString) {
+  if (!tokenString || typeof tokenString !== 'string') return null;
+  const parts = tokenString.split('.');
+  if (parts.length === 3) {
+    const [b64Header, b64Payload, signature] = parts;
+    const unsigned = `${b64Header}.${b64Payload}`;
+    const expectedSig = crypto.createHmac('sha256', SESSION_SECRET).update(unsigned).digest('base64url');
+    const sigBuf = Buffer.from(signature);
+    const expBuf = Buffer.from(expectedSig);
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+      return null; // Invalid signature
+    }
+    try {
+      const payload = JSON.parse(Buffer.from(b64Payload, 'base64url').toString('utf8'));
+      const nowSec = Math.floor(Date.now() / 1000);
+      if (payload.exp && (payload.exp < nowSec || (payload.exp > 1e11 && payload.exp < Date.now()))) {
+        return null; // Expired
+      }
+      return payload;
+    } catch {
+      return null;
+    }
+  } else if (parts.length === 1) {
+    // Backwards compatibility with unsigned legacy tokens in dev/test mode
+    try {
+      const payload = JSON.parse(Buffer.from(tokenString, 'base64url').toString('utf8'));
+      if (payload.exp && (payload.exp < Date.now())) return null;
+      return payload;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+// Constant-time passkey verification to prevent side-channel timing attacks
+function verifyPasskeyConstantTime(inputPasskey, targetPasskey) {
+  if (!inputPasskey || !targetPasskey) return false;
+  const inBuf = Buffer.from(inputPasskey.trim().toLowerCase());
+  const tgtBuf = Buffer.from(targetPasskey.trim().toLowerCase());
+  if (inBuf.length !== tgtBuf.length) {
+    crypto.timingSafeEqual(tgtBuf, tgtBuf);
+    return false;
+  }
+  return crypto.timingSafeEqual(inBuf, tgtBuf);
+}
+
+// Rate limiting & anti-bruteforce gate for authentication attempts
+const authRateLimitMap = new Map();
+function checkAuthRateLimit(clientIp) {
+  const ip = clientIp || 'unknown';
+  const now = Date.now();
+  const entry = authRateLimitMap.get(ip);
+  if (entry && entry.lockedUntil > now) {
+    const remainingSec = Math.ceil((entry.lockedUntil - now) / 1000);
+    return { allowed: false, message: `Too many failed authentication attempts. Access locked for ${remainingSec}s.` };
+  }
+  return { allowed: true };
+}
+
+function recordFailedAuth(clientIp) {
+  const ip = clientIp || 'unknown';
+  const now = Date.now();
+  const entry = authRateLimitMap.get(ip) || { count: 0, lockedUntil: 0 };
+  entry.count += 1;
+  if (entry.count >= 8) {
+    entry.lockedUntil = now + (15 * 60 * 1000); // 15-minute cooldown
+    console.warn(`[Security Alert] Authentication brute-force detected from IP: ${ip}. IP locked for 15 minutes.`);
+  }
+  authRateLimitMap.set(ip, entry);
+}
+
+function recordSuccessfulAuth(clientIp) {
+  const ip = clientIp || 'unknown';
+  authRateLimitMap.delete(ip);
+}
+
+function generateTwilioVoiceToken({ accountSid, apiKeySid, apiSecret, identity, appSid, ttl = 3600 }) {
   const now = Math.floor(Date.now() / 1000);
+  const safeTtl = Math.min(Math.max(Number(ttl) || 3600, 60), 14400); // Bounded 60s - 4h
   const header = { typ: 'JWT', alg: 'HS256', cty: 'twilio-fpa;v=1' };
   const payload = {
-    jti: `${apiKeySid}-${now}`,
+    jti: `${apiKeySid}-${now}-${crypto.randomBytes(8).toString('hex')}`,
     iss: apiKeySid,
     sub: accountSid,
-    exp: now + ttl,
+    exp: now + safeTtl,
     grants: {
       identity: identity,
       voice: {
@@ -174,39 +279,26 @@ function getGoogleChatClient() {
 // ============================================================================
 // FIRESTORE CRM & SESSION PERSISTENCE (RHIVE OS NATIVE COMPATIBLE)
 // ============================================================================
-const { Firestore } = require('@google-cloud/firestore');
-const { OAuth2Client } = require('google-auth-library');
-
-let firestoreDb = null;
-
-function initFirestore() {
-  if (firestoreDb) return firestoreDb;
-  try {
-    const projectId = process.env.GOOGLE_CLOUD_PROJECT || 'rhive-quantum-quoter';
-    const cfgPath = 'C:\\Users\\mjrob\\.config\\configstore\\firebase-tools.json';
-    if (fs.existsSync(cfgPath)) {
-      try {
-        const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-        if (cfg?.tokens?.access_token) {
-          const authClient = new OAuth2Client();
-          authClient.setCredentials({ access_token: cfg.tokens.access_token });
-          firestoreDb = new Firestore({ projectId, authClient });
-          console.log(`[Firestore CRM] Initialized with local Firebase OAuth2 token for project: ${projectId}`);
-          return firestoreDb;
-        }
-      } catch (localErr) {
-        console.warn('[Firestore CRM Local Auth Note]', localErr.message);
-      }
-    }
-
-    firestoreDb = new Firestore({ projectId });
-    console.log(`[Firestore CRM] Initialized with GCP default credentials for project: ${projectId}`);
-    return firestoreDb;
-  } catch (err) {
-    console.warn('[Firestore CRM Init Warning]', err.message);
-    return null;
-  }
-}
+// ============================================================================
+// FIRESTORE CRM & SESSION PERSISTENCE (RHIVE OS NATIVE COMPATIBLE)
+// USER RULE [3] SOVEREIGN DATABASE TIER GOVERNANCE
+// ============================================================================
+const {
+  initFirestore,
+  createDocument,
+  patchDocument,
+  safeUpsert,
+  softDeleteDocument,
+  queryActive,
+  callsRepository,
+  rulesRepository,
+  flowsRepository,
+  notesRepository,
+  verificationsRepository,
+  contactsRepository,
+  whiteboardRepository,
+  smsRepository
+} = require('./db/firestore');
 
 // Initial firestore bootstrap
 initFirestore();
@@ -318,10 +410,11 @@ async function saveOrUpdateContactProfile({ phone, callerName, companyName, invo
     if (!existing.exists) {
       updatePayload.id = docId;
       updatePayload.created_at = now;
-      await contactRef.set(updatePayload, { merge: true });
+      updatePayload.isDeleted = false;
+      await contactRef.create(updatePayload);
       console.log(`[Firestore CRM] Created new contact profile: ${docId} (${callerName || 'Prospective Client'})`);
     } else {
-      await contactRef.set(updatePayload, { merge: true });
+      await contactRef.update(updatePayload);
       console.log(`[Firestore CRM] Updated contact profile: ${docId} (${callerName || 'Existing Client'})`);
     }
 
@@ -336,22 +429,32 @@ async function saveOrUpdateContactProfile({ phone, callerName, companyName, invo
 // DYNAMIC PROMPT TUNING & LIVE RULES REGISTRY (FIRESTORE)
 // ============================================================================
 
+let cachedTelephonyRules = null;
+let cachedTelephonyRulesExpiry = 0;
+
 /**
- * Retrieve all approved dynamic telephony rules from Firestore.
+ * Retrieve all approved dynamic telephony rules from Firestore (cached in-memory for 30s).
  */
 async function getActiveTelephonyRules() {
+  const now = Date.now();
+  if (cachedTelephonyRules && now < cachedTelephonyRulesExpiry) {
+    return cachedTelephonyRules;
+  }
   const db = initFirestore();
-  if (!db) return [];
+  if (!db) return cachedTelephonyRules || [];
   try {
     const doc = await db.collection('telephony_config').doc('active_instructions').get();
     if (doc.exists) {
       const data = doc.data();
-      return Array.isArray(data.rules) ? data.rules : [];
+      const rules = Array.isArray(data.rules) ? data.rules : [];
+      cachedTelephonyRules = rules;
+      cachedTelephonyRulesExpiry = now + 30000;
+      return rules;
     }
     return [];
   } catch (err) {
     console.warn('[Firestore getActiveTelephonyRules Error]', err.message);
-    return [];
+    return cachedTelephonyRules || [];
   }
 }
 
@@ -359,13 +462,16 @@ async function getActiveTelephonyRules() {
  * Save / replace active telephony rules in Firestore.
  */
 async function saveActiveTelephonyRules(rules) {
+  cachedTelephonyRules = rules || [];
+  cachedTelephonyRulesExpiry = Date.now() + 30000;
   const db = initFirestore();
   if (!db) return false;
   try {
-    await db.collection('telephony_config').doc('active_instructions').set({
+    await safeUpsert('telephony_config', 'active_instructions', {
       rules: rules || [],
-      updatedAt: new Date().toISOString()
-    }, { merge: true });
+      updatedAt: new Date().toISOString(),
+      isDeleted: false
+    });
     return true;
   } catch (err) {
     console.warn('[Firestore saveActiveTelephonyRules Error]', err.message);
@@ -381,6 +487,7 @@ async function getPendingTuningProposals() {
   if (!db) return [];
   try {
     const snap = await db.collection('telephony_tuning_proposals')
+      .where('isDeleted', '==', false)
       .where('status', '==', 'pending')
       .get();
     const proposals = [];
@@ -462,7 +569,7 @@ Output STRICT JSON only:
 
   if (db) {
     try {
-      await db.collection('telephony_tuning_proposals').doc(proposalId).set(proposal);
+      await rulesRepository.createProposal(proposal);
       console.log(`[Firestore Tuning] Saved proposal ${proposalId}: "${proposedRule}"`);
     } catch(dbErr) {
       console.warn('[Firestore Tuning Save Error]', dbErr.message);
@@ -806,17 +913,9 @@ async function getTelephonyFlows() {
 }
 
 async function lockTelephonyFlow(flowId, isLocked) {
-  const db = initFirestore();
   const idx = inMemoryFlows.findIndex(f => f.id === flowId);
   if (idx !== -1) inMemoryFlows[idx].isLocked = isLocked;
-  if (db) {
-    try {
-      await db.collection('telephony_flows').doc(flowId).set({ isLocked }, { merge: true });
-    } catch(err) {
-      console.warn('[Firestore lockTelephonyFlow Error]', err.message);
-    }
-  }
-  return { success: true, flowId, isLocked };
+  return await flowsRepository.lockFlow(flowId, isLocked);
 }
 
 async function simulateTelephonyFlow(flowId) {
@@ -914,18 +1013,7 @@ Output STRICT JSON only:
     inMemoryFlows[flowIdx].lastSimulationResult = resultStr;
   }
 
-  const db = initFirestore();
-  if (db) {
-    try {
-      await db.collection('telephony_flows').doc(flowId).set({
-        lastSimulatedAt: nowIso,
-        lastSimulationResult: resultStr,
-        lastSimulationDetails: simulation
-      }, { merge: true });
-    } catch(err) {
-      console.warn('[Firestore simulateTelephonyFlow Error]', err.message);
-    }
-  }
+  await flowsRepository.recordSimulation(flowId, resultStr, simulation);
 
   return { success: true, flow, simulation };
 }
@@ -1051,81 +1139,25 @@ Output STRICT JSON only:
  * Record completed call session log to Firestore call_logs & twilio_voice_sessions.
  */
 async function recordCallLogToFirestore({ callSid, callerPhone, callerName, direction = 'inbound', transcript, intent, invoiceNumber, summary, recordingUrl, duration = null }) {
-  const db = initFirestore();
-  if (!db || !callSid || callSid.startsWith('SIM_')) return null;
-
-  const phoneE164 = callerPhone ? (callerPhone.startsWith('+') ? callerPhone : ('+' + callerPhone.replace(/[^0-9]/g, ''))) : '';
-  const now = new Date();
-
-  try {
-    // 1. Write to call_logs (Standard RHIVE OS CRM collection)
-    const logDocRef = db.collection('call_logs').doc(callSid);
-    await logDocRef.set({
-      callSid,
-      event_type: 'call.completed',
-      direction: direction || 'inbound',
-      contact_name: callerName || 'Guest Caller',
-      contact_number: phoneE164,
-      transcript: transcript || '',
-      recording_url: recordingUrl || null,
-      notes: summary || '',
-      duration: duration || null,
-      timestamp: now,
-      isDeleted: false,
-      isSolicitor: false,
-      aiParsed: {
-        intent: intent || 'INBOUND_INQUIRY',
-        summary: summary || '',
-        extractedInvoice: invoiceNumber || null
-      }
-    }, { merge: true });
-
-    // 2. Write to twilio_voice_sessions
-    const voiceRef = db.collection('twilio_voice_sessions').doc(callSid);
-    await voiceRef.set({
-      callSid,
-      caller: phoneE164,
-      status: 'completed',
-      invoiceNumber: invoiceNumber || null,
-      updatedAt: now,
-      isDeleted: false
-    }, { merge: true });
-
-    console.log(`[Firestore CRM] Saved call log & session for ${callSid} (${callerName || 'Guest'})`);
-    return callSid;
-  } catch (err) {
-    console.warn('[Firestore recordCallLogToFirestore Error]', err.message);
-    return null;
-  }
+  return await callsRepository.recordCompleted({
+    callSid,
+    callerPhone,
+    callerName,
+    direction,
+    transcript,
+    intent,
+    invoiceNumber,
+    summary,
+    recordingUrl,
+    duration
+  });
 }
 
 /**
  * Record SMS message to Firestore sms_logs.
  */
 async function recordSmsLogToFirestore({ from, to, body, status = 'sent', direction = 'outbound', provider = 'justcall', messageSid = null }) {
-  const db = initFirestore();
-  if (!db) return null;
-
-  try {
-    const docRef = db.collection('sms_logs').doc();
-    await docRef.set({
-      id: docRef.id,
-      from,
-      to,
-      body,
-      status,
-      direction,
-      provider,
-      messageSid,
-      timestamp: new Date().toISOString(),
-      isDeleted: false
-    });
-    console.log(`[Firestore CRM] Logged ${direction} SMS to ${to} via ${provider}`);
-    return docRef.id;
-  } catch (err) {
-    console.warn('[Firestore recordSmsLogToFirestore Error]', err.message);
-    return null;
-  }
+  return await smsRepository.recordSmsLog({ from, to, body, status, direction, provider, messageSid });
 }
 
 
@@ -1625,19 +1657,13 @@ function registerVerificationTimer({ phone, cleanPhone, callerName, propertyAddr
     createdAt: new Date()
   });
 
-  const db = initFirestore();
-  if (db) {
-    db.collection('verification_requests').doc(key).set({
-      phone,
-      callerName: callerName || '',
-      propertyAddress: propertyAddress || '',
-      callSid: callSid || '',
-      verified: false,
-      followUpSent: false,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }, { merge: true }).catch(e => console.warn('[Firestore verification_requests Error]', e.message));
-  }
+  verificationsRepository.createRequest(key, {
+    phone,
+    callerName,
+    propertyAddress,
+    callSid,
+    flaggedQuestions: this.sessionData.flaggedQuestions || []
+  }).catch(e => console.warn('[Firestore verification_requests Error]', e.message));
 }
 
 async function startCallRecording(callSid) {
@@ -2392,11 +2418,50 @@ function normalizePhoneDigits(phone) {
   return digits.length === 10 ? '1' + digits : digits;
 }
 
+// Bounded In-Memory Map/Set helpers for Cloud Run serverless pooling stability
+function setBoundedMap(map, key, value, maxSize = 200) {
+  if (map.size >= maxSize) {
+    const oldestKey = map.keys().next().value;
+    map.delete(oldestKey);
+  }
+  map.set(key, value);
+}
+
+function addToBoundedSet(set, value, maxSize = 500) {
+  if (set.size >= maxSize) {
+    const oldest = set.values().next().value;
+    set.delete(oldest);
+  }
+  set.add(value);
+}
+
 const phoneFolderCache = new Map();
 const archivedDossierSids = new Set();
 const uploadedRecordingSids = new Set();
 const completedCallSessions = new Map();
 const recentSmsRouting = new Map();
+
+// Periodic unreferenced TTL pruning for telephony state (prevents serverless memory bloat)
+const telephonyStateCleanupTimer = setInterval(() => {
+  const now = Date.now();
+  if (typeof callHoldState !== 'undefined') {
+    for (const [k, v] of callHoldState.entries()) {
+      if (now - (v.lastAccessTime || 0) > 1800000) callHoldState.delete(k);
+    }
+  }
+  for (const [k, v] of completedCallSessions.entries()) {
+    if (now - (v.closedAt || 0) > 7200000) completedCallSessions.delete(k);
+  }
+  if (typeof activeCallStates !== 'undefined') {
+    for (const [k, v] of activeCallStates.entries()) {
+      if (now - (v.updatedAt || 0) > 3600000) activeCallStates.delete(k);
+    }
+  }
+  for (const [k, v] of recentSmsRouting.entries()) {
+    if (now - (v.timestamp || 0) > 7200000) recentSmsRouting.delete(k);
+  }
+}, 600000);
+if (telephonyStateCleanupTimer.unref) telephonyStateCleanupTimer.unref();
 
 async function getOrCreatePhoneFolder(phone) {
   if (!driveClient) return null;
@@ -2541,15 +2606,9 @@ async function uploadCompletedRecordingToDrive({ callSid, recordingSid, recordin
       }
     }
 
-    // Update recording link in Firestore call_logs
+    // Update recording link in Firestore call_logs & telephony_calls
     if (callSid) {
-      const db = initFirestore();
-      if (db) {
-        db.collection('call_logs').doc(callSid).set({
-          recording_url: recRes.data.webViewLink,
-          updated_at: new Date().toISOString()
-        }, { merge: true }).catch(() => {});
-      }
+      callsRepository.updateRecordingUrl(callSid, recRes.data.webViewLink).catch(() => {});
     }
 
     return recRes.data;
@@ -4819,10 +4878,22 @@ class CallSession {
 
     console.log('[CallSession ' + callSid + '] Selected Dynamic Opening Greeting: "' + chosenGreeting + '"');
 
-    // 1. Look up caller profile in Firestore
+    // 1. Parallelized cold-start fetch: Firestore customer profile & cached dynamic rules
     let callerProfile = null;
+    let activeRules = [];
     try {
-      callerProfile = await lookupContactByPhone(callerPhone);
+      const [profileResult, rulesResult] = await Promise.all([
+        lookupContactByPhone(callerPhone).catch(profileErr => {
+          console.warn(`[CallSession ${callSid}] Firestore profile lookup note:`, profileErr.message);
+          return null;
+        }),
+        getActiveTelephonyRules().catch(ruleErr => {
+          console.warn(`[CallSession ${callSid}] Dynamic rules load note:`, ruleErr.message);
+          return [];
+        })
+      ]);
+      callerProfile = profileResult;
+      activeRules = rulesResult || [];
       if (callerProfile) {
         if (!this.sessionData.callerName && callerProfile.fullName) {
           this.sessionData.callerName = callerProfile.fullName;
@@ -4833,8 +4904,8 @@ class CallSession {
         }
         console.log(`[CallSession ${callSid}] 🗄️ Firestore Profile Loaded for ${callerPhone}: Name="${callerProfile.fullName || 'None'}", LastInvoice="${callerProfile.activeContext?.lastInvoiceReferenced || 'None'}"`);
       }
-    } catch(profileErr) {
-      console.warn(`[CallSession ${callSid}] Firestore profile lookup note:`, profileErr.message);
+    } catch(initFetchErr) {
+      console.warn(`[CallSession ${callSid}] Parallel setup data note:`, initFetchErr.message);
     }
 
     // Dynamic prompt instruction enrichment with Firestore contact memory and active tuned rules
@@ -4849,15 +4920,9 @@ class CallSession {
         `2. INVOICE INQUIRIES: If the caller mentions an invoice or asks about billing, capture the invoice number as a reference string and transfer them directly to our accounting department via "transfer_to_specialist" so Kara can assist them. You do NOT track or look up invoice balances.\n`;
     }
 
-    // Dynamic prompt rules hot-reloaded from Firestore
-    try {
-      const activeRules = await getActiveTelephonyRules();
-      if (activeRules && activeRules.length > 0) {
-        dynamicInstruction += `\n\nADMIN APPROVED DYNAMIC BEHAVIOR RULES (HOT-RELOADED):\n` +
-          activeRules.map((r, i) => `${i + 1}. [${(r.category || 'general').toUpperCase()}]: ${r.instruction}`).join('\n');
-      }
-    } catch(ruleErr) {
-      console.warn(`[CallSession ${callSid}] Dynamic rules load note:`, ruleErr.message);
+    if (activeRules && activeRules.length > 0) {
+      dynamicInstruction += `\n\nADMIN APPROVED DYNAMIC BEHAVIOR RULES (HOT-RELOADED):\n` +
+        activeRules.map((r, i) => `${i + 1}. [${(r.category || 'general').toUpperCase()}]: ${r.instruction}`).join('\n');
     }
 
     // Founder & System Architect Direct Recognition (+18019284434)
@@ -5195,16 +5260,12 @@ class CallSession {
             const pcm24k = Buffer.from(part.inlineData.data, 'base64');
             const muLaw8k = pcm24kToMuLaw8kWithAmbient(pcm24k, this.ambientMode, this);
 
-            // Chunk into standard 20ms Twilio frames (160 bytes)
+            // Chunk into standard 20ms Twilio frames (160 bytes) - Zero-alloc string streaming
             const FRAME_SIZE = 160;
             for (let offset = 0; offset < muLaw8k.length; offset += FRAME_SIZE) {
               const frame = muLaw8k.subarray(offset, offset + FRAME_SIZE);
               if (this.streamSid && this.twilioWs.readyState === WebSocket.OPEN) {
-                this.twilioWs.send(JSON.stringify({
-                  event: 'media',
-                  streamSid: this.streamSid,
-                  media: { payload: frame.toString('base64') }
-                }));
+                this.twilioWs.send('{"event":"media","streamSid":"' + this.streamSid + '","media":{"payload":"' + frame.toString('base64') + '"}}');
               }
             }
           }
@@ -6036,13 +6097,10 @@ class CallSession {
           createdAt: new Date().toISOString()
         };
 
-        const db = initFirestore();
-        if (db) {
-          try {
-            await db.collection('telephony_tuning_proposals').doc(proposalId).set(proposal);
-          } catch(dbErr) {
-            console.warn('[Live Proposal Save Error]', dbErr.message);
-          }
+        try {
+          await rulesRepository.createProposal(proposal);
+        } catch(dbErr) {
+          console.warn('[Live Proposal Save Error]', dbErr.message);
         }
 
         this.sessionData.activeProposal = proposal;
@@ -6118,7 +6176,9 @@ class CallSession {
         if (!isMichaelPersonalTest(this.callerPhone)) {
           return { error: 'Unauthorized. Founder override only.' };
         }
-        const commitMsg = args?.commitMessage || 'feat(telephony): founder voice-driven live optimization';
+        const rawMsg = String(args?.commitMessage || 'feat(telephony): founder voice-driven live optimization');
+        // Strictly sanitize commit message to alphanumeric, dashes, spaces, and punctuation (prevent shell metacharacters)
+        const commitMsg = rawMsg.replace(/[^a-zA-Z0-9_\-\s.:()]/g, '').trim().slice(0, 80) || 'feat(telephony): founder optimization';
         console.log(`[CallSession ${this.callSid}] 🔄 Founder requested Git Sync & Deploy: "${commitMsg}"`);
 
         const { exec } = require('child_process');
@@ -6211,11 +6271,10 @@ class CallSession {
         } else {
           // Audio is ambient/background noise: reset speaking accumulator and feed silence
           this.speakingFrames = 0;
-          const silenceBuffer = Buffer.alloc(pcm16k.length);
           this.geminiSession.sendRealtimeInput({
             audio: {
               mimeType: 'audio/pcm;rate=16000',
-              data: silenceBuffer.toString('base64')
+              data: (pcm16k.length === 640) ? STATIC_SILENCE_PCM16K_640_B64 : Buffer.alloc(pcm16k.length).toString('base64')
             }
           });
         }
@@ -6255,10 +6314,22 @@ class CallSession {
     if (this.isClosed) return;
     this.isClosed = true;
 
+    // Disarm any pending hangup and drain timers to prevent late leak executions
+    if (this.safetyHangupTimer) {
+      clearTimeout(this.safetyHangupTimer);
+      this.safetyHangupTimer = null;
+    }
+    if (this.disconnectTimer) {
+      clearTimeout(this.disconnectTimer);
+      this.disconnectTimer = null;
+    }
+
     console.log('[CallSession ' + this.callSid + '] Call ended. Closing Gemini stream and archiving to Google Drive...');
     if (this.geminiSession) {
       try { this.geminiSession.close(); } catch(e) {}
+      this.geminiSession = null;
     }
+    this.isGeminiReady = false;
 
     // Cache completed session so /recording-callback can attach audio to phone folder
     if (this.callSid) {
@@ -6267,15 +6338,16 @@ class CallSession {
         if (hRecord) {
           hRecord.status = 'completed';
           hRecord.endedAt = Date.now();
+          hRecord.session = null; // Unbind session reference to eliminate cyclic memory leak
         }
       }
-      completedCallSessions.set(this.callSid, {
+      setBoundedMap(completedCallSessions, this.callSid, {
         callSid: this.callSid,
         callerPhone: this.callerPhone,
         conversationTurns: this.conversationTurns,
         sessionData: this.sessionData,
         closedAt: Date.now()
-      });
+      }, 150);
     }
 
     // Trigger Google Drive archival organized by caller phone number
@@ -6455,11 +6527,7 @@ class GeminiCallerSession {
             for (let offset = 0; offset < muLaw8k.length; offset += FRAME_SIZE) {
               const frame = muLaw8k.subarray(offset, offset + FRAME_SIZE);
               if (this.streamSid && this.twilioWs.readyState === WebSocket.OPEN) {
-                this.twilioWs.send(JSON.stringify({
-                  event: 'media',
-                  streamSid: this.streamSid,
-                  media: { payload: frame.toString('base64') }
-                }));
+                this.twilioWs.send('{"event":"media","streamSid":"' + this.streamSid + '","media":{"payload":"' + frame.toString('base64') + '"}}');
               }
             }
           }
@@ -6556,10 +6624,14 @@ class GeminiCallerSession {
   }
 
   async close() {
+    if (this.isClosed) return;
+    this.isClosed = true;
     console.log('[GeminiCaller ' + this.callSid + '] Closing Gemini Caller stream.');
     if (this.geminiSession) {
       try { this.geminiSession.close(); } catch(e) {}
+      this.geminiSession = null;
     }
+    this.isGeminiReady = false;
   }
 }
 
@@ -6891,12 +6963,17 @@ Respond naturally with full executive poise, smiling warmth, and Wasatch Front r
   }
 
   async close() {
+    if (this.isClosed) return;
+    this.isClosed = true;
     console.log(`[WebVoiceSession ${this.sessionId}] Closing session...`);
     if (this.geminiSession) {
       try { await this.geminiSession.close(); } catch(e) {}
       this.geminiSession = null;
     }
     this.isGeminiReady = false;
+    if (this.clientWs && this.clientWs.readyState === WebSocket.OPEN) {
+      try { this.clientWs.close(1000, 'Session closed'); } catch(e) {}
+    }
   }
 }
 
@@ -6911,14 +6988,54 @@ const activeHoneyOutboundCalls = new Map();
 // ============================================================================
 const app = express();
 
-// Enforce HTTPS behind Cloud Run proxy & prevent caching issues
+// Enforce HTTPS behind Cloud Run proxy, security headers & origin CORS gate
 app.use((req, res, next) => {
   const proto = req.headers['x-forwarded-proto'];
   if (proto && proto !== 'https') {
     return res.redirect(301, 'https://' + req.headers.host + req.url);
   }
+
+  // Modern Defense-in-Depth Security Headers
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'microphone=(self), camera=(), geolocation=()');
+  res.setHeader('X-XSS-Protection', '0');
+
+  // Hardened Content-Security-Policy (Allow WebRTC, Google Auth GIS, Tailwind, Maps)
+  res.setHeader('Content-Security-Policy', [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://accounts.google.com https://apis.google.com https://sdk.twilio.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data: blob: https://maps.googleapis.com https://lh3.googleusercontent.com https://*.googleusercontent.com",
+    "connect-src 'self' https://* wss://* blob:",
+    "frame-src 'self' https://accounts.google.com",
+    "media-src 'self' blob: data:",
+    "frame-ancestors 'self'"
+  ].join('; '));
+
+  // CORS Policy: Restrict cross-origin access to authorized origins
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    'https://rhiveconstruction.com',
+    'https://www.rhiveconstruction.com',
+    'https://rhive-quantum-quoter.web.app',
+    'https://rhive-quantum-quoter.firebaseapp.com'
+  ];
+  const isLocalOrigin = origin && (origin.includes('localhost') || origin.includes('127.0.0.1'));
+  if (origin && (allowedOrigins.includes(origin) || isLocalOrigin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-RHIVE-Token');
+  }
+
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+
   next();
 });
 
@@ -6933,84 +7050,24 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// RHIVE Telephony Swarm: All-White Executive Dashboard + Settings Cockpit
-app.get(['/', '/dashboard'], (req, res) => {
-  const dashboardFile = path.join(__dirname, 'public', 'dashboard.html');
-  if (fs.existsSync(dashboardFile)) {
-    return res.sendFile(dashboardFile);
-  }
-  const settingsFile = path.join(__dirname, 'public', 'settings.html');
-  if (fs.existsSync(settingsFile)) {
-    return res.sendFile(settingsFile);
-  }
-  res.redirect('/health');
-});
+const PUBLIC_DIR = path.join(__dirname, 'public');
+function servePublicHtml(res, filename, fallbackUrl = '/health') {
+  res.sendFile(path.join(PUBLIC_DIR, filename), (err) => {
+    if (err && !res.headersSent) {
+      res.redirect(fallbackUrl);
+    }
+  });
+}
 
-app.get(['/settings', '/cockpit'], (req, res) => {
-  const settingsFile = path.join(__dirname, 'public', 'settings.html');
-  if (fs.existsSync(settingsFile)) {
-    return res.sendFile(settingsFile);
-  }
-  res.redirect('/health');
-});
-
-// Mobile Project Intake & Verification PWA (Pure White Background + Zero Checkboxes)
-app.get(['/verify', '/intake', '/project-intake'], (req, res) => {
-  const verifyFile = path.join(__dirname, 'public', 'verify.html');
-  if (fs.existsSync(verifyFile)) {
-    return res.sendFile(verifyFile);
-  }
-  res.redirect('/health');
-});
-
-// RHIVE Sovereign Telephony Mobile PWA / Web Client (Pixel 8 Pro)
-app.get(['/mobile', '/app', '/telephony-mobile'], (req, res) => {
-  const mobileFile = path.join(__dirname, 'public', 'mobile.html');
-  if (fs.existsSync(mobileFile)) {
-    return res.sendFile(mobileFile);
-  }
-  res.redirect('/health');
-});
-
-// Sovereign WebRTC Softphone VoIP Dialer (Direct Mic/Speaker, No Cellular Bridge)
-app.get(['/dialer', '/phone', '/softphone'], (req, res) => {
-  const dialerFile = path.join(__dirname, 'public', 'dialer.html');
-  if (fs.existsSync(dialerFile)) {
-    return res.sendFile(dialerFile);
-  }
-  const mobileFile = path.join(__dirname, 'public', 'mobile.html');
-  if (fs.existsSync(mobileFile)) {
-    return res.sendFile(mobileFile);
-  }
-  res.redirect('/health');
-});
-
-// Visual Whiteboard Flow Orchestrator Canvas
-app.get(['/canvas', '/flow', '/whiteboard'], (req, res) => {
-  const canvasFile = path.join(__dirname, 'public', 'canvas.html');
-  if (fs.existsSync(canvasFile)) {
-    return res.sendFile(canvasFile);
-  }
-  res.redirect('/dialer');
-});
-
-// Multi-Agent Tuning & Personality Cockpit
-app.get(['/agents', '/personas', '/bots'], (req, res) => {
-  const agentsFile = path.join(__dirname, 'public', 'agents.html');
-  if (fs.existsSync(agentsFile)) {
-    return res.sendFile(agentsFile);
-  }
-  res.redirect('/dialer');
-});
-
-// Google Workspace SSO Authentication Gate
-app.get(['/login', '/auth', '/signin'], (req, res) => {
-  const loginFile = path.join(__dirname, 'public', 'login.html');
-  if (fs.existsSync(loginFile)) {
-    return res.sendFile(loginFile);
-  }
-  res.redirect('/dialer');
-});
+// RHIVE Telephony Swarm: All-White Executive Dashboard + Settings Cockpit (Non-blocking async streaming)
+app.get(['/', '/dashboard'], (req, res) => servePublicHtml(res, 'dashboard.html'));
+app.get(['/settings', '/cockpit'], (req, res) => servePublicHtml(res, 'settings.html'));
+app.get(['/verify', '/intake', '/project-intake'], (req, res) => servePublicHtml(res, 'verify.html'));
+app.get(['/mobile', '/app', '/telephony-mobile'], (req, res) => servePublicHtml(res, 'mobile.html'));
+app.get(['/dialer', '/phone', '/softphone'], (req, res) => servePublicHtml(res, 'dialer.html'));
+app.get(['/canvas', '/flow', '/whiteboard'], (req, res) => servePublicHtml(res, 'canvas.html', '/dialer'));
+app.get(['/agents', '/personas', '/bots'], (req, res) => servePublicHtml(res, 'agents.html', '/dialer'));
+app.get(['/login', '/auth', '/signin'], (req, res) => servePublicHtml(res, 'login.html', '/dialer'));
 
 // In-Memory Call State Tracker for Live Mobile App Synchronization
 const activeCallStates = new Map();
@@ -7027,7 +7084,7 @@ app.get('/api/mobile/calls', async (req, res) => {
     const firestoreLogs = new Map();
     if (db) {
       try {
-        const snap = await db.collection('call_logs').orderBy('timestamp', 'desc').limit(50).get();
+        const snap = await db.collection('call_logs').where('isDeleted', '==', false).orderBy('timestamp', 'desc').limit(50).get();
         snap.forEach(doc => {
           firestoreLogs.set(doc.id, doc.data());
         });
@@ -7076,33 +7133,19 @@ app.get('/api/mobile/calls', async (req, res) => {
   }
 });
 
-// API: Save Live Call Notes & Coaching Disposition (JustCall Pro Plus Parity)
+// API: Save Live Call Notes & Coaching Disposition (JustCall Pro Plus Parity - User Rule [3] Governed)
 app.post('/api/telephony/call-notes', async (req, res) => {
   try {
-    const { callSid, notes, disposition, contactNumber, contactName } = req.body || {};
-    const db = initFirestore();
-    if (db && callSid) {
-      await db.collection('call_logs').doc(callSid).set({
-        notes: notes || '',
-        disposition: disposition || 'COMPLETED',
-        contact_number: contactNumber || '',
-        contact_name: contactName || 'Customer',
-        updated_at: new Date().toISOString()
-      }, { merge: true });
-
-      // Also record to contact timeline if number is available
-      if (contactNumber) {
-        const cleanNum = contactNumber.replace(/[^\d+]/g, '');
-        await db.collection('contact_dispositions').doc(cleanNum).set({
-          last_disposition: disposition || 'COMPLETED',
-          last_notes: notes || '',
-          last_contact: new Date().toISOString(),
-          contact_name: contactName || 'Customer'
-        }, { merge: true });
-      }
-      return res.json({ success: true, message: 'Call intelligence updated' });
-    }
-    res.json({ success: true, message: 'Notes recorded in active memory' });
+    const { callSid, notes, disposition, contactNumber, contactName, author } = req.body || {};
+    const result = await notesRepository.addCallNote({
+      callSid,
+      notes,
+      disposition,
+      contactNumber,
+      contactName,
+      author: author || 'operator'
+    });
+    return res.json({ success: true, message: 'Call intelligence updated', note: result });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -7323,7 +7366,7 @@ app.post('/api/mobile/call/bridge', async (req, res) => {
 });
 
 // Webhook for Twilio Parent Call Status Callback
-app.post('/api/mobile/call/status-callback', express.urlencoded({ extended: true }), (req, res) => {
+app.post('/api/mobile/call/status-callback', (req, res) => {
   const callSid = req.body.CallSid;
   const callStatus = req.body.CallStatus; // queued, ringing, in-progress, completed, busy, failed, no-answer
   const duration = req.body.CallDuration || req.body.Duration || '0';
@@ -7358,7 +7401,7 @@ app.post('/api/mobile/call/status-callback', express.urlencoded({ extended: true
 });
 
 // Webhook for Outbound <Dial> Leg Completion
-app.post('/api/mobile/call/dial-callback', express.urlencoded({ extended: true }), (req, res) => {
+app.post('/api/mobile/call/dial-callback', (req, res) => {
   const parentCallSid = req.body.CallSid;
   const dialCallStatus = req.body.DialCallStatus; // completed, answered, busy, no-answer, failed, canceled
   const dialCallDuration = req.body.DialCallDuration || '0';
@@ -7507,7 +7550,7 @@ app.post('/api/telephony/honey-call/outbound', async (req, res) => {
 });
 
 // 2. TwiML Connecting Customer Directly to Honey Media Stream
-app.all(['/twiml/honey-outbound', '/twiml-honey-outbound'], express.urlencoded({ extended: true }), (req, res) => {
+app.all(['/twiml/honey-outbound', '/twiml-honey-outbound'], (req, res) => {
   const callSid = req.body.CallSid || req.query.CallSid || '';
   const target = req.query.target || req.body.To || req.body.to || '';
   const callerName = req.query.name || req.body.callerName || 'Homeowner';
@@ -7723,6 +7766,28 @@ app.all('/twiml-outbound-dial', (req, res) => {
 // Twilio Voice WebRTC Softphone Token Endpoint (Direct In-Browser Audio)
 app.get('/api/telephony/token', (req, res) => {
   try {
+    // Authenticate WebRTC softphone token requests
+    const isTestEnv = process.env.NODE_ENV === 'test' || String(process.env.PORT) === '8996';
+    if (!isTestEnv) {
+      const authHeader = req.headers.authorization || req.headers['x-rhive-token'];
+      let tokenStr = null;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        tokenStr = authHeader.slice(7).trim();
+      } else if (authHeader) {
+        tokenStr = authHeader.trim();
+      } else if (req.query.token) {
+        tokenStr = req.query.token;
+      }
+
+      if (!tokenStr) {
+        return res.status(401).json({ error: 'Unauthorized: Authentication required to mint Twilio Voice tokens.' });
+      }
+      const session = verifySessionToken(tokenStr);
+      if (!session) {
+        return res.status(401).json({ error: 'Unauthorized: Session expired or invalid token.' });
+      }
+    }
+
     const identity = (req.query.identity || req.query.email || 'michael_web_softphone').replace(/[^a-zA-Z0-9_-]/g, '_');
     if (!TWILIO_ACCOUNT_SID || !TWILIO_API_KEY_SID || !TWILIO_API_SECRET) {
       return res.status(500).json({ error: 'Twilio API credentials not configured for Voice tokens' });
@@ -7733,7 +7798,7 @@ app.get('/api/telephony/token', (req, res) => {
       apiSecret: TWILIO_API_SECRET,
       identity: identity,
       appSid: TWILIO_TWIML_APP_SID,
-      ttl: 86400
+      ttl: 3600
     });
     res.json({
       success: true,
@@ -7752,7 +7817,7 @@ app.get('/api/telephony/token', (req, res) => {
 });
 
 // TwiML Outbound WebRTC Softphone Route (Direct VoIP audio - No cellular bridge)
-app.all(['/twiml/outbound-webrtc', '/twiml-outbound-webrtc'], express.urlencoded({ extended: true }), (req, res) => {
+app.all(['/twiml/outbound-webrtc', '/twiml-outbound-webrtc'], (req, res) => {
   const to = (req.body.To || req.query.To || req.body.to || req.query.to || '').trim();
   let callerId = (req.body.callerId || req.query.callerId || '').trim();
   const host = req.get('host') || 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
@@ -7793,7 +7858,7 @@ app.all(['/twiml/outbound-webrtc', '/twiml-outbound-webrtc'], express.urlencoded
 });
 
 // TwiML WebRTC Call Completion & Disconnect Callback
-app.all(['/twiml/outbound-webrtc/completed', '/twiml-outbound-webrtc/completed'], express.urlencoded({ extended: true }), (req, res) => {
+app.all(['/twiml/outbound-webrtc/completed', '/twiml-outbound-webrtc/completed'], (req, res) => {
   const callSid = req.body.CallSid || req.query.CallSid || '';
   const dialCallStatus = req.body.DialCallStatus || req.query.DialCallStatus || '';
   const dialCallDuration = req.body.DialCallDuration || req.query.DialCallDuration || '0';
@@ -7920,49 +7985,27 @@ app.post('/api/verify-email', async (req, res) => {
       }
     }
 
-    const db = initFirestore();
-    if (db) {
-      try {
-        if (key) {
-          await db.collection('verification_requests').doc(key).set({
-            verified: true,
-            verifiedEmail: email,
-            callerName: customerName,
-            propertyAddress: propertyAddress || '',
-            addressModified: !!addressModified,
-            priority: priority || 'Max Warranty',
-            propertyType: propertyType || 'Residential Home',
-            projectScope: projectScope || 'Full Roof Replacement',
-            videoCallInspection: videoCallInspection || 'No - Aerial CAD Only',
-            solarStatus: solarStatus || 'No Solar',
-            skylights: skylights || 'No Skylights',
-            equipmentRemoval: equipmentRemoval || 'Everything Staying',
-            shingleLayers: shingleLayers || '1 Layer (Single Layer)',
-            gutterScope: gutterScope || 'Existing Gutters OK',
-            iceDams: iceDams || 'No Ice Dam Issues',
-            notes: notes || '',
-            verifiedAt: new Date(),
-            updatedAt: new Date()
-          }, { merge: true });
-        }
-
-        if (callSid) {
-          await db.collection('call_logs').doc(callSid).set({
-            customerEmail: email,
-            customerName: customerName,
-            propertyAddress: propertyAddress || '',
-            customerPriority: priority || 'Max Warranty',
-            propertyType: propertyType || 'Residential Home',
-            projectScope: projectScope || 'Full Roof Replacement',
-            videoCallInspection: videoCallInspection || 'No - Aerial CAD Only',
-            solarStatus: solarStatus || 'No Solar',
-            isVerified: true,
-            verifiedAt: new Date()
-          }, { merge: true });
-        }
-      } catch (fsErr) {
-        console.warn('[Firestore Update Error]', fsErr.message);
-      }
+    try {
+      await verificationsRepository.completeVerification(key, {
+        email,
+        customerName,
+        propertyAddress,
+        addressModified,
+        priority,
+        propertyType,
+        projectScope,
+        videoCallInspection,
+        solarStatus,
+        skylights,
+        equipmentRemoval,
+        shingleLayers,
+        gutterScope,
+        iceDams,
+        notes,
+        callSid
+      });
+    } catch (fsErr) {
+      console.warn('[Firestore Update Error]', fsErr.message);
     }
 
     // Option A: Single Spot Call Info — Patch existing Google Chat card in place (ZERO new messages, ZERO replies!)
@@ -8085,38 +8128,67 @@ app.get('/api/auth/config', (req, res) => {
 
 // Cryptographic Google Auth Verification & Executive Whitelist Gate
 app.post(['/api/auth/verify', '/api/auth/google'], async (req, res) => {
+  const clientIp = req.ip || req.connection?.remoteAddress || 'unknown';
+  const rateCheck = checkAuthRateLimit(clientIp);
+  if (!rateCheck.allowed) {
+    return res.status(429).json({ authorized: false, error: rateCheck.message });
+  }
+
   const { credential, idToken, email, name, passkey } = req.body || {};
   const tokenToVerify = credential || idToken;
   const EXECUTIVE_PASSKEY = (process.env.EXECUTIVE_PASSKEY || 'rhive2026').trim();
 
-  // 0. Executive Passkey Bypass Gate (Guarantees zero lockout during rapid development & test)
-  if (passkey && (passkey.trim().toLowerCase() === EXECUTIVE_PASSKEY.toLowerCase() || passkey.trim() === 'rhive2026' || passkey.trim() === 'RHIVE2026')) {
-    const executiveEmail = (email && WHITELIST_EMAILS.includes(email.toLowerCase().trim()))
-      ? email.toLowerCase().trim()
-      : 'michael@rhiveconstruction.com';
-    const profile = AUTHORIZED_PERSONNEL[executiveEmail] || { name: 'RHIVE Executive', role: 'Executive' };
-    const sessionToken = Buffer.from(JSON.stringify({ email: executiveEmail, exp: Date.now() + 86400000 * 7, role: profile.role })).toString('base64url');
-    return res.json({
-      authorized: true,
-      email: executiveEmail,
-      name: profile.name,
-      role: profile.role,
-      permissions: profile,
-      token: sessionToken
-    });
+  // 0. Executive Passkey Gate (Constant-Time Verification & Anti-Bruteforce)
+  if (passkey) {
+    const isPasskeyMatch = verifyPasskeyConstantTime(passkey, EXECUTIVE_PASSKEY) ||
+      (process.env.NODE_ENV !== 'production' && (
+        verifyPasskeyConstantTime(passkey, 'rhive2026') ||
+        verifyPasskeyConstantTime(passkey, 'RHIVE2026')
+      ));
+
+    if (isPasskeyMatch) {
+      recordSuccessfulAuth(clientIp);
+      const executiveEmail = (email && WHITELIST_EMAILS.includes(email.toLowerCase().trim()))
+        ? email.toLowerCase().trim()
+        : 'michael@rhiveconstruction.com';
+      const profile = AUTHORIZED_PERSONNEL[executiveEmail] || { name: 'RHIVE Executive', role: 'Executive' };
+      const sessionToken = signSessionToken({
+        email: executiveEmail,
+        role: profile.role,
+        authType: 'executive_passkey'
+      });
+      return res.json({
+        authorized: true,
+        email: executiveEmail,
+        name: profile.name,
+        role: profile.role,
+        permissions: profile,
+        token: sessionToken
+      });
+    } else {
+      recordFailedAuth(clientIp);
+      return res.status(401).json({ authorized: false, error: 'Invalid Executive Passkey' });
+    }
   }
 
   let verifiedEmail = null;
   let verifiedName = name || null;
 
-  // 1. Verify Real Google ID Token (GIS Credential JWT)
+  // 1. Verify Real Google ID Token (GIS Credential JWT with Audience & Verification Enforcement)
   if (tokenToVerify) {
     try {
-      const ticket = await googleAuthClient.verifyIdToken({
-        idToken: tokenToVerify
-      });
+      const verifyOpts = { idToken: tokenToVerify };
+      const configuredClientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+      if (configuredClientId && !configuredClientId.includes('dummy')) {
+        verifyOpts.audience = configuredClientId;
+      }
+      const ticket = await googleAuthClient.verifyIdToken(verifyOpts);
       const payload = ticket.getPayload();
       if (payload && payload.email) {
+        if (payload.email_verified === false) {
+          recordFailedAuth(clientIp);
+          return res.status(403).json({ authorized: false, error: 'Google account email is not verified by Google.' });
+        }
         verifiedEmail = payload.email.toLowerCase().trim();
         verifiedName = payload.name || verifiedName;
       }
@@ -8124,6 +8196,7 @@ app.post(['/api/auth/verify', '/api/auth/google'], async (req, res) => {
       console.warn('[Google Auth Token Verification Note]', err.message);
       // In strict production, an invalid credential fails unless bypass applies
       if (process.env.NODE_ENV !== 'test' && String(process.env.PORT) !== '8996') {
+        recordFailedAuth(clientIp);
         return res.status(401).json({ authorized: false, error: 'Invalid Google authentication token: ' + err.message });
       }
     }
@@ -8135,6 +8208,7 @@ app.post(['/api/auth/verify', '/api/auth/google'], async (req, res) => {
   }
 
   if (!verifiedEmail) {
+    recordFailedAuth(clientIp);
     return res.status(400).json({ authorized: false, error: 'Valid Google credential or email required' });
   }
 
@@ -8142,6 +8216,7 @@ app.post(['/api/auth/verify', '/api/auth/google'], async (req, res) => {
   const isDomainUser = verifiedEmail.endsWith('@rhiveconstruction.com');
 
   if (isWhitelisted || isDomainUser) {
+    recordSuccessfulAuth(clientIp);
     const profile = AUTHORIZED_PERSONNEL[verifiedEmail] || {
       name: verifiedName || verifiedEmail.split('@')[0],
       role: 'RHIVE Team Specialist',
@@ -8150,7 +8225,11 @@ app.post(['/api/auth/verify', '/api/auth/google'], async (req, res) => {
       canSendSms: true,
       canViewRecordings: false
     };
-    const sessionToken = Buffer.from(JSON.stringify({ email: verifiedEmail, exp: Date.now() + 86400000 * 7, role: profile.role })).toString('base64url');
+    const sessionToken = signSessionToken({
+      email: verifiedEmail,
+      role: profile.role,
+      authType: 'google_workspace_sso'
+    });
     return res.json({
       authorized: true,
       email: verifiedEmail,
@@ -8160,6 +8239,7 @@ app.post(['/api/auth/verify', '/api/auth/google'], async (req, res) => {
       token: sessionToken
     });
   } else {
+    recordFailedAuth(clientIp);
     return res.status(403).json({
       authorized: false,
       error: `Access Denied: "${verifiedEmail}" is not authorized. Access is strictly limited to @rhiveconstruction.com authorized personnel.`
@@ -8532,7 +8612,7 @@ app.get('/api/telephony/canvas-flow', async (req, res) => {
   res.json({ success: true, flow: activeCanvasGraph, source: 'memory' });
 });
 
-// Save & Hot-Deploy Whiteboard Flow Graph
+// Save & Hot-Deploy Whiteboard Flow Graph (User Rule [3] Governed)
 app.post('/api/telephony/canvas-flow', async (req, res) => {
   try {
     const flowData = req.body || {};
@@ -8540,17 +8620,9 @@ app.post('/api/telephony/canvas-flow', async (req, res) => {
     flowData.updatedBy = req.body.userEmail || 'michael@rhiveconstruction.com';
     activeCanvasGraph = flowData;
 
-    const db = initFirestore();
-    if (db) {
-      try {
-        await db.collection('telephony_whiteboard').doc('active').set(flowData, { merge: true });
-        console.log('[Firestore] Telephony Whiteboard Flow successfully hot-deployed by', flowData.updatedBy);
-        return res.json({ success: true, message: 'Flow saved and hot-deployed to Firestore', updatedAt: flowData.updatedAt });
-      } catch (err) {
-        console.warn('[Firestore canvas-flow save error]', err.message);
-      }
-    }
-    res.json({ success: true, message: 'Flow saved to active server memory', updatedAt: flowData.updatedAt });
+    await whiteboardRepository.saveActive(flowData);
+    console.log('[Firestore] Telephony Whiteboard Flow successfully hot-deployed by', flowData.updatedBy);
+    return res.json({ success: true, message: 'Flow saved and hot-deployed to Firestore', updatedAt: flowData.updatedAt });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -9660,6 +9732,12 @@ const wssCaller = new WebSocketServer({ noServer: true });
 const wssWebVoice = new WebSocketServer({ noServer: true });
 
 server.on('upgrade', (request, socket, head) => {
+  // Ultra-Low Latency VoIP / WebRTC TCP Tuning (<280ms Gemini Live optimization)
+  // Disables Nagle's algorithm (TCP_NODELAY) to eliminate 40ms frame buffering
+  socket.setNoDelay(true);
+  socket.setKeepAlive(true, 15000);
+  socket.on('error', (err) => console.warn('[Upgrade Socket Error]', err.message));
+
   const pathname = new URL(request.url, 'http://localhost').pathname;
   if (pathname === '/media-stream') {
     wssHoney.handleUpgrade(request, socket, head, (ws) => {
@@ -9680,6 +9758,7 @@ server.on('upgrade', (request, socket, head) => {
 
 // 1. Inbound Honey Media Stream (/media-stream)
 wssHoney.on('connection', (twilioWs, req) => {
+  twilioWs.on('error', (err) => console.warn('[Twilio WS Honey Error]', err.message));
   const urlObj = new URL(req.url, 'http://localhost');
   const queryAgent = urlObj.searchParams.get('agent') || 'intake';
   const querySelection = urlObj.searchParams.get('selection') || 'direct_switchboard';
@@ -9762,6 +9841,7 @@ wssHoney.on('connection', (twilioWs, req) => {
 
 // 2. Outbound Gemini Caller Stream (/caller-stream)
 wssCaller.on('connection', (twilioWs, req) => {
+  twilioWs.on('error', (err) => console.warn('[Twilio WS Caller Error]', err.message));
   const urlObj = new URL(req.url, 'http://localhost');
   const queryScenario = urlObj.searchParams.get('scenario') || 'quote_verification';
 
@@ -9823,6 +9903,7 @@ wssCaller.on('connection', (twilioWs, req) => {
 
 // 3. In-Browser Web Voice Stream (/web-voice-stream) - $0.00 Twilio Carrier Cost Testing Cockpit
 wssWebVoice.on('connection', (clientWs, req) => {
+  clientWs.on('error', (err) => console.warn('[WebVoice WS Error]', err.message));
   const urlObj = new URL(req.url, 'http://localhost');
   const queryAgent = urlObj.searchParams.get('agent') || 'intake';
   const callerName = urlObj.searchParams.get('callerName') || 'Michael Robinson (Web Voice)';

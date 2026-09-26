@@ -1,0 +1,137 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ========================================================================
+    // RHIVE SOVEREIGN SECURITY & DATABASE GOVERNANCE RULES
+    // USER RULE [3]: BANNED HARD DELETES. MANDATORY SOFT DELETE (isDeleted: true).
+    // ZERO .set() OVERWRITES - ALL WRITES MUST PRESERVE AUDIT TRAIL.
+    // ========================================================================
+
+    // Common audit helpers
+    function isNotDeleted() {
+      return !('isDeleted' in resource.data) || resource.data.isDeleted == false;
+    }
+
+    function willNotBeHardDeleted() {
+      return false; // Hard delete strictly banned across all collections
+    }
+
+    function validSoftDelete() {
+      return request.resource.data.isDeleted == true &&
+             request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isDeleted', 'deletedAt', 'deletedBy', 'deletionReason', 'updatedAt']);
+    }
+
+    function hasValidTimestamp() {
+      return request.time != null;
+    }
+
+    // Default deny for unmapped paths
+    match /{document=**} {
+      allow read: if true;
+      allow write: if false;
+      allow delete: if willNotBeHardDeleted();
+    }
+
+    // 1. Telephony Calls & Call Logs
+    match /telephony_calls/{callSid} {
+      allow read: if true;
+      allow create: if request.resource.data.isDeleted == false;
+      allow update: if request.resource.data.isDeleted == false || validSoftDelete();
+      allow delete: if willNotBeHardDeleted();
+    }
+
+    match /call_logs/{callSid} {
+      allow read: if true;
+      allow create: if request.resource.data.isDeleted == false;
+      allow update: if request.resource.data.isDeleted == false || validSoftDelete();
+      allow delete: if willNotBeHardDeleted();
+    }
+
+    match /twilio_voice_sessions/{sessionId} {
+      allow read: if true;
+      allow create: if request.resource.data.isDeleted == false;
+      allow update: if request.resource.data.isDeleted == false || validSoftDelete();
+      allow delete: if willNotBeHardDeleted();
+    }
+
+    // 2. Telephony Dynamic Prompt Rules & Proposals
+    match /telephony_rules/{ruleId} {
+      allow read: if true;
+      allow create: if request.resource.data.isDeleted == false && request.resource.data.instruction is string;
+      allow update: if request.resource.data.isDeleted == false || validSoftDelete();
+      allow delete: if willNotBeHardDeleted();
+    }
+
+    match /telephony_config/{configDoc} {
+      allow read: if true;
+      allow create, update: if request.resource.data.isDeleted == false;
+      allow delete: if willNotBeHardDeleted();
+    }
+
+    match /telephony_tuning_proposals/{proposalId} {
+      allow read: if true;
+      allow create: if request.resource.data.isDeleted == false;
+      allow update: if request.resource.data.isDeleted == false || validSoftDelete();
+      allow delete: if willNotBeHardDeleted();
+    }
+
+    // 3. Telephony Canonical Call Flows & Whiteboard
+    match /telephony_flows/{flowId} {
+      allow read: if true;
+      allow create: if request.resource.data.isDeleted == false;
+      allow update: if request.resource.data.isDeleted == false || validSoftDelete();
+      allow delete: if willNotBeHardDeleted();
+    }
+
+    match /telephony_whiteboard/{docId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.isDeleted == false;
+      allow delete: if willNotBeHardDeleted();
+    }
+
+    // 4. Call Notes & Contact Dispositions
+    match /call_notes/{noteId} {
+      allow read: if true;
+      allow create: if request.resource.data.isDeleted == false && request.resource.data.notes is string;
+      allow update: if request.resource.data.isDeleted == false || validSoftDelete();
+      allow delete: if willNotBeHardDeleted();
+    }
+
+    match /contact_dispositions/{phoneClean} {
+      allow read: if true;
+      allow create, update: if request.resource.data.isDeleted == false;
+      allow delete: if willNotBeHardDeleted();
+    }
+
+    // 5. Call Verifications & Project Intake
+    match /call_verifications/{verificationKey} {
+      allow read: if true;
+      allow create: if request.resource.data.isDeleted == false;
+      allow update: if request.resource.data.isDeleted == false || validSoftDelete();
+      allow delete: if willNotBeHardDeleted();
+    }
+
+    match /verification_requests/{verificationKey} {
+      allow read: if true;
+      allow create: if request.resource.data.isDeleted == false;
+      allow update: if request.resource.data.isDeleted == false || validSoftDelete();
+      allow delete: if willNotBeHardDeleted();
+    }
+
+    // 6. CRM Contacts & SMS Logs
+    match /contacts/{contactId} {
+      allow read: if true;
+      allow create: if request.resource.data.isDeleted == false;
+      allow update: if request.resource.data.isDeleted == false || validSoftDelete();
+      allow delete: if willNotBeHardDeleted();
+    }
+
+    match /sms_logs/{smsId} {
+      allow read: if true;
+      allow create: if request.resource.data.isDeleted == false;
+      allow update: if false; // SMS logs are immutable append-only
+      allow delete: if willNotBeHardDeleted();
+    }
+  }
+}

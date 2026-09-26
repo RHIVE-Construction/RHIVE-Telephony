@@ -129,7 +129,7 @@
         <div class="space-y-1">
           <label class="text-[11px] font-mono uppercase font-bold text-slate-600 tracking-wider">Fast Executive Passkey</label>
           <div class="relative">
-            <input type="password" id="passkeyInput" placeholder="Enter rhive2026..." 
+            <input type="password" id="passkeyInput" placeholder="Enter executive passkey..." autocomplete="current-password"
                    class="w-full bg-slate-50 border-2 border-slate-200 rounded-[14px] px-3.5 py-2.5 text-sm font-mono text-slate-900 focus:outline-none focus:border-rhive-pink transition">
             <button type="submit" class="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-black hover:bg-slate-800 text-white text-xs font-mono font-bold rounded-[10px] transition">
               UNLOCK &rarr;
@@ -189,8 +189,10 @@
 
     function quickSelectUser(email) {
       selectedEmail = email;
-      document.getElementById('passkeyInput').value = 'rhive2026';
-      showStatus(`Selected: ${email}. Tap UNLOCK to enter as this executive.`, false);
+      const input = document.getElementById('passkeyInput');
+      input.value = '';
+      input.focus();
+      showStatus(`Selected: ${email}. Enter Executive Passkey to authenticate.`, false);
     }
 
     async function handlePasskeySubmit(e) {
@@ -257,8 +259,37 @@
       }
     }
 
+    async function initGoogleAuthConfig() {
+      try {
+        const res = await fetch('/api/auth/config');
+        if (!res.ok) return;
+        const config = await res.json();
+        if (config.clientId && !config.clientId.includes('dummy')) {
+          const el = document.getElementById('g_id_onload');
+          if (el) el.setAttribute('data-client_id', config.clientId);
+          if (window.google && google.accounts && google.accounts.id) {
+            google.accounts.id.initialize({
+              client_id: config.clientId,
+              callback: handleGoogleCredentialResponse,
+              auto_prompt: false
+            });
+            const btnContainer = document.querySelector('.g_id_signin');
+            if (btnContainer) {
+              google.accounts.id.renderButton(
+                btnContainer,
+                { type: 'standard', shape: 'rectangular', theme: 'outline', text: 'signin_with', size: 'large', width: 320 }
+              );
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[Google Auth Config Notice]', e.message);
+      }
+    }
+
     // Auto-redirect if already authenticated
     window.addEventListener('DOMContentLoaded', () => {
+      initGoogleAuthConfig();
       const existingToken = localStorage.getItem('rhive_auth_token');
       const existingUser = localStorage.getItem('rhive_user');
       if (existingToken && existingUser) {

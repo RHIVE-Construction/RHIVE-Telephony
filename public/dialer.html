@@ -1139,7 +1139,9 @@
       try {
         setDeviceStatus('REGISTERING', 'amber');
         const identity = currentUser?.email?.replace(/[^a-zA-Z0-9_-]/g, '_') || 'michael_web_softphone';
-        const res = await fetch(`/api/telephony/token?identity=${identity}`);
+        const authToken = localStorage.getItem('rhive_auth_token');
+        const authHeaders = authToken ? { 'Authorization': `Bearer ${authToken}` } : {};
+        const res = await fetch(`/api/telephony/token?identity=${identity}`, { headers: authHeaders });
         const data = await res.json();
 
         if (!data.success || !data.token) {
@@ -1168,7 +1170,9 @@
 
         twilioDevice.on('tokenWillExpire', async () => {
           console.log('[Twilio Device] Refreshing token before expiry...');
-          const refRes = await fetch(`/api/telephony/token?identity=${identity}`);
+          const refToken = localStorage.getItem('rhive_auth_token');
+          const refHeaders = refToken ? { 'Authorization': `Bearer ${refToken}` } : {};
+          const refRes = await fetch(`/api/telephony/token?identity=${identity}`, { headers: refHeaders });
           const refData = await refRes.json();
           if (refData.token) twilioDevice.updateToken(refData.token);
         });
