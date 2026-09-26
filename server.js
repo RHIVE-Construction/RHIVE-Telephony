@@ -7114,19 +7114,19 @@ app.post('/api/telephony/ai-optimize-sms', async (req, res) => {
 });
 
 
-// Mobile API: Unified SMS Messages (Combines Twilio + JustCall 10DLC)
+// Mobile API: Pure Twilio SMS Messages
 app.get('/api/mobile/sms', async (req, res) => {
   try {
-    const unified = [];
+    const twilioMessages = [];
 
-    // 1. Fetch Twilio SMS
+    // Fetch Twilio SMS
     try {
       const authHeader = 'Basic ' + Buffer.from(TWILIO_API_KEY_SID + ':' + TWILIO_API_SECRET).toString('base64');
-      const twRes = await axios.get(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json?PageSize=20`, {
+      const twRes = await axios.get(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json?PageSize=40`, {
         headers: { Authorization: authHeader }
       });
       (twRes.data.messages || []).forEach(m => {
-        unified.push({
+        twilioMessages.push({
           sid: m.sid,
           from: m.from,
           to: m.to,
@@ -7142,74 +7142,27 @@ app.get('/api/mobile/sms', async (req, res) => {
       console.warn('[Mobile API SMS] Twilio fetch note:', e.message);
     }
 
-    // 2. Fetch JustCall 10DLC SMS
-    if (JUSTCALL_API_KEY && JUSTCALL_API_SECRET) {
-      try {
-        const jcRes = await axios.get('https://api.justcall.io/v2.1/texts?count=20', {
-          headers: {
-            'Authorization': `${JUSTCALL_API_KEY}:${JUSTCALL_API_SECRET}`
-          }
-        });
-        const jcItems = jcRes.data?.data || [];
-        jcItems.forEach(m => {
-          const isOut = m.direction === 'Outgoing';
-          unified.push({
-            sid: 'jc_' + m.id,
-            from: isOut ? (m.justcall_number || '+14354176637') : m.contact_number,
-            to: isOut ? m.contact_number : (m.justcall_number || '+14354176637'),
-            body: m.sms_info?.body || '',
-            status: m.delivery_status || (isOut ? 'delivered' : 'received'),
-            error_code: null,
-            direction: isOut ? 'outbound-api' : 'inbound',
-            date_sent: m.sms_date ? `${m.sms_date}T${m.sms_time || '12:00:00'}Z` : new Date().toISOString(),
-            provider: 'JustCall 10DLC'
-          });
-        });
-      } catch (e) {
-        console.warn('[Mobile API SMS] JustCall fetch note:', e.message);
-      }
-    }
-
     // Sort chronologically newest first
-    unified.sort((a, b) => new Date(b.date_sent || 0) - new Date(a.date_sent || 0));
+    twilioMessages.sort((a, b) => new Date(b.date_sent || 0) - new Date(a.date_sent || 0));
 
-    res.json({ success: true, messages: unified });
+    res.json({ success: true, count: twilioMessages.length, messages: twilioMessages });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Mobile API: Send SMS (with automatic Verified JustCall 10DLC pipeline)
+// Mobile API: Send SMS (100% Pure Twilio Pipeline)
 app.post('/api/mobile/sms/send', async (req, res) => {
   try {
-    const { to, body, provider = 'auto', sender = '+14354176637' } = req.body;
+    const { to, body, from } = req.body;
     if (!to || !body) {
       return res.status(400).json({ success: false, error: 'Recipient "to" and "body" required.' });
     }
 
     const cleanTo = String(to).replace(/[^0-9+]/g, '');
+    const sender = from || '+18017833317'; // Default: Michael Work Cell
 
-    // If explicit JustCall or sender is JustCall line or provider is auto (Twilio 10DLC currently in re-submission)
-    const isJustCallSender = sender.includes('435') || sender.includes('449') || sender.includes('441');
-    const isTwilioSender = sender.includes('839') || sender.includes('783');
-
-    if ((provider === 'justcall' || isJustCallSender || (provider === 'auto' && !isTwilioSender)) && JUSTCALL_API_KEY) {
-      const fromLine = isJustCallSender ? sender : '+14354176637';
-      const jcRes = await axios.post('https://api.justcall.io/v2.1/texts/new', {
-        justcall_number: fromLine,
-        contact_number: cleanTo,
-        body: body
-      }, {
-        headers: {
-          'Authorization': `${JUSTCALL_API_KEY}:${JUSTCALL_API_SECRET}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      console.log(`[Mobile SMS] Successfully sent via JustCall 10DLC (${fromLine} -> ${cleanTo})`);
-      return res.json({ success: true, provider: 'JustCall 10DLC (Carrier Verified)', data: jcRes.data });
-    }
-
-    // Explicit Twilio line route
+    // Pure Twilio line route
     const authHeader = 'Basic ' + Buffer.from(TWILIO_API_KEY_SID + ':' + TWILIO_API_SECRET).toString('base64');
     const params = new URLSearchParams();
     params.append('To', cleanTo);
@@ -7222,6 +7175,7 @@ app.post('/api/mobile/sms/send', async (req, res) => {
         'Content-Type': 'application/x-www-form-urlencoded'
       }
     });
+    console.log(`[Mobile SMS] Sent via Twilio (${sender} -> ${cleanTo}, SID: ${twilioRes.data.sid})`);
     return res.json({ success: true, messageSid: twilioRes.data.sid, status: twilioRes.data.status, provider: 'Twilio' });
   } catch (err) {
     console.error('[Mobile SMS Send Error]:', err.response?.data || err.message);

@@ -12,6 +12,65 @@
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" type="image/png" href="/rhive-logo-white.png">
   <link rel="apple-touch-icon" href="/rhive-logo-white.png">
+  <script>
+    // RHIVE Telephony Version Gate - Eradicates Stale Browser/PWA Caches
+    const CURRENT_ENGINE_VER = 'v81';
+    if (localStorage.getItem('rhive_engine_ver') !== CURRENT_ENGINE_VER) {
+      if ('caches' in window) {
+        caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => {
+          localStorage.setItem('rhive_engine_ver', CURRENT_ENGINE_VER);
+          console.log('[Cache Eradication] Wiped legacy caches for ' + CURRENT_ENGINE_VER);
+        });
+      } else {
+        localStorage.setItem('rhive_engine_ver', CURRENT_ENGINE_VER);
+      }
+    }
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').then(reg => {
+          reg.update();
+          reg.onupdatefound = () => {
+            const installing = reg.installing;
+            installing.onstatechange = () => {
+              if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+                console.log('[PWA Update] Fresh v81 engine installed, auto-reloading...');
+                window.location.reload();
+              }
+            };
+          };
+        }).catch(console.error);
+
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!refreshing) {
+            refreshing = true;
+            window.location.reload();
+          }
+        });
+      });
+    }
+
+    function forcePurgeAndReload() {
+      if ('caches' in window) {
+        caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => {
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(regs => {
+              regs.forEach(r => r.unregister());
+              localStorage.clear();
+              window.location.reload(true);
+            });
+          } else {
+            localStorage.clear();
+            window.location.reload(true);
+          }
+        });
+      } else {
+        localStorage.clear();
+        window.location.reload(true);
+      }
+    }
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -124,6 +183,7 @@
           <div class="flex items-center space-x-1.5">
             <span class="text-xs font-black tracking-tight uppercase text-slate-900">RHIVE Telephony</span>
             <span class="text-[9px] font-mono px-1.5 py-0.2 bg-pink-100 text-rhive-pink font-bold rounded-full">PRO PLUS AI</span>
+            <button onclick="forcePurgeAndReload()" title="Force Refresh & Purge Stale Caches" class="text-[8px] font-mono px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black rounded-full border border-slate-300 transition">v81 ↻</button>
           </div>
           <p id="userEmailBadge" class="text-[10px] font-mono text-slate-400 truncate max-w-[170px]">michael@rhiveconstruction.com</p>
         </div>
@@ -451,13 +511,12 @@
           </div>
         </div>
 
-        <!-- Sender Line Selector Dropdown -->
+        <!-- Sender Line Selector Dropdown (Twilio Lines Only) -->
         <div class="flex items-center space-x-2 bg-slate-100 p-1 rounded-[12px] border border-slate-200 text-[10px] font-mono">
           <span class="text-slate-500 font-bold px-1">From:</span>
           <select id="smsSenderSelect" class="flex-1 bg-white border border-slate-200 rounded-[8px] px-2 py-1 text-slate-900 font-bold focus:outline-none focus:border-rhive-pink">
             <option value="+18017833317" selected>Michael Work Cell (+1 801-783-3317)</option>
             <option value="+18398676637">Honey AI Line (+1 839-867-6637)</option>
-            <option value="+14354176637">JustCall 10DLC Line (+1 435-417-6637)</option>
           </select>
         </div>
       </div>

@@ -1,8 +1,9 @@
 // RHIVE Telephony Service Worker (Enables Standalone Native PWA Installation on Android/Pixel 8 Pro)
-// Bump version to v80 to eradicate all stale dark-mode caches
-const CACHE_NAME = 'rhive-telephony-v80';
+// Bump version to v81 to eradicate all stale dark-mode caches and force fresh chamfered UI
+const CACHE_NAME = 'rhive-telephony-v81';
 const ASSETS_TO_CACHE = [
   '/mobile',
+  '/dialer',
   '/manifest.json',
   '/rhive-logo-white.png',
   '/rhive-logo-black.png'
