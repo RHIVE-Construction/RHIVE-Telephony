@@ -4649,6 +4649,8 @@ class CallSession {
     this.geminiSession = null;
     this.isGeminiReady = false;
     this.conversationTurns = [];
+    this.isOutboundHoney = customParams.isOutboundHoney === 'true';
+    this.whispers = [];
     this.sessionData = {
       selection: this.selection,
       selectionLabel: this.selectionLabel,
@@ -4801,6 +4803,16 @@ class CallSession {
 
     console.log('[CallSession ' + callSid + '] Connecting to Gemini Live (' + this.profile.voice + ' voice, Ambient: ' + this.ambientMode + ', Selection: Option ' + this.selection + ' - ' + this.selectionLabel + ')...');
 
+    // Automatic Binding to Active Honey Outbound Tracker
+    if (activeHoneyOutboundCalls.has(callSid)) {
+      const hCall = activeHoneyOutboundCalls.get(callSid);
+      hCall.session = this;
+      hCall.streamSid = streamSid;
+      hCall.status = 'in-progress';
+      this.isOutboundHoney = true;
+      console.log(`[CallSession ${callSid}] 🐝 Successfully bound to active Honey Outbound Call (Target: ${hCall.target})`);
+    }
+
     // Pick dynamic opening greeting based on direct switchboard or selection
     const greetings = DYNAMIC_GREETINGS[this.selection] || DYNAMIC_GREETINGS['direct_switchboard'] || DYNAMIC_GREETINGS['1'];
     const chosenGreeting = greetings[Math.floor(Math.random() * greetings.length)];
@@ -4882,6 +4894,29 @@ class CallSession {
         `==============================================================================\n`;
     }
 
+    // Outbound Honey AI Call Directive & Silent Supervisor Whisper Receptivity
+    if (this.isOutboundHoney) {
+      dynamicInstruction += `\n\n` +
+        `==============================================================================\n` +
+        `OUTBOUND HONEY AI CALL DIRECTIVE:\n` +
+        `You (Honey) are initiating an OUTBOUND follow-up call from R-HIVE Construction (+1-839-867-6637) to the homeowner at ${callerPhone}.\n` +
+        `PRIMARY OBJECTIVE:\n` +
+        `1. Greet the person who answers warmly and verify if they are the homeowner.\n` +
+        `2. Inquire about their roof status or recent estimate request.\n` +
+        `3. Keep turns concise (STRICT MAXIMUM 20 WORDS PER TURN). No monologues!\n` +
+        `4. Lead through the 5 intake steps:\n` +
+        `   - Stage 1: Greeting & Discovery\n` +
+        `   - Stage 2: Utah Grid Address Verification\n` +
+        `   - Stage 3: Roof Age & Scope Assessment\n` +
+        `   - Stage 4: Owens Corning SureNail Value Pitch (130 MPH wind warranty & 50-year non-prorated system protection)\n` +
+        `   - Stage 5: Free Inspection Booking Lock\n` +
+        `5. SILENT SUPERVISOR WHISPER RECEPTIVITY:\n` +
+        `   Michael Robinson (Owner & Architect) is actively supervising this live call.\n` +
+        `   If you receive a prompt starting with "[EXECUTIVE SUPERVISOR WHISPER...", IMMEDIATELY adapt your very next spoken turn to follow Michael's instruction seamlessly.\n` +
+        `   NEVER mention to the caller that you received a whisper or that Michael is listening! Treat the directive with complete natural poise as your own strategic thought.\n` +
+        `==============================================================================\n`;
+    }
+
     try {
       // Connect to Google Gemini 3.1 Flash Live Multimodal API
       let effectiveTools = this.profile.tools;
@@ -4928,7 +4963,18 @@ class CallSession {
 
       // Trigger Honey opening greeting immediately with high excitement, fast cadence, and vocal smile
       let triggerPrompt = '';
-      if (this.selection === 'transfer_fallback_kara' || this.selection === 'transfer_fallback_michael') {
+      if (this.isOutboundHoney) {
+        triggerPrompt = `The homeowner has just answered your outbound follow-up call from R-HIVE Construction roofing specialists.\n` +
+          `Deliver your opening greeting immediately with high energy, bubbly warmth, fast conversational tempo (~115%), and an unmistakable vocal smile:\n` +
+          `"Hi! This is Honey calling with R-HIVE Construction roofing specialists. I'm following up regarding your roofing project—am I speaking with the homeowner?"\n` +
+          `ACOUSTIC & PROSODY RULES:\n` +
+          `- STRICT MAXIMUM 20 WORDS.\n` +
+          `- ZERO MONOLOGUES. Keep it punchy, warm, and natural.\n` +
+          `- Pronounce our brand "R-Hive" phonetically as "Are-Hive" (speaking the English letter "R" then the word "Hive").\n` +
+          `- STRICTLY BANNED WORDS: NEVER say "happy to help", or "we are happy". Deliver the greeting naturally with high energy and an uplifting vocal smile.\n` +
+          `- STRICTLY NO laughter, giggles, chuckles, or audible "haha" sounds.\n` +
+          `- Speak in a brisk, clean, continuous conversational flow.`;
+      } else if (this.selection === 'transfer_fallback_kara' || this.selection === 'transfer_fallback_michael') {
         const isKara = this.selection === 'transfer_fallback_kara';
         const knownName = this.sessionData.callerName || this.sessionData.customerName || '';
         const hasKnownName = knownName && knownName !== 'Customer' && knownName !== 'Caller' && knownName !== 'Unknown';
@@ -5073,6 +5119,36 @@ class CallSession {
             }
           }
         }
+
+        // Update activeHoneyOutboundCalls for live supervisor watcher HUD
+        if (this.isOutboundHoney || activeHoneyOutboundCalls.has(this.callSid)) {
+          const honeyRecord = activeHoneyOutboundCalls.get(this.callSid);
+          if (honeyRecord) {
+            const lastRecord = honeyRecord.transcripts[honeyRecord.transcripts.length - 1];
+            if (lastRecord && lastRecord.speaker === 'Customer') {
+              lastRecord.text += text;
+            } else {
+              honeyRecord.transcripts.push({
+                id: 'c_' + Date.now(),
+                speaker: 'Customer',
+                text: text,
+                timestamp: Date.now()
+              });
+            }
+
+            // Dynamic Stage Evaluation
+            const allTranscriptText = honeyRecord.transcripts.map(t => t.text).join(' ').toLowerCase();
+            if (/(schedule|tomorrow|appointment|book|morning|afternoon|10 am|1 pm|calendar|lock in)/i.test(allTranscriptText)) {
+              honeyRecord.stage = 'Stage 5/5: Free Inspection Booking Lock';
+            } else if (/(surenail|owens corning|warranty|duration|130 mph|50-year|non-prorated)/i.test(allTranscriptText)) {
+              honeyRecord.stage = 'Stage 4/5: Owens Corning SureNail Value Pitch';
+            } else if (/(years old|leak|leaking|hail|wind|crease|damage|curling|missing|age|asphalt|shingle)/i.test(allTranscriptText)) {
+              honeyRecord.stage = 'Stage 3/5: Roof Age & Scope Assessment';
+            } else if (/(street|avenue|ave|road|rd|south|east|north|west|sandy|draper|salt lake|address|\d{3,5})/i.test(allTranscriptText)) {
+              honeyRecord.stage = 'Stage 2/5: Utah Grid Address Verification';
+            }
+          }
+        }
       }
 
       if (msg.serverContent?.outputTranscription?.text) {
@@ -5082,6 +5158,24 @@ class CallSession {
           lastTurn.text += text;
         } else {
           this.conversationTurns.push({ role: 'assistant', text });
+        }
+
+        // Update activeHoneyOutboundCalls for live supervisor watcher HUD
+        if (this.isOutboundHoney || activeHoneyOutboundCalls.has(this.callSid)) {
+          const honeyRecord = activeHoneyOutboundCalls.get(this.callSid);
+          if (honeyRecord) {
+            const lastRecord = honeyRecord.transcripts[honeyRecord.transcripts.length - 1];
+            if (lastRecord && lastRecord.speaker === 'Honey') {
+              lastRecord.text += text;
+            } else {
+              honeyRecord.transcripts.push({
+                id: 'h_' + Date.now(),
+                speaker: 'Honey',
+                text: text,
+                timestamp: Date.now()
+              });
+            }
+          }
         }
 
         // Automatic Model Goodbye Detection: If Honey delivers farewell/goodbye speech, arm graceful hangup
@@ -6168,6 +6262,13 @@ class CallSession {
 
     // Cache completed session so /recording-callback can attach audio to phone folder
     if (this.callSid) {
+      if (activeHoneyOutboundCalls.has(this.callSid)) {
+        const hRecord = activeHoneyOutboundCalls.get(this.callSid);
+        if (hRecord) {
+          hRecord.status = 'completed';
+          hRecord.endedAt = Date.now();
+        }
+      }
       completedCallSessions.set(this.callSid, {
         callSid: this.callSid,
         callerPhone: this.callerPhone,
@@ -6803,6 +6904,7 @@ Respond naturally with full executive poise, smiling warmth, and Wasatch Front r
 const activeSessions = new Map();
 const activeCallerSessions = new Map();
 const activeWebVoiceSessions = new Map();
+const activeHoneyOutboundCalls = new Map();
 
 // ============================================================================
 // EXPRESS APP & HTTP ENDPOINTS
@@ -7235,6 +7337,22 @@ app.post('/api/mobile/call/status-callback', express.urlencoded({ extended: true
       duration,
       updatedAt: Date.now()
     });
+
+    // Synchronize activeHoneyOutboundCalls for Honey AI supervisor watcher
+    const honeyRecord = activeHoneyOutboundCalls.get(callSid);
+    if (honeyRecord) {
+      honeyRecord.status = callStatus;
+      if (['completed', 'canceled', 'busy', 'failed', 'no-answer'].includes(callStatus)) {
+        honeyRecord.endedAt = Date.now();
+        honeyRecord.duration = duration;
+        honeyRecord.transcripts.push({
+          id: 'sys_term_' + Date.now(),
+          speaker: 'System',
+          text: `Call ended on carrier (${callStatus}, duration: ${duration}s).`,
+          timestamp: Date.now()
+        });
+      }
+    }
   }
   res.type('text/xml').send('<Response/>');
 });
@@ -7309,6 +7427,281 @@ app.post('/api/mobile/call/hangup', async (req, res) => {
     res.json({ success: true, callSid, status: 'completed' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.response?.data?.message || err.message });
+  }
+});
+
+// ============================================================================
+// HONEY AI OUTBOUND CALLING & LIVE SUPERVISOR WHISPER COCKPIT
+// ============================================================================
+
+// 1. Initiate Outbound Call with Honey AI as the Caller
+app.post('/api/telephony/honey-call/outbound', async (req, res) => {
+  try {
+    const { to, callerName, scenario } = req.body;
+    if (!to) return res.status(400).json({ success: false, error: 'Target phone number "to" is required' });
+
+    let cleanTo = to.replace(/[^\d+]/g, '');
+    if (cleanTo.length === 10 && !cleanTo.startsWith('+')) cleanTo = '+1' + cleanTo;
+    else if (cleanTo.length === 11 && cleanTo.startsWith('1')) cleanTo = '+' + cleanTo;
+
+    const host = req.get('host') || 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
+    const authHeader = 'Basic ' + Buffer.from(TWILIO_API_KEY_SID + ':' + TWILIO_API_SECRET).toString('base64');
+
+    const params = new URLSearchParams();
+    params.append('To', cleanTo);
+    params.append('From', '+18398676637'); // Verified Honey AI Line
+    params.append('Url', `https://${host}/twiml/honey-outbound?target=${encodeURIComponent(cleanTo)}&name=${encodeURIComponent(callerName || 'Homeowner')}`);
+    params.append('StatusCallback', `https://${host}/api/mobile/call/status-callback`);
+    params.append('StatusCallbackMethod', 'POST');
+    params.append('Record', 'true');
+    params.append('RecordingChannels', 'dual');
+
+    const twilioRes = await axios.post(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls.json`, params.toString(), {
+      headers: { Authorization: authHeader, 'Content-Type': 'application/x-www-form-urlencoded' }
+    });
+
+    const callSid = twilioRes.data.sid;
+    const initialStatus = twilioRes.data.status;
+
+    activeHoneyOutboundCalls.set(callSid, {
+      callSid,
+      target: cleanTo,
+      callerName: callerName || 'Homeowner',
+      scenario: scenario || 'roof_intake',
+      status: initialStatus,
+      stage: 'Stage 1/5: Greeting & Discovery',
+      startedAt: Date.now(),
+      transcripts: [
+        {
+          id: 'sys_' + Date.now(),
+          speaker: 'System',
+          text: `Honey AI initiating outbound call to ${cleanTo} from +1 (839) 867-6637...`,
+          timestamp: Date.now()
+        }
+      ],
+      whispers: [],
+      session: null
+    });
+
+    // Also register in general activeCallStates
+    activeCallStates.set(callSid, {
+      status: initialStatus,
+      target: cleanTo,
+      from: '+18398676637',
+      callerId: '+18398676637',
+      updatedAt: Date.now()
+    });
+
+    console.log(`[Honey Outbound Initiated] CallSid=${callSid} to ${cleanTo} from Honey AI Line.`);
+    res.json({
+      success: true,
+      callSid,
+      target: cleanTo,
+      status: initialStatus,
+      honeyLine: '+18398676637'
+    });
+  } catch (err) {
+    console.error('[Honey Outbound Error]', err.response?.data?.message || err.message);
+    res.status(500).json({ success: false, error: err.response?.data?.message || err.message });
+  }
+});
+
+// 2. TwiML Connecting Customer Directly to Honey Media Stream
+app.all(['/twiml/honey-outbound', '/twiml-honey-outbound'], express.urlencoded({ extended: true }), (req, res) => {
+  const callSid = req.body.CallSid || req.query.CallSid || '';
+  const target = req.query.target || req.body.To || req.body.to || '';
+  const callerName = req.query.name || req.body.callerName || 'Homeowner';
+  const host = req.get('host') || 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
+
+  console.log(`[TwiML Honey Outbound] Connecting answered call ${callSid} to Honey Media Stream. Target: ${target}`);
+
+  res.type('text/xml');
+  res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Connect>
+    <Stream url="wss://${host}/media-stream">
+      <Parameter name="caller" value="${target}"/>
+      <Parameter name="callSid" value="${callSid}"/>
+      <Parameter name="isOutboundHoney" value="true"/>
+      <Parameter name="callerName" value="${callerName}"/>
+      <Parameter name="agentType" value="intake"/>
+      <Parameter name="selection" value="outbound_honey"/>
+      <Parameter name="selectionLabel" value="Outbound Honey AI Homeowner Call"/>
+    </Stream>
+  </Connect>
+</Response>`);
+});
+
+// 3. Live Call State & Dual-Channel Transcript Polling for Supervisor Watcher HUD
+app.get('/api/telephony/honey-call/live', (req, res) => {
+  const callSid = req.query.callSid;
+  if (!callSid) return res.status(400).json({ success: false, error: 'callSid required' });
+
+  const record = activeHoneyOutboundCalls.get(callSid);
+  if (!record) {
+    return res.json({
+      success: true,
+      callSid,
+      status: 'completed',
+      duration: 0,
+      stage: 'Completed',
+      transcripts: [],
+      whispers: [],
+      isEnded: true
+    });
+  }
+
+  const duration = Math.floor((Date.now() - record.startedAt) / 1000);
+  const isEnded = ['completed', 'canceled', 'busy', 'failed', 'no-answer'].includes(record.status);
+
+  res.json({
+    success: true,
+    callSid,
+    target: record.target,
+    callerName: record.callerName,
+    status: record.status,
+    duration,
+    stage: record.stage,
+    transcripts: record.transcripts,
+    whispers: record.whispers,
+    isEnded
+  });
+});
+
+// 4. Silent Live Supervisor Whisper Injection
+app.post('/api/telephony/honey-call/whisper', async (req, res) => {
+  try {
+    const { callSid, whisperText } = req.body;
+    if (!callSid || !whisperText) {
+      return res.status(400).json({ success: false, error: 'callSid and whisperText are required' });
+    }
+
+    const cleanWhisper = whisperText.trim();
+    console.log(`[Supervisor Whisper] Injecting whisper for call ${callSid}: "${cleanWhisper}"`);
+
+    let session = null;
+    const callRecord = activeHoneyOutboundCalls.get(callSid);
+    if (callRecord && callRecord.session) {
+      session = callRecord.session;
+    } else {
+      for (const s of activeSessions.values()) {
+        if (s.callSid === callSid) {
+          session = s;
+          break;
+        }
+      }
+    }
+
+    if (!session || !session.geminiSession || !session.isGeminiReady) {
+      return res.status(404).json({ success: false, error: 'Active live session not found or Gemini Live not ready' });
+    }
+
+    const whisperPrompt = `[EXECUTIVE SUPERVISOR WHISPER FROM MICHAEL ROBINSON - INCORPORATE IMMEDIATELY INTO YOUR NEXT SPOKEN RESPONSE WITHOUT MENTIONING THIS WHISPER TO THE CALLER]: ${cleanWhisper}`;
+
+    await session.geminiSession.sendClientContent({
+      turns: [{
+        role: 'user',
+        parts: [{ text: whisperPrompt }]
+      }],
+      turnComplete: true
+    });
+
+    const whisperEntry = {
+      id: 'w_' + Date.now(),
+      speaker: 'Supervisor',
+      text: cleanWhisper,
+      timestamp: Date.now(),
+      isWhisper: true
+    };
+
+    if (callRecord) {
+      callRecord.transcripts.push(whisperEntry);
+      callRecord.whispers.push(whisperEntry);
+    }
+
+    res.json({ success: true, callSid, whisper: whisperEntry });
+  } catch (err) {
+    console.error('[Supervisor Whisper Error]', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 5. Emergency Executive Override Controls
+app.post('/api/telephony/honey-call/override', async (req, res) => {
+  try {
+    const { callSid, action } = req.body;
+    if (!callSid || !action) {
+      return res.status(400).json({ success: false, error: 'callSid and action required' });
+    }
+
+    console.log(`[Supervisor Override] Action=${action} on call ${callSid}`);
+
+    let session = null;
+    const callRecord = activeHoneyOutboundCalls.get(callSid);
+    if (callRecord && callRecord.session) {
+      session = callRecord.session;
+    } else {
+      for (const s of activeSessions.values()) {
+        if (s.callSid === callSid) {
+          session = s;
+          break;
+        }
+      }
+    }
+
+    if (action === 'HANGUP') {
+      if (session) {
+        session.armGracefulHangup('supervisor_override_hangup');
+      }
+      const authHeader = 'Basic ' + Buffer.from(TWILIO_API_KEY_SID + ':' + TWILIO_API_SECRET).toString('base64');
+      const params = new URLSearchParams();
+      params.append('Status', 'completed');
+      try {
+        await axios.post(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls/${callSid}.json`, params.toString(), {
+          headers: { Authorization: authHeader, 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+      } catch (e) {
+        console.warn('[Override Hangup Twilio Note]', e.message);
+      }
+      if (callRecord) callRecord.status = 'completed';
+      return res.json({ success: true, callSid, action, status: 'completed' });
+    }
+
+    let directiveText = '';
+    if (action === 'FORCE_BOOK') {
+      directiveText = `Michael Robinson says to lock in the certified inspection appointment immediately. Say: "Let's get our lead roofing specialist out to your property for a free certified high-res CAD scan. We have an opening tomorrow between 10 AM and 1 PM—shall I lock that in for you?"`;
+    } else if (action === 'SURENAIL_PITCH') {
+      directiveText = `Michael Robinson says to emphasize the Owens Corning SureNail advantage. Say: "We install Owens Corning Duration with SureNail grip to withstand 130 mile per hour Wasatch winds, backed by a 50-year non-prorated system warranty."`;
+    } else if (action === 'DISCOUNT_500') {
+      directiveText = `Michael Robinson says to offer our seasonal discount. Say: "Michael just authorized our five hundred dollar seasonal roofing incentive if we lock in your inspection window on this call today."`;
+    } else if (action === 'TAKE_OVER') {
+      directiveText = `Michael Robinson is stepping onto the line. Say: "Please hold one moment while I connect Michael Robinson, our principal project specialist, directly to you." Then wait silently.`;
+    }
+
+    if (session && session.geminiSession && session.isGeminiReady && directiveText) {
+      const whisperPrompt = `[EXECUTIVE SUPERVISOR WHISPER FROM MICHAEL ROBINSON - INCORPORATE IMMEDIATELY INTO YOUR NEXT SPOKEN RESPONSE WITHOUT MENTIONING THIS WHISPER TO THE CALLER]: ${directiveText}`;
+      await session.geminiSession.sendClientContent({
+        turns: [{ role: 'user', parts: [{ text: whisperPrompt }] }],
+        turnComplete: true
+      });
+
+      const entry = {
+        id: 'ov_' + Date.now(),
+        speaker: 'Supervisor',
+        text: `[OVERRIDE: ${action}] ${directiveText}`,
+        timestamp: Date.now(),
+        isWhisper: true
+      };
+      if (callRecord) {
+        callRecord.transcripts.push(entry);
+        callRecord.whispers.push(entry);
+      }
+    }
+
+    res.json({ success: true, callSid, action });
+  } catch (err) {
+    console.error('[Supervisor Override Error]', err.message);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -9326,7 +9719,8 @@ wssHoney.on('connection', (twilioWs, req) => {
           targetEntity: customParams.targetEntity,
           departmentLabel: customParams.departmentLabel,
           senderTitle: customParams.senderTitle,
-          askedForPerson: customParams.askedForPerson
+          askedForPerson: customParams.askedForPerson,
+          isOutboundHoney: customParams.isOutboundHoney
         });
         activeSessions.set(streamSid, currentSession);
 
