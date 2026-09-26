@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>RHIVE Telephony | Sovereign Mobile Node</title>
+  <meta name="theme-color" content="#ffffff">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="RHIVE Phone">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/png" href="/rhive-logo-white.png">
+  <link rel="apple-touch-icon" href="/rhive-logo-white.png">
+  <script>
+    // RHIVE PWA Engine Version Gate - Forces Eradication of Old Dark-Mode Caches
+    const CURRENT_ENGINE_VER = 'v80';
+    if (localStorage.getItem('rhive_engine_ver') !== CURRENT_ENGINE_VER) {
+      if ('caches' in window) {
+        caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => {
+          localStorage.setItem('rhive_engine_ver', CURRENT_ENGINE_VER);
+          console.log('[Cache Eradication] Wiped legacy caches for version ' + CURRENT_ENGINE_VER);
+        });
+      } else {
+        localStorage.setItem('rhive_engine_ver', CURRENT_ENGINE_VER);
+      }
+    }
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').then(reg => {
+          reg.update();
+          reg.onupdatefound = () => {
+            const installing = reg.installing;
+            installing.onstatechange = () => {
+              if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+                console.log('[PWA Update] Fresh v80 engine ready, auto-reloading...');
+                window.location.reload();
+              }
+            };
+          };
+        }).catch(console.error);
+
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!refreshing) {
+            refreshing = true;
+            window.location.reload();
+          }
+        });
+      });
+    }
+
+    function forcePurgeAndReload() {
+      if (confirm('Eradicate all cached telephony data and reload fresh white interface?')) {
+        if ('caches' in window) {
+          caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => {
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.getRegistrations().then(regs => {
+                regs.forEach(r => r.unregister());
+              });
+            }
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.reload(true);
+          });
+        } else {
+          window.location.reload(true);
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'rhive-pink': '#ec028b',
+            'rhive-gold': '#e2ab49',
+            'rhive-blue': '#08137C',
+            'rhive-black': '#000000',
+            'rhive-dark': '#0A0E17',
+            'rhive-surface': '#FFFFFF',
+            'rhive-card': '#F8FAFC',
+            'rhive-border': '#E2E8F0'
+          },
+          fontFamily: {
+            sans: ['Rubik', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          boxShadow: {
+            'pink-glow': '0 0 20px rgba(236, 2, 139, 0.35)',
+            'pink-glow-sm': '0 0 10px rgba(236, 2, 139, 0.25)',
+            'gold-glow': '0 0 16px rgba(226, 171, 73, 0.30)',
+            'green-glow': '0 0 18px rgba(16, 185, 129, 0.35)',
+            'subtle-card': '0 2px 10px rgba(0, 0, 0, 0.06)'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --bg-main: #FFFFFF;
+      --rhive-pink: #ec028b;
+      --rhive-gold: #e2ab49;
+      --rhive-dark: #0A0E17;
+    }
+    body {
+      background-color: #FFFFFF;
+      color: #0F172A;
+      font-family: 'Rubik', sans-serif;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    /* 14px Chamfer Cut */
+    .clip-chamfer {
+      clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+    }
+    /* 20px Chamfer Cut */
+    .clip-chamfer-lg {
+      clip-path: polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px);
+    }
+    /* Tactile Obsidian Keypad Buttons (15% Black Ratio) */
+    .keypad-btn {
+      position: relative;
+      background: #0A0E17;
+      border: 1px solid #1E293B;
+      clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+      transition: all 0.12s ease-out;
+    }
+    .keypad-btn:active {
+      transform: scale(0.94);
+      background: #ec028b;
+      border-color: #ec028b;
+      box-shadow: 0 0 16px rgba(236, 2, 139, 0.5);
+    }
+    .keypad-btn:active span {
+      color: #FFFFFF !important;
+    }
+    /* Quantum Switch (ZERO CHECKBOXES) */
+    .quantum-switch {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      width: 48px;
+      height: 26px;
+      border-radius: 9999px;
+      background-color: #CBD5E1;
+      transition: background-color 0.25s ease, box-shadow 0.25s ease;
+      cursor: pointer;
+    }
+    .quantum-switch.active {
+      background-color: #ec028b;
+      box-shadow: 0 0 12px rgba(236, 2, 139, 0.5);
+    }
+    .quantum-switch-thumb {
+      position: absolute;
+      left: 2px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background-color: #FFFFFF;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .quantum-switch.active .quantum-switch-thumb {
+      transform: translateX(22px);
+    }
+    /* Hide scrollbars */
+    ::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between overflow-hidden bg-white text-slate-900">
+
+  <!-- TOP APP BAR (80% White, 15% Black, 5% Pink/Gold Accents) -->
+  <header class="pt-3 px-4 pb-2 border-b border-slate-200 bg-white/95 backdrop-blur-md flex flex-col gap-2 z-30 shadow-sm">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <!-- RHIVE Logo Badge (Obsidian Chamfer + Pink 'R') -->
+        <div class="w-8 h-8 clip-chamfer bg-black flex items-center justify-center border border-slate-800 shadow-sm">
+          <span class="text-xs font-black tracking-wider text-rhive-pink">R</span>
+        </div>
+        <div>
+          <h1 class="text-sm font-extrabold tracking-wider uppercase text-black flex items-center gap-1.5">
+            RHIVE Telephony
+            <span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-mono font-bold border border-emerald-300">ONLINE</span>
+          </h1>
+          <p class="text-[10px] text-slate-500 font-mono">Pixel 8 Pro · Executive Telephony Node</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="refreshBtn" onclick="refreshData()" class="p-1.5 clip-chamfer bg-slate-100 border border-slate-300 hover:border-rhive-pink text-slate-700 hover:text-black transition shadow-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Dual Number Selector / Outbound Line Toggle -->
+    <div class="flex items-center justify-between p-1 bg-slate-100 clip-chamfer border border-slate-300">
+      <button id="btnLineAgent" onclick="selectOutboundLine('agent')" class="flex-1 py-1.5 px-2 text-center text-xs font-bold transition clip-chamfer bg-black text-white shadow-sm flex flex-col items-center justify-center">
+        <div class="flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-rhive-pink animate-pulse"></span>
+          <span>🤖 Honey AI Line</span>
+        </div>
+        <span class="text-[10px] font-mono text-pink-400 font-normal">+1 (839) 867-6637</span>
+      </button>
+
+      <button id="btnLineDirect" onclick="selectOutboundLine('direct')" class="flex-1 py-1.5 px-2 text-center text-xs font-bold transition clip-chamfer text-slate-700 hover:text-black flex flex-col items-center justify-center">
+        <div class="flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+          <span>📞 Direct Open Line</span>
+        </div>
+        <span class="text-[10px] font-mono text-amber-600 font-normal">+1 (801) 783-3317</span>
+      </button>
+    </div>
+
+    <!-- Active Line Status Badge -->
+    <div class="flex items-center justify-between px-3 py-1 clip-chamfer bg-slate-50 border border-slate-200 text-xs">
+      <div class="flex items-center gap-1.5 overflow-hidden">
+        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">CALLER ID:</span>
+        <span id="activeCnamBadge" class="font-mono text-[11px] font-bold text-black tracking-wide truncate">RHIVE ROOFING (+1 839-867-6637)</span>
+      </div>
+      <span id="activeLineTypeTag" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-pink-50 text-rhive-pink font-bold border border-pink-200">AI CONCIERGE</span>
+    </div>
+  </header>
+
+  <!-- MAIN VIEWPORT CONTAINER (80% White Background) -->
+  <main id="mainContainer" class="flex-1 overflow-y-auto relative p-4 flex flex-col justify-start bg-white">
+
+    <!-- ========================================== -->
+    <!-- TAB 1: DIALER / KEYPAD (MATHEMATICALLY STRAIGHT) -->
+    <!-- ========================================== -->
+    <div id="tab-dialer" class="tab-view flex flex-col justify-between h-full max-w-sm mx-auto w-full">
+      <!-- Dial Display -->
+      <div class="flex flex-col items-center justify-center my-2 min-h-[72px] w-full">
+        <div id="dialDisplay" class="text-3xl font-mono font-bold tracking-widest text-black h-10 flex items-center justify-center select-text"></div>
+        <div id="contactLookup" class="text-xs text-slate-500 mt-1 h-4 font-sans tracking-wide">Enter phone number to dial</div>
+      </div>
+
+      <!-- 3-Column Unified Keypad Grid (Rows 1-5 Aligned 100% Straight) -->
+      <div class="grid grid-cols-3 gap-3 my-1 w-full max-w-[310px] mx-auto">
+        <!-- ROW 1 -->
+        <button class="keypad-btn h-[72px] flex flex-col items-center justify-center shadow-sm" onclick="pressKey('1')">
+          <span class="h-8 flex items-center justify-center text-2xl font-bold font-mono text-white">1</span>
+          <span class="h-3.5 flex items-center justify-center text-[10px] font-semibold text-slate-400 font-mono tracking-widest">⏻</span>
+        </button>
+        <button class="keypad-btn h-[72px] flex flex-col items-center justify-center shadow-sm" onclick="pressKey('2')">
+          <span class="h-8 flex items-center justify-center text-2xl font-bold font-mono text-white">2</span>
+          <span class="h-3.5 flex items-center justify-center text-[10px] font-semibold text-slate-400 font-mono tracking-widest">ABC</span>
+        </button>
+        <button class="keypad-btn h-[72px] flex flex-col items-center justify-center shadow-sm" onclick="pressKey('3')">
+          <span class="h-8 flex items-center justify-center text-2xl font-bold font-mono text-white">3</span>
+          <span class="h-3.5 flex items-center justify-center text-[10px] font-semibold text-slate-400 font-mono tracking-widest">DEF</span>
+        </button>
+
+        <!-- ROW 2 -->
+        <button class="keypad-btn h-[72px] flex flex-col items-center justify-center shadow-sm" onclick="pressKey('4')">
+          <span class="h-8 flex items-center justify-center text-2xl font-bold font-mono text-white">4</span>
+          <span class="h-3.5 flex items-center justify-center text-[10px] font-semibold text-slate-400 font-mono tracking-widest">GHI</span>
+        </button>
+        <button class="keypad-btn h-[72px] flex flex-col items-center justify-center shadow-sm" onclick="pressKey('5')">
+          <span class="h-8 flex items-center justify-center text-2xl font-bold font-mono text-white">5</span>
+          <span class="h-3.5 flex items-center justify-center text-[10px] font-semibold text-slate-400 font-mono tracking-widest">JKL</span>
+        </button>
+        <button class="keypad-btn h-[72px] flex flex-col items-center justify-center shadow-sm" onclick="pressKey('6')">
+          <span class="h-8 flex items-center justify-center text-2xl font-bold font-mono text-white">6</span>
+          <span class="h-3.5 flex items-center justify-center text-[10px] font-semibold text-slate-400 font-mono tracking-widest">MNO</span>
+        </button>
+
+        <!-- ROW 3 -->
+        <button class="keypad-btn h-[72px] flex flex-col items-center justify-center shadow-sm" onclick="pressKey('7')">
+          <span class="h-8 flex items-center justify-center text-2xl font-bold font-mono text-white">7</span>
+          <span class="h-3.5 flex items-center justify-center text-[10px] font-semibold text-slate-400 font-mono tracking-widest">PQRS</span>
+        </button>
+        <button class="keypad-btn h-[72px] flex flex-col items-center justify-center shadow-sm" onclick="pressKey('8')">
+          <span class="h-8 flex items-center justify-center text-2xl font-bold font-mono text-white">8</span>
+          <span class="h-3.5 flex items-center justify-center text-[10px] font-semibold text-slate-400 font-mono tracking-widest">TUV</span>
+        </button>
+        <button class="keypad-btn h-[72px] flex flex-col items-center justify-center shadow-sm" onclick="pressKey('9')">
+          <span class="h-8 flex items-center justify-center text-2xl font-bold font-mono text-white">9</span>
+          <span class="h-3.5 flex items-center justify-center text-[10px] font-semibold text-slate-400 font-mono tracking-widest">WXYZ</span>
+        </button>
+
+        <!-- ROW 4: Symbols (Fixed Height Parity) -->
+        <button class="keypad-btn h-[72px] flex flex-col items-center justify-center shadow-sm" onclick="pressKey('*')">
+          <span class="h-8 flex items-center justify-center text-2xl font-bold font-mono text-white">*</span>
+          <span class="h-3.5 flex items-center justify-center text-[10px] font-semibold text-transparent font-mono tracking-widest">.</span>
+        </button>
+        <button class="keypad-btn h-[72px] flex flex-col items-center justify-center shadow-sm" onclick="pressKey('0')">
+          <span class="h-8 flex items-center justify-center text-2xl font-bold font-mono text-white">0</span>
+          <span class="h-3.5 flex items-center justify-center text-[10px] font-semibold text-slate-400 font-mono tracking-widest">+</span>
+        </button>
+        <button class="keypad-btn h-[72px] flex flex-col items-center justify-center shadow-sm" onclick="pressKey('#')">
+          <span class="h-8 flex items-center justify-center text-2xl font-bold font-mono text-white">#</span>
+          <span class="h-3.5 flex items-center justify-center text-[10px] font-semibold text-transparent font-mono tracking-widest">.</span>
+        </button>
+
+        <!-- ROW 5: Action Row (Col 1: Cellular Direct, Col 2: CALL TRIGGER, Col 3: Backspace) -->
+        <div class="h-[72px] flex items-center justify-center">
+          <button onclick="directCellularCall()" class="w-14 h-14 clip-chamfer bg-slate-100 border border-slate-300 hover:border-black text-slate-700 flex flex-col items-center justify-center transition active:scale-95 shadow-sm" title="Dial via Native Phone Carrier">
+            <svg class="w-5 h-5 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+            <span class="text-[8px] font-bold uppercase mt-0.5 text-slate-600 font-mono">CELL</span>
+          </button>
+        </div>
+
+        <div class="h-[72px] flex items-center justify-center">
+          <button onclick="initiateCall()" class="w-16 h-16 clip-chamfer bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 active:scale-95 text-white flex items-center justify-center shadow-green-glow transition">
+            <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 00-1.01.24l-2.2 2.2a15.053 15.053 0 01-6.59-6.59l2.2-2.21a.96.96 0 00.25-1.01A11.36 11.36 0 018.57 3.9c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.52c0-.55-.45-1-.99-1z"/></svg>
+          </button>
+        </div>
+
+        <div class="h-[72px] flex items-center justify-center">
+          <button onclick="backspaceKey()" class="w-14 h-14 clip-chamfer bg-slate-100 border border-slate-300 hover:border-black text-slate-700 flex items-center justify-center transition active:scale-90 shadow-sm" title="Delete">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 2: MESSAGING / SMS (CLEAN WHITE CARDS) -->
+    <!-- ========================================== -->
+    <div id="tab-messages" class="tab-view hidden flex flex-col h-full max-w-md mx-auto w-full">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+        <div>
+          <h2 class="text-sm font-bold text-black uppercase tracking-wider">SMS Conversations</h2>
+          <p class="text-[10px] text-slate-500 font-mono">10DLC Carrier Verified SMS Gateway</p>
+        </div>
+        <button onclick="openNewSmsModal()" class="px-3 py-1.5 clip-chamfer bg-rhive-pink hover:bg-pink-600 text-white text-xs font-bold shadow-pink-glow-sm transition flex items-center gap-1">
+          <span>+ New SMS</span>
+        </button>
+      </div>
+
+      <div id="messagesList" class="flex-1 overflow-y-auto space-y-2.5 py-3">
+        <!-- Messages Populated Dynamically -->
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 3: CALL HISTORY / RECENTS -->
+    <!-- ========================================== -->
+    <div id="tab-recents" class="tab-view hidden flex flex-col h-full max-w-md mx-auto w-full">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+        <div>
+          <h2 class="text-sm font-bold text-black uppercase tracking-wider">Recent Activity</h2>
+          <p class="text-[10px] text-slate-500 font-mono">Twilio & Cloud Run Live Forensic Logs</p>
+        </div>
+        <span class="text-[10px] text-slate-700 font-mono px-2 py-0.5 clip-chamfer bg-slate-100 border border-slate-200" id="recentsCount">Syncing...</span>
+      </div>
+      <div id="recentsList" class="flex-1 overflow-y-auto space-y-2.5 py-3">
+        <!-- Recents List Populated Dynamically -->
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 4: SYSTEM SETTINGS & TELEPHONY AUDIT -->
+    <!-- ========================================== -->
+    <div id="tab-settings" class="tab-view hidden flex flex-col h-full max-w-md mx-auto w-full space-y-3.5">
+      <h2 class="text-sm font-bold text-black uppercase tracking-wider pb-2 border-b border-slate-200">Sovereign Node Controls</h2>
+      
+      <!-- Bridge Device Phone Configuration -->
+      <div class="p-3.5 clip-chamfer bg-slate-50 border border-slate-200 shadow-sm flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-black uppercase tracking-wider">Bridge Handset Device</span>
+          <span class="text-[10px] px-2 py-0.5 clip-chamfer bg-pink-100 text-rhive-pink font-mono font-bold">PIXEL 8 PRO</span>
+        </div>
+        <div class="flex items-center gap-2 mt-1">
+          <input id="cfgBridgePhone" type="tel" value="+18014491451" class="flex-1 px-3 py-1.5 clip-chamfer bg-white border border-slate-300 font-mono text-xs text-black focus:outline-none focus:border-rhive-pink" placeholder="+1 (801) 449-1451">
+          <button onclick="saveBridgePhone()" class="px-3 py-1.5 clip-chamfer bg-black text-white text-xs font-bold hover:bg-slate-800">SAVE</button>
+        </div>
+        <p class="text-[10px] text-slate-500">When initiating a Sovereign Bridge Call, Twilio dials this handset first, then bridges to the client.</p>
+      </div>
+
+      <!-- 10DLC Brand Card -->
+      <div class="p-3.5 clip-chamfer bg-slate-50 border border-slate-200 shadow-sm flex flex-col gap-1.5">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-black uppercase tracking-wider">A2P 10DLC Brand</span>
+          <span class="text-[10px] px-2 py-0.5 clip-chamfer bg-emerald-100 text-emerald-800 font-mono font-bold border border-emerald-300">APPROVED</span>
+        </div>
+        <p class="text-[11px] text-slate-600 font-mono">TCR Brand SID: BN628914fd080cadd8f61036d804b9c030 · TCR ID: BOUMBK4</p>
+      </div>
+
+      <!-- Outbound CNAM Card -->
+      <div class="p-3.5 clip-chamfer bg-slate-50 border border-slate-200 shadow-sm flex flex-col gap-1.5">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-black uppercase tracking-wider">Outbound CNAM Status</span>
+          <span class="text-[10px] px-2 py-0.5 clip-chamfer bg-emerald-100 text-emerald-800 font-mono font-bold border border-emerald-300">TWILIO APPROVED</span>
+        </div>
+        <div class="text-[11px] text-slate-700 flex items-center justify-between">
+          <span>Registered Display Name:</span>
+          <span class="font-bold font-mono text-black text-xs">"RHIVE ROOFING"</span>
+        </div>
+        <p class="text-[10px] text-slate-500 font-mono">Assigned to: +1 (839) 867-6637 & +1 (801) 783-3317 (LIDB carrier dip replication: 24-72h)</p>
+      </div>
+
+      <!-- PWA Engine Sync & Cache Eradicator -->
+      <div class="p-3.5 clip-chamfer bg-slate-50 border border-slate-200 shadow-sm flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-black uppercase tracking-wider">PWA Cache & Engine Sync</span>
+          <span class="text-[10px] px-2 py-0.5 clip-chamfer bg-slate-200 text-slate-800 font-mono font-bold">v80 LIVE</span>
+        </div>
+        <p class="text-[10px] text-slate-500">Purges all local service worker caches and forces the fresh 80% white theme onto your Pixel 8 Pro.</p>
+        <button onclick="forcePurgeAndReload()" class="w-full py-2.5 clip-chamfer bg-black hover:bg-slate-900 active:scale-95 text-white font-mono font-bold text-xs flex items-center justify-center gap-2 transition">
+          <svg class="w-4 h-4 text-rhive-pink" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          <span>FORCE UPDATE & PURGE CACHE</span>
+        </button>
+      </div>
+
+      <!-- Quantum Switches (ZERO CHECKBOXES) -->
+      <div class="p-3.5 clip-chamfer bg-slate-50 border border-slate-200 flex flex-col gap-3">
+        <span class="text-xs font-bold text-black uppercase tracking-wider">Telephony Features</span>
+        
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-xs font-bold text-black">Dual-Channel Recording</div>
+            <div class="text-[10px] text-slate-500">Forensic stereo audio archiving to Google Drive</div>
+          </div>
+          <div class="quantum-switch active" onclick="toggleSwitch(this)">
+            <div class="quantum-switch-thumb"></div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between border-t border-slate-200 pt-2.5">
+          <div>
+            <div class="text-xs font-bold text-black">Honey AI Voice Assistant</div>
+            <div class="text-[10px] text-slate-500">Sub-280ms Gemini Live on 839-867-6637</div>
+          </div>
+          <div class="quantum-switch active" onclick="toggleSwitch(this)">
+            <div class="quantum-switch-thumb"></div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between border-t border-slate-200 pt-2.5">
+          <div>
+            <div class="text-xs font-bold text-black">Automated JustCall SMS Fallback</div>
+            <div class="text-[10px] text-slate-500">Auto-routes via verified 10DLC if carrier blocked</div>
+          </div>
+          <div class="quantum-switch active" onclick="toggleSwitch(this)">
+            <div class="quantum-switch-thumb"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ACTIVE IN-CALL MODAL (With Clean Hangup Trigger) -->
+  <div id="activeCallModal" class="hidden fixed inset-0 bg-white/95 backdrop-blur-xl z-50 flex flex-col justify-between p-6">
+    <div class="flex flex-col items-center mt-10">
+      <div class="w-20 h-20 clip-chamfer-lg bg-black flex items-center justify-center border-2 border-rhive-pink shadow-pink-glow mb-4">
+        <svg class="w-10 h-10 text-rhive-pink" fill="currentColor" viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 00-1.01.24l-2.2 2.2a15.053 15.053 0 01-6.59-6.59l2.2-2.21a.96.96 0 00.25-1.01A11.36 11.36 0 018.57 3.9c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.52c0-.55-.45-1-.99-1z"/></svg>
+      </div>
+      <h3 id="activeCallName" class="text-2xl font-bold font-mono text-black">Connecting...</h3>
+      <p id="activeCallNumber" class="text-xs font-mono text-slate-600 mt-1">Caller ID: RHIVE ROOFING (+1 839-867-6637)</p>
+      
+      <div id="callStatusBadge" class="mt-3 px-3 py-1 clip-chamfer bg-slate-100 border border-slate-300 text-xs font-mono text-slate-700 flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+        <span id="callStatusText">Ringing your phone first...</span>
+      </div>
+
+      <div class="flex items-center gap-2 mt-3 px-4 py-1.5 clip-chamfer bg-emerald-50 border border-emerald-300 text-emerald-800 text-sm font-mono font-bold">
+        <span id="callTimer">00:00</span>
+      </div>
+    </div>
+
+    <!-- In-Call Status & Controls -->
+    <div class="flex flex-col items-center gap-4 max-w-xs mx-auto w-full my-6">
+      <p class="text-[11px] text-center text-slate-500">Pick up when your phone rings. Twilio will announce connection and bridge to the client with chosen Caller ID.</p>
+      
+      <!-- HANGUP BUTTON -->
+      <button onclick="endCall()" class="w-full py-4 clip-chamfer bg-rose-600 hover:bg-rose-500 active:scale-95 text-white font-bold text-sm font-mono flex items-center justify-center gap-2 shadow-lg transition">
+        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08a.996.996 0 0 1 0-1.41C3.42 8.48 7.45 6.7 12 6.7s8.58 1.78 11.71 4.97c.39.39.39 1.02 0 1.41l-2.48 2.48c-.18.18-.43.29-.71.29s-.52-.1-.7-.28c-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/></svg>
+        <span>END & TERMINATE CALL</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- NEW SMS COMPOSE MODAL -->
+  <div id="newSmsModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white clip-chamfer border border-slate-300 p-5 shadow-2xl flex flex-col gap-3.5">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-2.5">
+        <h3 class="text-sm font-bold text-black uppercase tracking-wider">New Encrypted SMS</h3>
+        <button onclick="closeNewSmsModal()" class="text-slate-400 hover:text-black">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Outbound SMS Sender Route -->
+      <div class="flex flex-col gap-1">
+        <label class="text-[11px] font-bold text-slate-700">SEND FROM (OUTBOUND LINE):</label>
+        <select id="smsSenderSelect" class="w-full px-3 py-2 clip-chamfer bg-slate-50 border border-slate-300 text-xs font-mono font-bold text-black focus:outline-none focus:border-rhive-pink">
+          <option value="+14354176637" selected>+1 (435) 417-6637 (Main Office · Verified 10DLC)</option>
+          <option value="+18014491451">+1 (801) 449-1451 (Michael Direct · Verified 10DLC)</option>
+          <option value="+18398676637">+1 (839) 867-6637 (Honey AI Line · Twilio A2P Pending)</option>
+          <option value="+18017833317">+1 (801) 783-3317 (Open Voice Line · Twilio A2P Pending)</option>
+        </select>
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="text-[11px] font-bold text-slate-700">RECIPIENT CELL PHONE:</label>
+        <input id="smsRecipient" type="tel" placeholder="+1 (801) 928-4434" class="w-full px-3 py-2 clip-chamfer bg-slate-50 border border-slate-300 text-xs font-mono text-black focus:outline-none focus:border-rhive-pink">
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="text-[11px] font-bold text-slate-700">MESSAGE BODY:</label>
+        <textarea id="smsBody" rows="3" placeholder="Enter message copy..." class="w-full px-3 py-2 clip-chamfer bg-slate-50 border border-slate-300 text-xs font-sans text-black focus:outline-none focus:border-rhive-pink resize-none"></textarea>
+      </div>
+
+      <!-- Quick Template Buttons -->
+      <div class="flex flex-wrap gap-1.5">
+        <button onclick="fillSmsTemplate('On my way to your roof inspection now! See you shortly.')" class="text-[10px] px-2 py-1 clip-chamfer bg-slate-100 border border-slate-300 text-slate-700 hover:text-black hover:border-black">Inspection En Route</button>
+        <button onclick="fillSmsTemplate('Your certified roofing quote has been updated! Please review the options at your convenience.')" class="text-[10px] px-2 py-1 clip-chamfer bg-slate-100 border border-slate-300 text-slate-700 hover:text-black hover:border-black">Quote Ready</button>
+        <button onclick="fillSmsTemplate('Thanks for contacting RHIVE Construction! How can we assist with your roof today?')" class="text-[10px] px-2 py-1 clip-chamfer bg-slate-100 border border-slate-300 text-slate-700 hover:text-black hover:border-black">Warm Greeting</button>
+      </div>
+
+      <div class="flex items-center gap-2 pt-2 border-t border-slate-200">
+        <button onclick="closeNewSmsModal()" class="flex-1 py-2.5 clip-chamfer bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition">Cancel</button>
+        <button id="sendSmsSubmitBtn" onclick="submitSms()" class="flex-1 py-2.5 clip-chamfer bg-rhive-pink hover:bg-pink-600 text-white text-xs font-bold shadow-pink-glow-sm transition">SEND SMS</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAVIGATION DOCK (80% White, Black / Pink Controls) -->
+  <nav class="border-t border-slate-200 bg-white/95 backdrop-blur-md px-6 py-2 flex items-center justify-around z-30 shadow-sm">
+    <button onclick="switchTab('dialer')" id="nav-dialer" class="nav-btn flex flex-col items-center gap-1 text-rhive-pink transition">
+      <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+      <span class="text-[10px] font-bold tracking-wider uppercase font-mono">KEYPAD</span>
+    </button>
+
+    <button onclick="switchTab('messages')" id="nav-messages" class="nav-btn flex flex-col items-center gap-1 text-slate-500 hover:text-black transition">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+      <span class="text-[10px] font-bold tracking-wider uppercase font-mono">MESSAGES</span>
+    </button>
+
+    <button onclick="switchTab('recents')" id="nav-recents" class="nav-btn flex flex-col items-center gap-1 text-slate-500 hover:text-black transition">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <span class="text-[10px] font-bold tracking-wider uppercase font-mono">RECENTS</span>
+    </button>
+
+    <button onclick="switchTab('settings')" id="nav-settings" class="nav-btn flex flex-col items-center gap-1 text-slate-500 hover:text-black transition">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      <span class="text-[10px] font-bold tracking-wider uppercase font-mono">SETTINGS</span>
+    </button>
+  </nav>
+
+  <!-- JAVASCRIPT STATE ENGINE -->
+  <script>
+    let dialedNumber = '';
+    let callTimerInterval = null;
+    let callSeconds = 0;
+    let activeCallSid = null;
+    let activeOutboundLine = 'agent'; // 'agent' or 'direct'
+    let activeCallerId = '+18398676637';
+    let bridgeDevicePhone = localStorage.getItem('rhive_bridge_phone') || '+18014491451';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('cfgBridgePhone').value = bridgeDevicePhone;
+      updateCallerIdDisplay();
+    });
+
+    function selectOutboundLine(lineType) {
+      activeOutboundLine = lineType;
+      const btnAgent = document.getElementById('btnLineAgent');
+      const btnDirect = document.getElementById('btnLineDirect');
+
+      if (lineType === 'agent') {
+        activeCallerId = '+18398676637';
+        btnAgent.className = 'flex-1 py-1.5 px-2 text-center text-xs font-bold transition clip-chamfer bg-black text-white shadow-sm flex flex-col items-center justify-center';
+        btnDirect.className = 'flex-1 py-1.5 px-2 text-center text-xs font-bold transition clip-chamfer text-slate-700 hover:text-black flex flex-col items-center justify-center';
+        document.getElementById('activeLineTypeTag').textContent = 'AI CONCIERGE';
+        document.getElementById('activeLineTypeTag').className = 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-pink-50 text-rhive-pink font-bold border border-pink-200';
+      } else {
+        activeCallerId = '+18017833317';
+        btnDirect.className = 'flex-1 py-1.5 px-2 text-center text-xs font-bold transition clip-chamfer bg-black text-white shadow-sm flex flex-col items-center justify-center';
+        btnAgent.className = 'flex-1 py-1.5 px-2 text-center text-xs font-bold transition clip-chamfer text-slate-700 hover:text-black flex flex-col items-center justify-center';
+        document.getElementById('activeLineTypeTag').textContent = 'OPEN VOICE LINE';
+        document.getElementById('activeLineTypeTag').className = 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-bold border border-amber-200';
+      }
+      updateCallerIdDisplay();
+    }
+
+    function updateCallerIdDisplay() {
+      const badge = document.getElementById('activeCnamBadge');
+      if (activeOutboundLine === 'agent') {
+        badge.textContent = 'RHIVE ROOFING (+1 839-867-6637)';
+      } else {
+        badge.textContent = 'RHIVE DIRECT (+1 801-783-3317)';
+      }
+    }
+
+    function saveBridgePhone() {
+      const val = document.getElementById('cfgBridgePhone').value.trim();
+      if (!val) return alert('Please enter your cell number.');
+      bridgeDevicePhone = val;
+      localStorage.setItem('rhive_bridge_phone', val);
+      alert('Handset bridge phone saved: ' + val);
+    }
+
+    function pressKey(val) {
+      if (dialedNumber.length >= 15) return;
+      dialedNumber += val;
+      updateDisplay();
+      if (navigator.vibrate) navigator.vibrate(20);
+    }
+
+    function backspaceKey() {
+      dialedNumber = dialedNumber.slice(0, -1);
+      updateDisplay();
+    }
+
+    function updateDisplay() {
+      const display = document.getElementById('dialDisplay');
+      display.textContent = formatPhone(dialedNumber);
+      
+      const lookup = document.getElementById('contactLookup');
+      if (dialedNumber.length >= 7) {
+        lookup.textContent = 'Outbound Route: ' + (activeOutboundLine === 'agent' ? 'Honey AI (+1 839-867-6637)' : 'Direct Open Voice (+1 801-783-3317)');
+      } else {
+        lookup.textContent = dialedNumber ? 'Dialing...' : 'Enter phone number to dial';
+      }
+    }
+
+    function formatPhone(num) {
+      const cleaned = ('' + num).replace(/\D/g, '');
+      if (cleaned.length === 10) {
+        return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+      } else if (cleaned.length === 11 && cleaned.startsWith('1')) {
+        return `+1 (${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
+      }
+      return num;
+    }
+
+    // Mode 1: Direct Carrier Dial via Phone Dialer (TEL:)
+    function directCellularCall() {
+      if (!dialedNumber) {
+        alert('Please enter a phone number first.');
+        return;
+      }
+      window.location.href = 'tel:' + dialedNumber;
+    }
+
+    let callPollInterval = null;
+
+    function startCallPolling(callSid) {
+      clearInterval(callPollInterval);
+      callPollInterval = setInterval(async () => {
+        if (!activeCallSid) {
+          clearInterval(callPollInterval);
+          return;
+        }
+        try {
+          const res = await fetch('/api/mobile/call/status?callSid=' + encodeURIComponent(callSid));
+          const data = await res.json();
+          if (data.success && data.isEnded) {
+            clearInterval(callPollInterval);
+            const statusLabel = (data.status || 'completed').toUpperCase();
+            document.getElementById('callStatusText').textContent = `Call Ended (${statusLabel})`;
+            document.getElementById('callStatusBadge').classList.remove('bg-slate-100', 'text-slate-700');
+            document.getElementById('callStatusBadge').classList.add('bg-rose-50', 'text-rose-700', 'border-rose-300');
+            setTimeout(() => {
+              endCall(false); // Cleanly close modal without triggering redundant backend hangup
+              loadRecents();
+            }, 1200);
+          }
+        } catch (err) {
+          console.warn('[Call Poll Warning]', err.message);
+        }
+      }, 1000);
+    }
+
+    // Mode 2: Sovereign Twilio Bridge Call (Displays RHIVE Caller ID to Customer)
+    async function initiateCall() {
+      if (!dialedNumber) {
+        alert('Please enter a phone number first.');
+        return;
+      }
+
+      document.getElementById('activeCallName').textContent = formatPhone(dialedNumber);
+      document.getElementById('activeCallNumber').textContent = 'Outbound Caller ID: ' + activeCallerId;
+      document.getElementById('callStatusText').textContent = 'Calling your cell (' + bridgeDevicePhone + ')...';
+      document.getElementById('activeCallModal').classList.remove('hidden');
+      
+      callSeconds = 0;
+      clearInterval(callTimerInterval);
+      callTimerInterval = setInterval(() => {
+        callSeconds++;
+        const mins = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+        const secs = String(callSeconds % 60).padStart(2, '0');
+        document.getElementById('callTimer').textContent = mins + ':' + secs;
+      }, 1000);
+
+      try {
+        const res = await fetch('/api/mobile/call/bridge', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: dialedNumber,
+            from: bridgeDevicePhone,
+            callerId: activeCallerId
+          })
+        });
+        const data = await res.json();
+        if (data.success && data.callSid) {
+          activeCallSid = data.callSid;
+          document.getElementById('callStatusText').textContent = 'Connecting... answer your phone to bridge';
+          startCallPolling(data.callSid);
+        } else {
+          document.getElementById('callStatusText').textContent = 'Failed: ' + (data.error || 'Server error');
+        }
+      } catch (e) {
+        document.getElementById('callStatusText').textContent = 'Network error: ' + e.message;
+      }
+    }
+
+    // Clean Call Termination on Carrier
+    async function endCall(shouldNotifyServer = true) {
+      clearInterval(callTimerInterval);
+      clearInterval(callPollInterval);
+      document.getElementById('activeCallModal').classList.add('hidden');
+      document.getElementById('callTimer').textContent = '00:00';
+      document.getElementById('callStatusBadge').className = 'mt-3 px-3 py-1 clip-chamfer bg-slate-100 border border-slate-300 text-xs font-mono text-slate-700 flex items-center gap-2';
+
+      if (shouldNotifyServer && activeCallSid) {
+        const sidToHangup = activeCallSid;
+        activeCallSid = null;
+        try {
+          await fetch('/api/mobile/call/hangup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ callSid: sidToHangup })
+          });
+        } catch (e) {
+          console.warn('Hangup network warning:', e.message);
+        }
+      } else {
+        activeCallSid = null;
+      }
+    }
+
+    function toggleSwitch(el) {
+      el.classList.toggle('active');
+    }
+
+    function openNewSmsModal() {
+      document.getElementById('newSmsModal').classList.remove('hidden');
+    }
+
+    function closeNewSmsModal() {
+      document.getElementById('newSmsModal').classList.add('hidden');
+    }
+
+    function fillSmsTemplate(text) {
+      document.getElementById('smsBody').value = text;
+    }
+
+    async function submitSms() {
+      const to = document.getElementById('smsRecipient').value.trim();
+      const body = document.getElementById('smsBody').value.trim();
+      const sender = document.getElementById('smsSenderSelect').value;
+
+      if (!to || !body) {
+        alert('Please provide recipient number and message body.');
+        return;
+      }
+      const btn = document.getElementById('sendSmsSubmitBtn');
+      btn.textContent = 'Sending...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/mobile/sms/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to, body, sender })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('Message sent successfully! (Route: ' + (data.provider || 'Carrier Verified') + ')');
+          closeNewSmsModal();
+          loadMessages();
+        } else {
+          alert('Error sending SMS: ' + (data.error || 'Unknown error'));
+        }
+      } catch (err) {
+        alert('Network error sending SMS: ' + err.message);
+      } finally {
+        btn.textContent = 'SEND SMS';
+        btn.disabled = false;
+      }
+    }
+
+    function renderMessages(messages) {
+      const list = document.getElementById('messagesList');
+      if (!messages || messages.length === 0) {
+        list.innerHTML = '<div class="text-center text-xs text-slate-500 py-6">No recent SMS messages found.</div>';
+        return;
+      }
+      list.innerHTML = messages.map(m => {
+        const isOut = m.direction === 'outbound-api' || (m.from && (m.from.includes('839') || m.from.includes('435') || m.from.includes('449')));
+        const statusColor = m.status === 'delivered' || m.status === 'received' 
+          ? 'text-emerald-700 bg-emerald-50 border-emerald-300' 
+          : (m.status === 'undelivered' || m.status === 'failed' ? 'text-rose-700 bg-rose-50 border-rose-300' : 'text-slate-700 bg-slate-100 border-slate-300');
+        
+        const isJc = (m.provider || '').includes('JustCall');
+        const providerBadge = isJc 
+          ? '<span class="text-[9px] px-1.5 py-0.5 clip-chamfer font-mono font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">JustCall 10DLC</span>'
+          : '<span class="text-[9px] px-1.5 py-0.5 clip-chamfer font-mono font-bold bg-slate-100 text-slate-700 border border-slate-300">Twilio</span>';
+
+        return `
+          <div class="p-3.5 clip-chamfer bg-slate-50 border border-slate-200 flex flex-col gap-1.5 hover:border-rhive-pink transition shadow-sm">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-mono font-bold text-black">${isOut ? 'To: ' + formatPhone(m.to) : 'From: ' + formatPhone(m.from)}</span>
+              <div class="flex items-center gap-1.5">
+                ${providerBadge}
+                <span class="text-[9px] px-1.5 py-0.5 clip-chamfer font-mono font-bold border ${statusColor}">${(m.status || 'SENT').toUpperCase()}</span>
+              </div>
+            </div>
+            <p class="text-xs text-slate-700 font-sans line-clamp-2">${m.body || 'No text content'}</p>
+            <div class="flex items-center justify-between text-[10px] text-slate-400 font-mono pt-1 border-t border-slate-200">
+              <span>${m.date_sent ? new Date(m.date_sent).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}</span>
+              ${m.error_code ? '<span class="text-rose-600 font-bold">Carrier Code: ' + m.error_code + '</span>' : '<span class="text-emerald-600">Carrier Verified</span>'}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderRecents(calls) {
+      const list = document.getElementById('recentsList');
+      const count = document.getElementById('recentsCount');
+      count.textContent = calls.length + ' Logs';
+
+      if (!calls || calls.length === 0) {
+        list.innerHTML = '<div class="text-center text-xs text-slate-500 py-6">No recent calls recorded.</div>';
+        return;
+      }
+
+      list.innerHTML = calls.map(c => {
+        const isIn = c.direction === 'inbound';
+        const contact = isIn ? c.from : c.to;
+        return `
+          <div onclick="redial('${contact}')" class="p-3.5 clip-chamfer bg-slate-50 border border-slate-200 flex items-center justify-between hover:border-black cursor-pointer transition shadow-sm">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 clip-chamfer ${isIn ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-800'} flex items-center justify-center font-bold">
+                ${isIn ? '↙' : '↗'}
+              </div>
+              <div>
+                <div class="text-xs font-mono font-bold text-black">${formatPhone(contact)}</div>
+                <div class="text-[10px] text-slate-500 font-mono">${c.duration ? c.duration + 's · ' : ''}${c.status || 'completed'}</div>
+              </div>
+            </div>
+            <button class="px-2 py-1 clip-chamfer bg-black text-white text-[10px] font-bold font-mono">REDIAL</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function loadMessages() {
+      try {
+        const res = await fetch('/api/mobile/sms');
+        const data = await res.json();
+        renderMessages(data.messages || []);
+      } catch (e) {
+        console.warn('Failed to load SMS list:', e);
+      }
+    }
+
+    async function loadRecents() {
+      try {
+        const res = await fetch('/api/mobile/calls');
+        const data = await res.json();
+        renderRecents(data.calls || []);
+      } catch (e) {
+        console.warn('Failed to load recents:', e);
+      }
+    }
+
+    function redial(num) {
+      dialedNumber = num;
+      switchTab('dialer');
+      updateDisplay();
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-view').forEach(el => el.classList.add('hidden'));
+      document.getElementById('tab-' + tabId).classList.remove('hidden');
+
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.remove('text-rhive-pink');
+        btn.classList.add('text-slate-500');
+      });
+      const activeNav = document.getElementById('nav-' + tabId);
+      activeNav.classList.remove('text-slate-500');
+      activeNav.classList.add('text-rhive-pink');
+
+      if (tabId === 'messages') loadMessages();
+      if (tabId === 'recents') loadRecents();
+    }
+
+    function refreshData() {
+      loadMessages();
+      loadRecents();
+    }
+
+    // Initial hydration
+    refreshData();
+  </script>
+</body>
+</html>

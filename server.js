@@ -26,6 +26,7 @@ const axios = require('axios');
 const querystring = require('querystring');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { Readable } = require('stream');
 const { WebSocketServer, WebSocket } = require('ws');
 const { GoogleGenAI } = require('@google/genai');
@@ -34,7 +35,34 @@ const googleAuthClient = new (require('google-auth-library').OAuth2Client)();
 
 try { require('dotenv').config(); } catch(e) {}
 
-const LIVE_VOICE_MODEL = process.env.LIVE_VOICE_MODEL || 'gemini-3.1-flash-live-preview';
+const LIVE_VOICE_MODEL = process.env.LIVE_VOICE_MODEL || 'gemini-3.8-live';
+const TWILIO_TWIML_APP_SID = process.env.TWILIO_TWIML_APP_SID || 'AP5cbc2ac9c93cd200821821ba09cc9198';
+
+function generateTwilioVoiceToken({ accountSid, apiKeySid, apiSecret, identity, appSid, ttl = 86400 }) {
+  const now = Math.floor(Date.now() / 1000);
+  const header = { typ: 'JWT', alg: 'HS256', cty: 'twilio-fpa;v=1' };
+  const payload = {
+    jti: `${apiKeySid}-${now}`,
+    iss: apiKeySid,
+    sub: accountSid,
+    exp: now + ttl,
+    grants: {
+      identity: identity,
+      voice: {
+        outgoing: {
+          application_sid: appSid
+        },
+        incoming: {
+          allow: true
+        }
+      }
+    }
+  };
+  const b64url = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url');
+  const unsigned = `${b64url(header)}.${b64url(payload)}`;
+  const sig = crypto.createHmac('sha256', apiSecret).update(unsigned).digest('base64url');
+  return `${unsigned}.${sig}`;
+}
 const PORT = process.env.PORT || 8080;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const MICHAEL_CELL = process.env.MICHAEL_CELL || '+18014491451';
@@ -839,7 +867,7 @@ Output STRICT JSON only:
   let simulation;
   try {
     const resp = await ai.models.generateContent({
-      model: 'gemini-3.5-flash-lite',
+      model: 'gemini-3.8-flash-lite',
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       config: { responseMimeType: 'application/json' }
     });
@@ -941,7 +969,7 @@ Output STRICT JSON only:
 
   try {
     const resp = await ai.models.generateContent({
-      model: 'gemini-3.5-flash-lite',
+      model: 'gemini-3.8-flash-lite',
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       config: { responseMimeType: 'application/json' }
     });
@@ -990,7 +1018,7 @@ Output STRICT JSON only:
   let parsed = {};
   try {
     const resp = await ai.models.generateContent({
-      model: 'gemini-3.5-flash-lite',
+      model: 'gemini-3.8-flash-lite',
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       config: { responseMimeType: 'application/json' }
     });
@@ -2289,8 +2317,8 @@ async function postGoogleChat(text, title = '📞 RHIVE Live Voice Call', button
     console.warn('[Google Chat Direct API Warning, attempting fallback]:', apiErr.message);
   }
 
-  // 2. Secondary Fallback: Webhook (ONLY if Direct API did not dispatch)
-  if (!dispatched && GOOGLE_CHAT_WEBHOOK) {
+  // 2. Secondary Fallback: Webhook (ONLY if Direct API did not dispatch AND webhook is not the trailer wrap space AAQAM7z6EAk)
+  if (!dispatched && GOOGLE_CHAT_WEBHOOK && !GOOGLE_CHAT_WEBHOOK.includes('AAQAM7z6EAk')) {
     try {
       const cardWidgets = [{ textParagraph: { text: payloadText.replace(/\n/g, '<br>') } }];
       const webhookUrl = GOOGLE_CHAT_WEBHOOK.includes('threadKey')
@@ -2481,7 +2509,7 @@ async function uploadCompletedRecordingToDrive({ callSid, recordingSid, recordin
         console.log(`[Screened Transfer Archival] Finalized MP3 ready for transferred call ${callSid}. Running Option 2 Gemini audio transcription pass...`);
         try {
           const genAiRes = await ai.models.generateContent({
-            model: 'gemini-3.5-flash',
+            model: 'gemini-3.8-flash',
             contents: [
               {
                 inlineData: {
@@ -6780,6 +6808,25 @@ const activeWebVoiceSessions = new Map();
 // EXPRESS APP & HTTP ENDPOINTS
 // ============================================================================
 const app = express();
+
+// Enforce HTTPS behind Cloud Run proxy & prevent caching issues
+app.use((req, res, next) => {
+  const proto = req.headers['x-forwarded-proto'];
+  if (proto && proto !== 'https') {
+    return res.redirect(301, 'https://' + req.headers.host + req.url);
+  }
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  next();
+});
+
+// Explicit Service Worker handler to forbid HTTP caching of sw.js
+app.get('/sw.js', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Content-Type', 'application/javascript');
+  res.sendFile(path.join(__dirname, 'public', 'sw.js'));
+});
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -6812,6 +6859,418 @@ app.get(['/verify', '/intake', '/project-intake'], (req, res) => {
     return res.sendFile(verifyFile);
   }
   res.redirect('/health');
+});
+
+// RHIVE Sovereign Telephony Mobile PWA / Web Client (Pixel 8 Pro)
+app.get(['/mobile', '/app', '/telephony-mobile'], (req, res) => {
+  const mobileFile = path.join(__dirname, 'public', 'mobile.html');
+  if (fs.existsSync(mobileFile)) {
+    return res.sendFile(mobileFile);
+  }
+  res.redirect('/health');
+});
+
+// Sovereign WebRTC Softphone VoIP Dialer (Direct Mic/Speaker, No Cellular Bridge)
+app.get(['/dialer', '/phone', '/softphone'], (req, res) => {
+  const dialerFile = path.join(__dirname, 'public', 'dialer.html');
+  if (fs.existsSync(dialerFile)) {
+    return res.sendFile(dialerFile);
+  }
+  const mobileFile = path.join(__dirname, 'public', 'mobile.html');
+  if (fs.existsSync(mobileFile)) {
+    return res.sendFile(mobileFile);
+  }
+  res.redirect('/health');
+});
+
+// Visual Whiteboard Flow Orchestrator Canvas
+app.get(['/canvas', '/flow', '/whiteboard'], (req, res) => {
+  const canvasFile = path.join(__dirname, 'public', 'canvas.html');
+  if (fs.existsSync(canvasFile)) {
+    return res.sendFile(canvasFile);
+  }
+  res.redirect('/dialer');
+});
+
+// Multi-Agent Tuning & Personality Cockpit
+app.get(['/agents', '/personas', '/bots'], (req, res) => {
+  const agentsFile = path.join(__dirname, 'public', 'agents.html');
+  if (fs.existsSync(agentsFile)) {
+    return res.sendFile(agentsFile);
+  }
+  res.redirect('/dialer');
+});
+
+// Google Workspace SSO Authentication Gate
+app.get(['/login', '/auth', '/signin'], (req, res) => {
+  const loginFile = path.join(__dirname, 'public', 'login.html');
+  if (fs.existsSync(loginFile)) {
+    return res.sendFile(loginFile);
+  }
+  res.redirect('/dialer');
+});
+
+// In-Memory Call State Tracker for Live Mobile App Synchronization
+const activeCallStates = new Map();
+
+// Mobile API: Recent Calls
+app.get('/api/mobile/calls', async (req, res) => {
+  try {
+    const authHeader = 'Basic ' + Buffer.from(TWILIO_API_KEY_SID + ':' + TWILIO_API_SECRET).toString('base64');
+    const response = await axios.get(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls.json?PageSize=25`, {
+      headers: { Authorization: authHeader }
+    });
+    const calls = (response.data.calls || []).map(c => ({
+      sid: c.sid,
+      from: c.from,
+      to: c.to,
+      status: c.status,
+      duration: c.duration,
+      direction: c.direction,
+      date_created: c.date_created
+    }));
+    res.json({ success: true, calls });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Mobile API: Unified SMS Messages (Combines Twilio + JustCall 10DLC)
+app.get('/api/mobile/sms', async (req, res) => {
+  try {
+    const unified = [];
+
+    // 1. Fetch Twilio SMS
+    try {
+      const authHeader = 'Basic ' + Buffer.from(TWILIO_API_KEY_SID + ':' + TWILIO_API_SECRET).toString('base64');
+      const twRes = await axios.get(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json?PageSize=20`, {
+        headers: { Authorization: authHeader }
+      });
+      (twRes.data.messages || []).forEach(m => {
+        unified.push({
+          sid: m.sid,
+          from: m.from,
+          to: m.to,
+          body: m.body,
+          status: m.status,
+          error_code: m.error_code,
+          direction: m.direction,
+          date_sent: m.date_sent,
+          provider: 'Twilio'
+        });
+      });
+    } catch (e) {
+      console.warn('[Mobile API SMS] Twilio fetch note:', e.message);
+    }
+
+    // 2. Fetch JustCall 10DLC SMS
+    if (JUSTCALL_API_KEY && JUSTCALL_API_SECRET) {
+      try {
+        const jcRes = await axios.get('https://api.justcall.io/v2.1/texts?count=20', {
+          headers: {
+            'Authorization': `${JUSTCALL_API_KEY}:${JUSTCALL_API_SECRET}`
+          }
+        });
+        const jcItems = jcRes.data?.data || [];
+        jcItems.forEach(m => {
+          const isOut = m.direction === 'Outgoing';
+          unified.push({
+            sid: 'jc_' + m.id,
+            from: isOut ? (m.justcall_number || '+14354176637') : m.contact_number,
+            to: isOut ? m.contact_number : (m.justcall_number || '+14354176637'),
+            body: m.sms_info?.body || '',
+            status: m.delivery_status || (isOut ? 'delivered' : 'received'),
+            error_code: null,
+            direction: isOut ? 'outbound-api' : 'inbound',
+            date_sent: m.sms_date ? `${m.sms_date}T${m.sms_time || '12:00:00'}Z` : new Date().toISOString(),
+            provider: 'JustCall 10DLC'
+          });
+        });
+      } catch (e) {
+        console.warn('[Mobile API SMS] JustCall fetch note:', e.message);
+      }
+    }
+
+    // Sort chronologically newest first
+    unified.sort((a, b) => new Date(b.date_sent || 0) - new Date(a.date_sent || 0));
+
+    res.json({ success: true, messages: unified });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Mobile API: Send SMS (with automatic Verified JustCall 10DLC pipeline)
+app.post('/api/mobile/sms/send', async (req, res) => {
+  try {
+    const { to, body, provider = 'auto', sender = '+14354176637' } = req.body;
+    if (!to || !body) {
+      return res.status(400).json({ success: false, error: 'Recipient "to" and "body" required.' });
+    }
+
+    const cleanTo = String(to).replace(/[^0-9+]/g, '');
+
+    // If explicit JustCall or sender is JustCall line or provider is auto (Twilio 10DLC currently in re-submission)
+    const isJustCallSender = sender.includes('435') || sender.includes('449') || sender.includes('441');
+    const isTwilioSender = sender.includes('839') || sender.includes('783');
+
+    if ((provider === 'justcall' || isJustCallSender || (provider === 'auto' && !isTwilioSender)) && JUSTCALL_API_KEY) {
+      const fromLine = isJustCallSender ? sender : '+14354176637';
+      const jcRes = await axios.post('https://api.justcall.io/v2.1/texts/new', {
+        justcall_number: fromLine,
+        contact_number: cleanTo,
+        body: body
+      }, {
+        headers: {
+          'Authorization': `${JUSTCALL_API_KEY}:${JUSTCALL_API_SECRET}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log(`[Mobile SMS] Successfully sent via JustCall 10DLC (${fromLine} -> ${cleanTo})`);
+      return res.json({ success: true, provider: 'JustCall 10DLC (Carrier Verified)', data: jcRes.data });
+    }
+
+    // Explicit Twilio line route
+    const authHeader = 'Basic ' + Buffer.from(TWILIO_API_KEY_SID + ':' + TWILIO_API_SECRET).toString('base64');
+    const params = new URLSearchParams();
+    params.append('To', cleanTo);
+    params.append('From', sender);
+    params.append('Body', body);
+
+    const twilioRes = await axios.post(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`, params.toString(), {
+      headers: {
+        Authorization: authHeader,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    });
+    return res.json({ success: true, messageSid: twilioRes.data.sid, status: twilioRes.data.status, provider: 'Twilio' });
+  } catch (err) {
+    console.error('[Mobile SMS Send Error]:', err.response?.data || err.message);
+    res.status(500).json({ success: false, error: err.response?.data?.message || err.message });
+  }
+});
+
+// Mobile API: Outbound Call Bridge with Real-Time Carrier State Tracking
+app.post('/api/mobile/call/bridge', async (req, res) => {
+  try {
+    const { to, from = MICHAEL_CELL, callerId = TWILIO_NUMBER } = req.body;
+    if (!to) return res.status(400).json({ success: false, error: 'Target number "to" required.' });
+    const host = req.get('host') || 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
+    const authHeader = 'Basic ' + Buffer.from(TWILIO_API_KEY_SID + ':' + TWILIO_API_SECRET).toString('base64');
+    
+    const params = new URLSearchParams();
+    params.append('To', from); // Rings Michael first on his mobile cell
+    params.append('From', callerId); // Displays chosen RHIVE Caller ID
+    params.append('Url', `https://${host}/twiml-outbound-dial?target=${encodeURIComponent(to)}&callerId=${encodeURIComponent(callerId)}`);
+    params.append('StatusCallback', `https://${host}/api/mobile/call/status-callback`);
+    params.append('StatusCallbackMethod', 'POST');
+    params.append('Record', 'true');
+    params.append('RecordingChannels', 'dual');
+
+    const twilioRes = await axios.post(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls.json`, params.toString(), {
+      headers: { Authorization: authHeader, 'Content-Type': 'application/x-www-form-urlencoded' }
+    });
+
+    const sid = twilioRes.data.sid;
+    activeCallStates.set(sid, {
+      status: twilioRes.data.status,
+      target: to,
+      from,
+      callerId,
+      updatedAt: Date.now()
+    });
+
+    console.log(`[Call Bridge] Initiated call ${sid}: ${from} -> ${to} (Caller ID: ${callerId})`);
+    res.json({ success: true, callSid: sid, status: twilioRes.data.status, connecting: to, callerId });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.response?.data?.message || err.message });
+  }
+});
+
+// Webhook for Twilio Parent Call Status Callback
+app.post('/api/mobile/call/status-callback', express.urlencoded({ extended: true }), (req, res) => {
+  const callSid = req.body.CallSid;
+  const callStatus = req.body.CallStatus; // queued, ringing, in-progress, completed, busy, failed, no-answer
+  const duration = req.body.CallDuration || req.body.Duration || '0';
+  console.log(`[Call Status Webhook] Call ${callSid}: status=${callStatus}, duration=${duration}s`);
+
+  if (callSid) {
+    const existing = activeCallStates.get(callSid) || {};
+    activeCallStates.set(callSid, {
+      ...existing,
+      status: callStatus,
+      duration,
+      updatedAt: Date.now()
+    });
+  }
+  res.type('text/xml').send('<Response/>');
+});
+
+// Webhook for Outbound <Dial> Leg Completion
+app.post('/api/mobile/call/dial-callback', express.urlencoded({ extended: true }), (req, res) => {
+  const parentCallSid = req.body.CallSid;
+  const dialCallStatus = req.body.DialCallStatus; // completed, answered, busy, no-answer, failed, canceled
+  const dialCallDuration = req.body.DialCallDuration || '0';
+  console.log(`[Dial Callback] Parent ${parentCallSid}: DialCallStatus=${dialCallStatus}, Duration=${dialCallDuration}s`);
+
+  if (parentCallSid) {
+    const existing = activeCallStates.get(parentCallSid) || {};
+    activeCallStates.set(parentCallSid, {
+      ...existing,
+      status: 'completed',
+      dialStatus: dialCallStatus,
+      duration: dialCallDuration,
+      updatedAt: Date.now()
+    });
+  }
+  res.type('text/xml').send('<Response><Hangup/></Response>');
+});
+
+// Mobile API: Live Call Status Polling (Synchronizes Physical Carrier Hangup to Web UI)
+app.get('/api/mobile/call/status', async (req, res) => {
+  const callSid = req.query.callSid;
+  if (!callSid) return res.status(400).json({ success: false, error: 'callSid required' });
+
+  const state = activeCallStates.get(callSid);
+  const isEndedLocal = state && ['completed', 'canceled', 'busy', 'failed', 'no-answer'].includes(state.status);
+
+  if (isEndedLocal) {
+    return res.json({ success: true, callSid, status: state.status, duration: state.duration || 0, isEnded: true });
+  }
+
+  // Poll Twilio REST API for ground truth if not marked completed locally
+  try {
+    const authHeader = 'Basic ' + Buffer.from(TWILIO_API_KEY_SID + ':' + TWILIO_API_SECRET).toString('base64');
+    const twRes = await axios.get(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls/${callSid}.json`, {
+      headers: { Authorization: authHeader }
+    });
+    const twStatus = twRes.data.status;
+    const isEnded = ['completed', 'canceled', 'busy', 'failed', 'no-answer'].includes(twStatus);
+    if (isEnded) {
+      activeCallStates.set(callSid, { status: twStatus, duration: twRes.data.duration, updatedAt: Date.now() });
+    }
+    return res.json({ success: true, callSid, status: twStatus, duration: twRes.data.duration || 0, isEnded });
+  } catch (e) {
+    return res.json({ success: true, callSid, status: state?.status || 'in-progress', isEnded: false });
+  }
+});
+
+// Mobile API: Explicit Clean Hangup (Kills Call on Twilio Carrier)
+app.post('/api/mobile/call/hangup', async (req, res) => {
+  try {
+    const { callSid } = req.body;
+    if (!callSid) return res.status(400).json({ success: false, error: 'callSid required' });
+    const authHeader = 'Basic ' + Buffer.from(TWILIO_API_KEY_SID + ':' + TWILIO_API_SECRET).toString('base64');
+    const params = new URLSearchParams();
+    params.append('Status', 'completed');
+
+    try {
+      await axios.post(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls/${callSid}.json`, params.toString(), {
+        headers: { Authorization: authHeader, 'Content-Type': 'application/x-www-form-urlencoded' }
+      });
+    } catch (twErr) {
+      console.warn('[Call Hangup] Twilio update note:', twErr.response?.data?.message || twErr.message);
+    }
+    activeCallStates.set(callSid, { status: 'completed', updatedAt: Date.now() });
+    console.log(`[Call Hangup] Call ${callSid} cleanly terminated on carrier via Twilio REST API.`);
+    res.json({ success: true, callSid, status: 'completed' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.response?.data?.message || err.message });
+  }
+});
+
+// TwiML Outbound Dialing Handler with Action Callback
+app.all('/twiml-outbound-dial', (req, res) => {
+  const target = req.query.target || req.body.target || '';
+  const callerId = req.query.callerId || req.body.callerId || TWILIO_NUMBER;
+  const host = req.get('host') || 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
+  res.type('text/xml');
+  res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Google.en-US-Standard-C">Connecting your call via RHIVE Telephony.</Say>
+  <Dial callerId="${callerId}" record="record-from-answer-dual" action="https://${host}/api/mobile/call/dial-callback">
+    <Number>${target}</Number>
+  </Dial>
+</Response>`);
+});
+
+// Twilio Voice WebRTC Softphone Token Endpoint (Direct In-Browser Audio)
+app.get('/api/telephony/token', (req, res) => {
+  try {
+    const identity = (req.query.identity || req.query.email || 'michael_web_softphone').replace(/[^a-zA-Z0-9_-]/g, '_');
+    if (!TWILIO_ACCOUNT_SID || !TWILIO_API_KEY_SID || !TWILIO_API_SECRET) {
+      return res.status(500).json({ error: 'Twilio API credentials not configured for Voice tokens' });
+    }
+    const token = generateTwilioVoiceToken({
+      accountSid: TWILIO_ACCOUNT_SID,
+      apiKeySid: TWILIO_API_KEY_SID,
+      apiSecret: TWILIO_API_SECRET,
+      identity: identity,
+      appSid: TWILIO_TWIML_APP_SID,
+      ttl: 86400
+    });
+    res.json({
+      success: true,
+      token,
+      identity,
+      appSid: TWILIO_TWIML_APP_SID,
+      carrierNumbers: [
+        { phone: '+18398676637', label: 'Honey AI Main Line (+1 839-867-6637)', isDefault: true },
+        { phone: '+18017833317', label: 'Direct Open Voice Line (+1 801-783-3317)', isOpenLine: true }
+      ]
+    });
+  } catch (err) {
+    console.error('[WebRTC Token Generation Error]', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// TwiML Outbound WebRTC Softphone Route (Direct VoIP audio - No cellular bridge)
+app.all(['/twiml/outbound-webrtc', '/twiml-outbound-webrtc'], express.urlencoded({ extended: true }), (req, res) => {
+  const to = (req.body.To || req.query.To || req.body.to || req.query.to || '').trim();
+  let callerId = (req.body.callerId || req.query.callerId || '').trim();
+  const host = req.get('host') || 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
+
+  // Support switching between Honey AI and Open Voice line
+  if (callerId !== '+18017833317' && callerId !== '+18398676637') {
+    callerId = '+18398676637'; // Default to verified RHIVE line
+  }
+
+  // Format destination number to E.164
+  let cleanTo = to.replace(/[^\d+]/g, '');
+  if (cleanTo.length === 10 && !cleanTo.startsWith('+')) {
+    cleanTo = '+1' + cleanTo;
+  } else if (cleanTo.length === 11 && cleanTo.startsWith('1')) {
+    cleanTo = '+' + cleanTo;
+  }
+
+  console.log(`[TwiML WebRTC VoIP] Softphone call initiating: To=${cleanTo}, CallerId=${callerId}`);
+
+  res.type('text/xml');
+  if (!cleanTo || cleanTo.length < 10) {
+    return res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Google.en-US-Standard-C">The phone number dialed is invalid or incomplete. Please check the number and try again.</Say>
+  <Hangup/>
+</Response>`);
+  }
+
+  res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Dial callerId="${callerId}" answerOnBridge="true" record="record-from-answer-dual" action="https://${host}/twiml/outbound-webrtc/completed">
+    <Number>${cleanTo}</Number>
+  </Dial>
+</Response>`);
+});
+
+// TwiML WebRTC Call Completion & Disconnect Callback
+app.all(['/twiml/outbound-webrtc/completed', '/twiml-outbound-webrtc/completed'], express.urlencoded({ extended: true }), (req, res) => {
+  const callSid = req.body.CallSid || req.query.CallSid || '';
+  const dialCallStatus = req.body.DialCallStatus || req.query.DialCallStatus || '';
+  const dialCallDuration = req.body.DialCallDuration || req.query.DialCallDuration || '0';
+  console.log(`[TwiML WebRTC Call Completed] CallSid=${callSid}, Status=${dialCallStatus}, Duration=${dialCallDuration}s`);
+  res.type('text/xml');
+  res.send(`<?xml version="1.0" encoding="UTF-8"?><Response><Hangup/></Response>`);
 });
 
 // Project Verification Data Retrieval Endpoint
@@ -7057,8 +7516,8 @@ app.get('/health', (req, res) => {
       voiceEngine: LIVE_VOICE_MODEL,
       extendedThinking: 'gemini-3.8-live-extended-thinking',
       agenticWriting: 'gemini-3.8-flash',
-      reasoningInspector: 'gemini-3.5-flash-lite',
-      liveTranscription: 'gemini-3.5-transcribe-live'
+      reasoningInspector: 'gemini-3.8-flash-lite',
+      liveTranscription: 'gemini-3.8-live'
     },
     activeCalls: activeSessions.size,
     activeWebSessions: activeWebVoiceSessions.size,
@@ -7076,43 +7535,45 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Dynamic Google Identity Services Configuration
+// Dynamic Google Identity Services Configuration & Whitelist Gate
+const AUTHORIZED_PERSONNEL = {
+  'michael@rhiveconstruction.com': { name: 'Michael Robinson', role: 'Owner & CEO (Super Admin)', canEditFlows: true, canMakeCalls: true, canSendSms: true, canViewRecordings: true },
+  'kara@rhiveconstruction.com':    { name: 'Kara Robinson', role: 'President & Owner (Executive Ops)', canEditFlows: true, canMakeCalls: true, canSendSms: true, canViewRecordings: true },
+  'sheena@rhiveconstruction.com':  { name: 'Sheena', role: 'Lead Estimator (Estimation Lead)', canEditFlows: false, canMakeCalls: true, canSendSms: true, canViewRecordings: false },
+  'van@rhiveconstruction.com':     { name: 'Van', role: 'Field Operations (Field Specialist)', canEditFlows: false, canMakeCalls: true, canSendSms: true, canViewRecordings: false }
+};
+
+const WHITELIST_EMAILS = Object.keys(AUTHORIZED_PERSONNEL);
+
 app.get('/api/auth/config', (req, res) => {
   res.json({
     clientId: process.env.GOOGLE_OAUTH_CLIENT_ID || '910835773728-dummy.apps.googleusercontent.com',
     authEnabled: true,
-    whitelist: [
-      'michael@rhiveconstruction.com',
-      'kara@rhiveconstruction.com'
-    ]
+    whitelist: WHITELIST_EMAILS,
+    personnel: AUTHORIZED_PERSONNEL
   });
 });
 
-// ============================================================================
-// LIVE PROMPT TUNING & BEHAVIOR RULES API
-// ============================================================================
-
 // Cryptographic Google Auth Verification & Executive Whitelist Gate
-app.post('/api/auth/verify', async (req, res) => {
-  const { credential, email, name, passkey } = req.body || {};
-  const WHITELIST = [
-    'michael@rhiveconstruction.com',
-    'kara@rhiveconstruction.com'
-  ];
-
+app.post(['/api/auth/verify', '/api/auth/google'], async (req, res) => {
+  const { credential, idToken, email, name, passkey } = req.body || {};
+  const tokenToVerify = credential || idToken;
   const EXECUTIVE_PASSKEY = (process.env.EXECUTIVE_PASSKEY || 'rhive2026').trim();
 
-  // 0. Executive Passkey Bypass Gate (Guarantees zero lockout during OAuth origin validation)
+  // 0. Executive Passkey Bypass Gate (Guarantees zero lockout during rapid development & test)
   if (passkey && (passkey.trim().toLowerCase() === EXECUTIVE_PASSKEY.toLowerCase() || passkey.trim() === 'rhive2026' || passkey.trim() === 'RHIVE2026')) {
-    const executiveEmail = (email && WHITELIST.includes(email.toLowerCase().trim()))
+    const executiveEmail = (email && WHITELIST_EMAILS.includes(email.toLowerCase().trim()))
       ? email.toLowerCase().trim()
       : 'michael@rhiveconstruction.com';
-    const isKara = executiveEmail.includes('kara');
+    const profile = AUTHORIZED_PERSONNEL[executiveEmail] || { name: 'RHIVE Executive', role: 'Executive' };
+    const sessionToken = Buffer.from(JSON.stringify({ email: executiveEmail, exp: Date.now() + 86400000 * 7, role: profile.role })).toString('base64url');
     return res.json({
       authorized: true,
       email: executiveEmail,
-      name: isKara ? 'Kara Robinson (Executive)' : 'Michael Robinson (Founder & CEO)',
-      role: isKara ? 'President & Owner (95%)' : 'Owner & CEO (5%)'
+      name: profile.name,
+      role: profile.role,
+      permissions: profile,
+      token: sessionToken
     });
   }
 
@@ -7120,10 +7581,10 @@ app.post('/api/auth/verify', async (req, res) => {
   let verifiedName = name || null;
 
   // 1. Verify Real Google ID Token (GIS Credential JWT)
-  if (credential) {
+  if (tokenToVerify) {
     try {
       const ticket = await googleAuthClient.verifyIdToken({
-        idToken: credential
+        idToken: tokenToVerify
       });
       const payload = ticket.getPayload();
       if (payload && payload.email) {
@@ -7132,7 +7593,7 @@ app.post('/api/auth/verify', async (req, res) => {
       }
     } catch(err) {
       console.warn('[Google Auth Token Verification Note]', err.message);
-      // In strict production, an invalid credential fails
+      // In strict production, an invalid credential fails unless bypass applies
       if (process.env.NODE_ENV !== 'test' && String(process.env.PORT) !== '8996') {
         return res.status(401).json({ authorized: false, error: 'Invalid Google authentication token: ' + err.message });
       }
@@ -7148,12 +7609,32 @@ app.post('/api/auth/verify', async (req, res) => {
     return res.status(400).json({ authorized: false, error: 'Valid Google credential or email required' });
   }
 
-  const isAuthorized = WHITELIST.includes(verifiedEmail) || verifiedEmail.endsWith('@rhiveconstruction.com');
-  if (isAuthorized) {
-    const role = verifiedEmail.includes('kara') ? 'President & Owner (95%)' : 'Owner & CEO (5%)';
-    return res.json({ authorized: true, email: verifiedEmail, name: verifiedName, role });
+  const isWhitelisted = WHITELIST_EMAILS.includes(verifiedEmail);
+  const isDomainUser = verifiedEmail.endsWith('@rhiveconstruction.com');
+
+  if (isWhitelisted || isDomainUser) {
+    const profile = AUTHORIZED_PERSONNEL[verifiedEmail] || {
+      name: verifiedName || verifiedEmail.split('@')[0],
+      role: 'RHIVE Team Specialist',
+      canEditFlows: false,
+      canMakeCalls: true,
+      canSendSms: true,
+      canViewRecordings: false
+    };
+    const sessionToken = Buffer.from(JSON.stringify({ email: verifiedEmail, exp: Date.now() + 86400000 * 7, role: profile.role })).toString('base64url');
+    return res.json({
+      authorized: true,
+      email: verifiedEmail,
+      name: profile.name,
+      role: profile.role,
+      permissions: profile,
+      token: sessionToken
+    });
   } else {
-    return res.status(403).json({ authorized: false, error: 'Account "' + verifiedEmail + '" is not an authorized RHIVE executive' });
+    return res.status(403).json({
+      authorized: false,
+      error: `Access Denied: "${verifiedEmail}" is not authorized. Access is strictly limited to @rhiveconstruction.com authorized personnel.`
+    });
   }
 });
 
@@ -7285,6 +7766,151 @@ app.post('/api/telephony/replay-turn', async (req, res) => {
   } catch(e) {
     console.error('[API replay-turn Error]', e.message);
     res.status(500).json({ error: e.message });
+  }
+});
+
+const DEFAULT_CANVAS_GRAPH = {
+  version: '2.0.0',
+  updatedAt: new Date().toISOString(),
+  nodes: [
+    {
+      id: 'node_trigger',
+      type: 'pstn_trigger',
+      title: 'PSTN Inbound Ingress',
+      x: 60,
+      y: 120,
+      config: {
+        honeyLine: '+18398676637',
+        openLine: '+18017833317',
+        cnam: 'RHIVE ROOFING'
+      }
+    },
+    {
+      id: 'node_preroll',
+      type: 'preroll_delay',
+      title: 'Acoustic Pre-Roll Buffer',
+      x: 360,
+      y: 120,
+      config: {
+        ringCount: 2.5,
+        silenceBufferMs: 250,
+        soundscape: 'office_and_construction'
+      }
+    },
+    {
+      id: 'node_persona',
+      type: 'agent_persona',
+      title: 'Honey AI Concierge',
+      x: 660,
+      y: 120,
+      config: {
+        model: 'gemini-3.8-live',
+        voice: 'Aoede',
+        systemPrompt: 'You are Honey, the elite AI Roofing Concierge for RHIVE Construction on the Wasatch Front. Keep responses under 20 words per turn. One question per turn.',
+        maxWordsPerTurn: 20
+      }
+    },
+    {
+      id: 'node_classifier',
+      type: 'intent_classifier',
+      title: 'Real-Time Intent Classifier',
+      x: 960,
+      y: 120,
+      config: {
+        model: 'gemini-3.8-flash-lite',
+        latencyTargetMs: 180,
+        categories: ['Emergency Tarp', 'Quote & Inspection', 'Project Status', 'Vendor / General']
+      }
+    },
+    {
+      id: 'node_tarp',
+      type: 'emergency_tarp',
+      title: 'Storm Damage Dispatch',
+      x: 1260,
+      y: 60,
+      config: {
+        emergencyFee: 150,
+        creditPolicy: 'Full $150 emergency fee credited toward full roof replacement',
+        chatSpace: 'spaces/AAQABQzOXI0'
+      }
+    },
+    {
+      id: 'node_whisper',
+      type: 'whisper_transfer',
+      title: 'Live Whisper Escalation',
+      x: 1260,
+      y: 220,
+      config: {
+        primaryTarget: '+18014491451',
+        secondaryTarget: '+18014410024',
+        whisperModel: 'gemini-3.8-flash-lite',
+        generateBriefing: true
+      }
+    },
+    {
+      id: 'node_vault',
+      type: 'data_vault',
+      title: 'Google Drive Archival',
+      x: 1560,
+      y: 140,
+      config: {
+        rootFolderId: '12lBD5utLPAq00gF-SWMwUQtyCyAMFO_3',
+        folderStrategy: 'phone_number_folder',
+        autoTranscript: true
+      }
+    }
+  ],
+  connections: [
+    { from: 'node_trigger', to: 'node_preroll' },
+    { from: 'node_preroll', to: 'node_persona' },
+    { from: 'node_persona', to: 'node_classifier' },
+    { from: 'node_classifier', to: 'node_tarp', condition: 'Intent == Emergency Tarp' },
+    { from: 'node_classifier', to: 'node_whisper', condition: 'Intent == Transfer or Escalation' },
+    { from: 'node_tarp', to: 'node_vault' },
+    { from: 'node_whisper', to: 'node_vault' }
+  ]
+};
+
+// In-Memory active whiteboard graph cache
+let activeCanvasGraph = DEFAULT_CANVAS_GRAPH;
+
+// Get Active Whiteboard Flow Graph
+app.get('/api/telephony/canvas-flow', async (req, res) => {
+  const db = initFirestore();
+  if (db) {
+    try {
+      const doc = await db.collection('telephony_whiteboard').doc('active').get();
+      if (doc.exists) {
+        return res.json({ success: true, flow: doc.data(), source: 'firestore' });
+      }
+    } catch (e) {
+      console.warn('[Firestore canvas-flow GET error]', e.message);
+    }
+  }
+  res.json({ success: true, flow: activeCanvasGraph, source: 'memory' });
+});
+
+// Save & Hot-Deploy Whiteboard Flow Graph
+app.post('/api/telephony/canvas-flow', async (req, res) => {
+  try {
+    const flowData = req.body || {};
+    flowData.updatedAt = new Date().toISOString();
+    flowData.updatedBy = req.body.userEmail || 'michael@rhiveconstruction.com';
+    activeCanvasGraph = flowData;
+
+    const db = initFirestore();
+    if (db) {
+      try {
+        await db.collection('telephony_whiteboard').doc('active').set(flowData, { merge: true });
+        console.log('[Firestore] Telephony Whiteboard Flow successfully hot-deployed by', flowData.updatedBy);
+        return res.json({ success: true, message: 'Flow saved and hot-deployed to Firestore', updatedAt: flowData.updatedAt });
+      } catch (err) {
+        console.warn('[Firestore canvas-flow save error]', err.message);
+      }
+    }
+    res.json({ success: true, message: 'Flow saved to active server memory', updatedAt: flowData.updatedAt });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -7461,13 +8087,29 @@ app.get(['/audio/rhive_hold_groove.mp3', '/audio/rhive_hold_groove.wav'], (req, 
   res.status(404).send('Hold music not found');
 });
 
-// Inbound Gateway: Direct Single-Agent AI Roofing Specialist (Honey - Leda Voice)
+// Inbound Gateway: Direct Single-Agent AI Roofing Specialist (Honey - Leda Voice) OR Direct Open Voice Line
 app.all(['/twiml', '/voice', '/ivr'], (req, res) => {
   const host = req.headers['x-forwarded-host'] || req.headers.host || 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
   const wsProtocol = req.headers['x-forwarded-proto'] === 'https' ? 'wss' : 'ws';
   const caller = req.query.From || req.body.From || 'Unknown';
+  const called = req.query.To || req.body.To || '';
   const callSid = req.query.CallSid || req.body.CallSid || ('CALL_' + Date.now());
 
+  // 1. Direct Open Voice Line (+1 801-783-3317) -> Forward directly to Michael's personal cell
+  const normCalled = called.replace(/[^0-9]/g, '');
+  if (normCalled.endsWith('7833317')) {
+    console.log(`[Open Voice Line] Inbound call ${callSid} to ${called} from ${caller} -> Forwarding directly to Michael (${MICHAEL_CELL})`);
+    res.type('text/xml');
+    return res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say voice="Google.en-US-Standard-C">Connecting you directly to RHIVE Construction.</Say>
+    <Dial callerId="${escapeXml(caller)}" record="record-from-answer-dual" timeout="30">
+        <Number>${MICHAEL_CELL}</Number>
+    </Dial>
+</Response>`);
+  }
+
+  // 2. Honey AI Line (+1 839-867-6637) -> Connect to Gemini Live Full-Duplex Agent
   // Trigger dual-channel recording on Twilio carrier level
   startCallRecording(callSid).catch(() => {});
 
@@ -7477,7 +8119,7 @@ app.all(['/twiml', '/voice', '/ivr'], (req, res) => {
   const ringAudioUrl = 'https://' + host + '/audio/transfer_ring.wav';
   const wsUrl = wsProtocol + '://' + host + '/media-stream';
 
-  console.log('[Inbound Call] Call ' + callSid + ' from ' + caller + '. Playing 2.5 rings (' + ringAudioUrl + ') then connecting to Honey AI Roofing Specialist (Ambient Mode: ' + ambientMode + ').');
+  console.log('[Inbound Call] Call ' + callSid + ' from ' + caller + ' to ' + called + '. Playing 2.5 rings (' + ringAudioUrl + ') then connecting to Honey AI Roofing Specialist (Ambient Mode: ' + ambientMode + ').');
 
   res.type('text/xml');
   return res.send('<?xml version="1.0" encoding="UTF-8"?>\n' +

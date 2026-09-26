@@ -10,3 +10,4 @@ drive-service-account.json
 firebase-service-account.json
 *.local
 config/*.json
+scratch/
