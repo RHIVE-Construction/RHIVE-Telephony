@@ -11,3 +11,4 @@ firebase-service-account.json
 *.local
 config/*.json
 scratch/
+.firebase/

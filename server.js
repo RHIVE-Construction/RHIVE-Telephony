@@ -7231,9 +7231,12 @@ app.all(['/twiml/outbound-webrtc', '/twiml-outbound-webrtc'], express.urlencoded
   let callerId = (req.body.callerId || req.query.callerId || '').trim();
   const host = req.get('host') || 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
 
-  // Support switching between Honey AI and Open Voice line
-  if (callerId !== '+18017833317' && callerId !== '+18398676637') {
-    callerId = '+18398676637'; // Default to verified RHIVE line
+  // Support switching between Honey AI and Open Voice line (digit-normalized to resist URL decode + to space)
+  const normCid = callerId.replace(/[^\d]/g, '');
+  if (normCid === '18017833317' || normCid === '8017833317') {
+    callerId = '+18017833317'; // Open Voice Line
+  } else {
+    callerId = '+18398676637'; // Default to verified Honey AI line
   }
 
   // Format destination number to E.164
