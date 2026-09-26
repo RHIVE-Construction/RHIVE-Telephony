@@ -2814,41 +2814,82 @@
       return html;
     }
 
+    function getCallDiscProfile(c) {
+      if (c.disc_profile && typeof c.disc_profile === 'object') return c.disc_profile;
+      const text = ((c.transcript || '') + ' ' + (c.summary || '') + ' ' + (c.notes || '') + ' ' + (c.intent || '')).toLowerCase();
+      
+      if (text.includes('urgent') || text.includes('asap') || text.includes('leak') || text.includes('emergency') || text.includes('quick') || text.includes('fast') || text.includes('high dominance')) {
+        return { label: 'Dominant (Fast Decision)', icon: '🎯', badgeClass: 'bg-rose-50 text-rose-700 border-rose-200' };
+      }
+      if (text.includes('price') || text.includes('cost') || text.includes('bid') || text.includes('estimate') || text.includes('measure') || text.includes('sq') || text.includes('specs') || text.includes('conscientious')) {
+        return { label: 'Conscientious (Pricing & Specs)', icon: '⚖️', badgeClass: 'bg-indigo-50 text-indigo-700 border-indigo-200' };
+      }
+      if (text.includes('referral') || text.includes('neighbor') || text.includes('recommend') || text.includes('warranty') || text.includes('family') || text.includes('trust') || text.includes('steady')) {
+        return { label: 'Steady (Trust & Craftsmanship)', icon: '🌱', badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+      }
+      return { label: 'Influential (Warm & Collaborative)', icon: '💡', badgeClass: 'bg-amber-50 text-amber-700 border-amber-200' };
+    }
+
     function renderCallCard(c, index) {
       const isWork = c.isWorkCell;
       const isOut = c.direction === 'outbound-api' || c.direction === 'outbound';
       const durSec = parseInt(c.duration, 10) || 0;
-      const durStr = durSec > 0 ? `${Math.floor(durSec / 60)}m ${durSec % 60}s` : 'Missed';
+      const isMissed = durSec === 0;
+      const durStr = !isMissed ? `${Math.floor(durSec / 60)}m ${durSec % 60}s` : 'Missed';
       const dateStr = c.date_created ? new Date(c.date_created).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
       const hasRec = Boolean(c.recording_url);
+      const disc = getCallDiscProfile(c);
+      const targetPhone = isOut ? c.to : c.from;
 
       return `
         <div class="p-3 bg-white border border-slate-200 rounded-[14px] shadow-sm hover:border-pink-300 transition space-y-2" id="callCard_${index}">
-          <div class="flex items-center justify-between">
+          <div class="flex items-start justify-between gap-2">
             
             <!-- Contact & Direction -->
-            <div class="flex items-center space-x-2.5">
-              <div class="w-8 h-8 rounded-full ${isOut ? 'bg-pink-50 text-rhive-pink' : 'bg-emerald-50 text-emerald-600'} flex items-center justify-center font-bold">
-                ${isOut ? '↗' : '↙'}
+            <div class="flex items-center space-x-2.5 min-w-0">
+              <div class="w-8 h-8 rounded-full ${isOut ? 'bg-pink-50 text-rhive-pink' : (isMissed ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600')} flex items-center justify-center font-bold shrink-0">
+                ${isOut ? '↗' : (isMissed ? '✕' : '↙')}
               </div>
-              <div>
-                <div class="font-mono text-xs font-bold text-slate-900">${escapeHtml(c.contact_name || c.to || c.from || 'Customer')}</div>
+              <div class="min-w-0">
+                <div class="font-mono text-xs font-bold text-slate-900 truncate">${escapeHtml(c.contact_name || c.to || c.from || 'Customer')}</div>
                 <div class="text-[10px] font-mono text-slate-400 flex items-center space-x-1.5">
                   <span>${dateStr}</span>
                   <span>&bull;</span>
-                  <span>${durStr}</span>
+                  <span class="${isMissed ? 'text-rose-500 font-bold' : ''}">${durStr}</span>
                 </div>
               </div>
             </div>
 
-            <!-- Line Identity Badge -->
-            <div>
+            <!-- Badges: Line Identity & DISC Profile -->
+            <div class="flex flex-col items-end space-y-1 shrink-0">
               <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-mono font-bold ${isWork ? 'bg-pink-100 text-rhive-pink border border-pink-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}">
                 ${isWork ? 'Michael Work Cell' : 'Honey AI'}
+              </span>
+              <span class="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded-full text-[8px] font-mono font-bold border ${disc.badgeClass}" title="AI DISC Personality Profile">
+                <span>${disc.icon}</span>
+                <span>${disc.label}</span>
               </span>
             </div>
 
           </div>
+
+          <!-- Missed Opportunity Recovery Bar (If Unanswered) -->
+          ${isMissed ? `
+            <div class="p-2 bg-rose-50/80 border border-rose-200 rounded-[10px] flex items-center justify-between text-[10px] font-mono">
+              <div class="flex items-center space-x-1.5 text-rose-800 font-bold">
+                <span>⚠️</span>
+                <span>Missed Opportunity</span>
+              </div>
+              <div class="flex items-center space-x-1.5">
+                <button type="button" onclick="redialNumber('${targetPhone}')" class="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-[6px] transition flex items-center space-x-1 shadow-2xs">
+                  <span>⚡</span><span>Speed Redial</span>
+                </button>
+                <button type="button" onclick="textNumber('${targetPhone}', 'Hi! Sorry we missed your call at RHIVE Construction. You can get an instant certified roof estimate or schedule an inspection right here: https://telephony.rhiveconstruction.com/v/quote - or reply here and we will take care of you right away!')" class="px-2 py-1 bg-white hover:bg-rose-100 text-rose-700 border border-rose-300 font-bold rounded-[6px] transition flex items-center space-x-1 shadow-2xs">
+                  <span>💬</span><span>SMS Quote Link</span>
+                </button>
+              </div>
+            </div>
+          ` : ''}
 
           <!-- Quick Audio Player (If Recorded) -->
           ${hasRec ? `
@@ -2879,14 +2920,14 @@
               </a>
             </div>
             <div class="flex items-center space-x-1.5">
-              <button onclick="openSaveContactModal('${isOut ? c.to : c.from}', '${escapeHtml(c.contact_name || '')}', '${escapeHtml(c.property_address || '')}', '${escapeHtml(c.summary || c.notes || '')}')" class="px-2 py-1 bg-pink-50 hover:bg-rhive-pink hover:text-white text-rhive-pink border border-pink-200 rounded-[8px] font-bold transition flex items-center space-x-1" title="Save or Convert Call to Contact">
+              <button onclick="openSaveContactModal('${targetPhone}', '${escapeHtml(c.contact_name || '')}', '${escapeHtml(c.property_address || '')}', '${escapeHtml(c.summary || c.notes || '')}')" class="px-2 py-1 bg-pink-50 hover:bg-rhive-pink hover:text-white text-rhive-pink border border-pink-200 rounded-[8px] font-bold transition flex items-center space-x-1" title="Save or Convert Call to Contact">
                 <span>👤</span>
                 <span>+ Contact</span>
               </button>
-              <button onclick="redialNumber('${isOut ? c.to : c.from}')" class="px-2 py-1 bg-slate-100 hover:bg-black hover:text-white rounded-[8px] font-bold transition">
+              <button onclick="redialNumber('${targetPhone}')" class="px-2 py-1 bg-slate-100 hover:bg-black hover:text-white rounded-[8px] font-bold transition">
                 📞 Call
               </button>
-              <button onclick="textNumber('${isOut ? c.to : c.from}')" class="px-2 py-1 bg-slate-100 hover:bg-rhive-pink hover:text-white rounded-[8px] font-bold transition">
+              <button onclick="textNumber('${targetPhone}')" class="px-2 py-1 bg-slate-100 hover:bg-rhive-pink hover:text-white rounded-[8px] font-bold transition">
                 💬 Text
               </button>
             </div>
@@ -3253,9 +3294,14 @@
       switchTab('dialer');
     }
 
-    function textNumber(num) {
+    function textNumber(num, draftMsg) {
       if (!num) return;
-      document.getElementById('smsToInput').value = num;
+      const toInput = document.getElementById('smsToInput');
+      if (toInput) toInput.value = num;
+      if (draftMsg) {
+        const bodyInput = document.getElementById('smsBodyInput');
+        if (bodyInput) bodyInput.value = draftMsg;
+      }
       switchTab('messages');
     }
 
