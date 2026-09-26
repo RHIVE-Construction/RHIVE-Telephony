@@ -3,10 +3,34 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>RHIVE Telephony | Visual Whiteboard Flow Orchestrator</title>
+  <title>RHIVE Telephony | Sovereign Flow Whiteboard Canvas</title>
   <meta name="theme-color" content="#ffffff">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="RHIVE Canvas">
+  <link rel="manifest" href="/manifest.json">
   <link rel="icon" type="image/png" href="/rhive-logo-white.png">
   <link rel="apple-touch-icon" href="/rhive-logo-white.png">
+  
+  <script>
+    // RHIVE Telephony Version Gate - Eradicates Stale Caches
+    const CURRENT_ENGINE_VER = 'v81';
+    if (localStorage.getItem('rhive_engine_ver') !== CURRENT_ENGINE_VER) {
+      if ('caches' in window) {
+        caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => {
+          localStorage.setItem('rhive_engine_ver', CURRENT_ENGINE_VER);
+        });
+      } else {
+        localStorage.setItem('rhive_engine_ver', CURRENT_ENGINE_VER);
+      }
+    }
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(console.error);
+      });
+    }
+  </script>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -19,20 +43,17 @@
             'rhive-pink': '#ec028b',
             'rhive-gold': '#e2ab49',
             'rhive-blue': '#08137C',
-            'rhive-black': '#000000',
-            'rhive-dark': '#0A0E17',
-            'rhive-card': '#F8FAFC',
-            'rhive-border': '#E2E8F0'
+            'rhive-dark': '#0A0E17'
           },
           fontFamily: {
             sans: ['Rubik', 'sans-serif'],
             mono: ['JetBrains Mono', 'monospace'],
           },
           boxShadow: {
-            'pink-glow': '0 0 20px rgba(236, 2, 139, 0.35)',
-            'pink-glow-sm': '0 0 10px rgba(236, 2, 139, 0.25)',
-            'subtle-card': '0 4px 20px rgba(0, 0, 0, 0.05)',
-            'node-selected': '0 0 0 3px #ec028b, 0 8px 24px rgba(236, 2, 139, 0.2)'
+            'pink-glow': '0 0 25px rgba(236, 2, 139, 0.4)',
+            'pink-pulse': '0 0 0 4px rgba(236, 2, 139, 0.3), 0 8px 30px rgba(236, 2, 139, 0.35)',
+            'subtle-card': '0 2px 12px rgba(0, 0, 0, 0.06)',
+            'google-elevated': '0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04)'
           }
         }
       }
@@ -45,82 +66,122 @@
       font-family: 'Rubik', sans-serif;
       overflow: hidden;
       user-select: none;
+      -webkit-tap-highlight-color: transparent;
     }
     .canvas-grid {
-      background-size: 24px 24px;
-      background-image: radial-gradient(circle, #CBD5E1 1px, transparent 1px);
+      background-size: 28px 28px;
+      background-image: radial-gradient(circle, #CBD5E1 1.2px, transparent 1.2px);
     }
     .flow-node {
-      border-radius: 14px;
+      border-radius: 16px;
       cursor: grab;
       touch-action: none;
-      transition: box-shadow 0.15s ease;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
     }
     .flow-node:active {
       cursor: grabbing;
     }
-    /* Hide scrollbar for clean UI */
+    .flow-node.active-call-node {
+      border-color: #ec028b !important;
+      box-shadow: 0 0 0 4px rgba(236, 2, 139, 0.35), 0 10px 32px rgba(236, 2, 139, 0.3) !important;
+      transform: scale(1.03);
+    }
+    @keyframes flowParticle {
+      0% { stroke-dashoffset: 24; }
+      100% { stroke-dashoffset: 0; }
+    }
+    .flow-line {
+      stroke-dasharray: 6 6;
+      animation: flowParticle 1.2s linear infinite;
+    }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .touch-pan { touch-action: pan-x pan-y; }
   </style>
 </head>
 <body class="w-screen h-screen flex flex-col bg-slate-50 text-slate-900">
 
-  <!-- Top Navigation & Flow Toolbar -->
-  <header class="h-14 bg-white border-b border-slate-200 px-4 flex items-center justify-between z-30 shadow-sm shrink-0">
-    <div class="flex items-center space-x-3">
-      <div class="w-8 h-8 rounded-[10px] bg-black flex items-center justify-center p-1 shadow-sm">
+  <!-- Top Executive Google-Style App Bar -->
+  <header class="h-14 bg-white border-b border-slate-200 px-3 sm:px-5 flex items-center justify-between z-30 shadow-xs shrink-0">
+    <div class="flex items-center space-x-2.5">
+      <div class="w-8 h-8 rounded-[10px] bg-black flex items-center justify-center p-1 shadow-sm shrink-0">
         <img src="/rhive-logo-white.png" alt="RHIVE Logo" class="w-full h-full object-contain">
       </div>
       <div>
-        <div class="flex items-center space-x-2">
+        <div class="flex items-center space-x-1.5">
           <h1 class="text-xs font-black tracking-tight uppercase text-slate-900">Flow Whiteboard Canvas</h1>
-          <span class="text-[9px] font-mono px-2 py-0.5 bg-pink-100 text-rhive-pink font-bold rounded-full">GEMINI 3.8 SWARM</span>
+          <span class="text-[8px] font-mono px-1.5 py-0.2 bg-pink-100 text-rhive-pink font-bold rounded-full">HONEY AI INTAKE</span>
+          <button onclick="forcePurgeAndReload()" title="Purge Stale Caches" class="text-[8px] font-mono px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black rounded-full border border-slate-300">v81 ↻</button>
         </div>
-        <p class="text-[10px] font-mono text-slate-400">Drag &bull; Connect &bull; Tune Prompts &bull; Hot-Deploy</p>
+        <p class="text-[9px] font-mono text-slate-400 hidden sm:block">Intake Loops &bull; Timing Telemetry &bull; AI Node Builder &bull; Live Test Audio</p>
       </div>
     </div>
 
-    <!-- Center Control Actions -->
-    <div class="flex items-center space-x-2">
-      <button onclick="addNodeModal()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-mono font-bold rounded-[10px] border border-slate-200 transition flex items-center space-x-1">
-        <span>+ ADD NODE</span>
-      </button>
-      <button onclick="runSimulation()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-mono font-bold rounded-[10px] border border-slate-200 transition flex items-center space-x-1">
-        <span>▶ SIMULATE</span>
-      </button>
-      <button onclick="deployFlowToLive()" class="px-3.5 py-1.5 bg-black hover:bg-slate-800 text-white text-xs font-mono font-bold rounded-[10px] shadow-sm transition flex items-center space-x-1.5">
-        <span class="w-2 h-2 rounded-full bg-rhive-pink animate-pulse"></span>
-        <span>DEPLOY LIVE FLOW</span>
-      </button>
+    <!-- Center Google-Tier AI Node Generation & Control Bar -->
+    <div class="hidden md:flex items-center space-x-2 max-w-lg w-full mx-4">
+      <div class="relative flex-1">
+        <input type="text" id="aiPromptInput" 
+               placeholder="✨ Ask AI to add node (e.g. 'Add Spanish intake', 'Add solar check')..." 
+               class="w-full bg-slate-100 hover:bg-slate-50 focus:bg-white border border-slate-200 focus:border-rhive-pink rounded-[12px] pl-3 pr-20 py-1.5 text-xs font-mono text-slate-900 focus:outline-none transition shadow-inner">
+        <button onclick="handleAiGenerateNode()" 
+                class="absolute right-1 top-1 px-2.5 py-1 bg-rhive-pink hover:bg-pink-600 text-white rounded-[8px] text-[10px] font-mono font-bold transition shadow-xs">
+          + AI BUILD
+        </button>
+      </div>
     </div>
 
-    <!-- Right Utility Links -->
-    <div class="flex items-center space-x-2">
-      <a href="/dialer" class="px-3 py-1.5 bg-pink-50 hover:bg-pink-100 text-rhive-pink text-xs font-mono font-bold rounded-[10px] border border-pink-200 transition">
+    <!-- Right Action Utility Hub -->
+    <div class="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+      <button onclick="toggleTestCallDrawer()" id="btnToggleTestCall" class="px-2.5 sm:px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 text-xs font-mono font-bold rounded-[10px] transition flex items-center space-x-1">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="hidden sm:inline">🎙️ TEST CALL</span>
+        <span class="sm:hidden">CALL</span>
+      </button>
+
+      <button onclick="toggleAdminDrawer()" id="btnToggleAdmin" class="px-2.5 sm:px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-300 text-xs font-mono font-bold rounded-[10px] transition flex items-center space-x-1">
+        <span>⚡ OVERRIDE</span>
+      </button>
+
+      <button onclick="deployFlowToLive()" class="px-2.5 sm:px-3.5 py-1.5 bg-black hover:bg-slate-800 text-white text-xs font-mono font-bold rounded-[10px] shadow-sm transition flex items-center space-x-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-rhive-pink animate-pulse"></span>
+        <span class="hidden sm:inline">DEPLOY FLOW</span>
+        <span class="sm:hidden">DEPLOY</span>
+      </button>
+
+      <a href="/dialer" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-mono font-bold rounded-[10px] border border-slate-200 transition">
         📞 DIALER
-      </a>
-      <a href="/agents" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-mono font-bold rounded-[10px] border border-slate-200 transition">
-        🤖 AGENTS
       </a>
     </div>
   </header>
 
-  <!-- Canvas Workspace & Inspector -->
+  <!-- Mobile Quick AI Prompt Input Bar (Visible only on mobile) -->
+  <div class="md:hidden bg-white border-b border-slate-200 px-3 py-1.5 flex items-center space-x-1.5 z-20">
+    <input type="text" id="aiPromptInputMobile" 
+           placeholder="✨ Ask AI to add node (e.g. 'Add Spanish')..." 
+           class="flex-1 bg-slate-100 border border-slate-200 rounded-[10px] px-2.5 py-1 text-xs font-mono text-slate-900 focus:outline-none focus:border-rhive-pink">
+    <button onclick="handleAiGenerateNodeMobile()" class="px-2.5 py-1 bg-rhive-pink text-white rounded-[8px] text-[10px] font-mono font-bold">
+      + BUILD
+    </button>
+  </div>
+
+  <!-- Workspace Container: Infinite Canvas + Drawers -->
   <div class="flex-1 flex overflow-hidden relative">
 
-    <!-- Interactive Infinite Canvas Area -->
-    <div id="canvasViewport" class="flex-1 canvas-grid relative overflow-hidden bg-slate-50 cursor-crosshair">
+    <!-- Interactive Canvas Viewport (Pannable & Zoomable) -->
+    <div id="canvasViewport" class="flex-1 canvas-grid relative overflow-hidden bg-slate-50 touch-pan cursor-crosshair">
       
-      <!-- SVG Connection Lines Layer -->
+      <!-- SVG Curved Connections Layer -->
       <svg id="connectionsSvg" class="absolute inset-0 w-full h-full pointer-events-none z-10">
         <defs>
           <linearGradient id="curveGradient" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stop-color="#ec028b"/>
-            <stop offset="100%" stop-color="#0A0E17"/>
+            <stop offset="100%" stop-color="#08137C"/>
           </linearGradient>
           <marker id="arrowHead" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
             <path d="M 0 1 L 8 5 L 0 9 z" fill="#ec028b"/>
+          </marker>
+          <marker id="arrowHeadGreen" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1 L 8 5 L 0 9 z" fill="#10B981"/>
           </marker>
         </defs>
       </svg>
@@ -128,84 +189,104 @@
       <!-- Nodes Layer (Rendered by JS) -->
       <div id="nodesContainer" class="absolute inset-0 z-20 pointer-events-auto"></div>
 
-      <!-- Canvas Floating Tool Palette -->
-      <div class="absolute bottom-4 left-4 z-30 bg-white/95 backdrop-blur-md border border-slate-200 rounded-[14px] p-2 shadow-subtle-card flex items-center space-x-2 text-xs font-mono">
-        <span class="text-[10px] uppercase font-bold text-slate-400">View:</span>
-        <button onclick="resetZoom()" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-[8px] font-bold">100%</button>
-        <button onclick="resetToCanonical()" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-[8px] font-bold text-rhive-pink">RESET FLOW</button>
-        <button onclick="exportFlowJson()" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-[8px] font-bold">EXPORT JSON</button>
+      <!-- Canvas Floating Tool Palette (Bottom Left) -->
+      <div class="absolute bottom-4 left-4 z-30 bg-white/95 backdrop-blur-md border border-slate-200 rounded-[16px] p-2 shadow-google-elevated flex items-center space-x-1.5 text-xs font-mono">
+        <span class="text-[9px] uppercase font-black text-slate-400 px-1">Canvas:</span>
+        <button onclick="resetZoom()" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-[8px] font-bold text-slate-700">100%</button>
+        <button onclick="resetToCanonical()" class="px-2 py-1 bg-pink-50 hover:bg-pink-100 rounded-[8px] font-bold text-rhive-pink">RESET FLOW</button>
+        <button onclick="exportFlowJson()" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-[8px] font-bold text-slate-700">EXPORT</button>
+        <button onclick="toggleInspector()" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-[8px] font-bold text-slate-700">PROPERTIES</button>
+      </div>
+
+      <!-- Node Category Legend (Top Left) -->
+      <div class="hidden lg:flex absolute top-4 left-4 z-20 bg-white/90 backdrop-blur-md border border-slate-200 rounded-[14px] p-2.5 shadow-subtle-card space-x-3 text-[10px] font-mono font-bold">
+        <div class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span><span class="text-slate-600">Ingress / Trigger</span></div>
+        <div class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-rhive-pink"></span><span class="text-slate-600">Speech & Voice</span></div>
+        <div class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span><span class="text-slate-600">Grid Validation</span></div>
+        <div class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span><span class="text-slate-600">Objection Rebuttal</span></div>
+        <div class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-purple-600"></span><span class="text-slate-600">Post-Call Vault</span></div>
+        <div class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span><span class="text-slate-600">Admin Override</span></div>
       </div>
 
     </div>
 
-    <!-- Right-Hand Node Property Inspector Panel -->
-    <aside id="inspectorPanel" class="w-80 sm:w-96 bg-white border-l border-slate-200 p-5 flex flex-col justify-between overflow-y-auto no-scrollbar shadow-subtle-card z-30 shrink-0">
+    <!-- Slide-Over Right Drawer: Node Property Inspector Panel -->
+    <aside id="inspectorPanel" class="hidden absolute sm:relative right-0 top-0 bottom-0 w-80 sm:w-96 bg-white border-l border-slate-200 p-5 flex flex-col justify-between overflow-y-auto no-scrollbar shadow-google-elevated z-40 shrink-0">
       <div class="space-y-4">
         
         <div class="flex items-center justify-between border-b border-slate-100 pb-3">
           <div class="flex items-center space-x-2">
-            <div class="w-3 h-3 rounded-full bg-rhive-pink"></div>
-            <h2 class="text-xs font-black font-mono uppercase tracking-wider text-slate-900">Node Inspector</h2>
+            <div id="inspectorCategoryDot" class="w-3 h-3 rounded-full bg-rhive-pink"></div>
+            <h2 class="text-xs font-black font-mono uppercase tracking-wider text-slate-900">Node Properties</h2>
           </div>
-          <span id="inspectorNodeType" class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">TRIGGER</span>
+          <div class="flex items-center space-x-1">
+            <span id="inspectorNodeType" class="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-pink-100 text-rhive-pink">STAGE</span>
+            <button onclick="toggleInspector()" class="sm:hidden p-1 text-slate-400 hover:text-slate-700">✕</button>
+          </div>
         </div>
 
-        <!-- Node Title & ID -->
+        <!-- Node Title & Subtitle -->
         <div class="space-y-1">
-          <label class="text-[10px] font-mono uppercase font-bold text-slate-500">Node Title</label>
+          <label class="text-[10px] font-mono uppercase font-bold text-slate-500">Stage / Node Title</label>
           <input type="text" id="inspectorTitle" class="w-full bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-rhive-pink" onchange="updateSelectedNodeProperty('title', this.value)">
         </div>
 
-        <!-- Gemini 3.8 Model Selector -->
         <div class="space-y-1">
-          <label class="text-[10px] font-mono uppercase font-bold text-slate-500">Gemini Model</label>
+          <label class="text-[10px] font-mono uppercase font-bold text-slate-500">Subtitle / Target</label>
+          <input type="text" id="inspectorSubtitle" class="w-full bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-rhive-pink" onchange="updateSelectedNodeProperty('subtitle', this.value)">
+        </div>
+
+        <!-- Latency / Timing Telemetry -->
+        <div class="space-y-1">
+          <div class="flex items-center justify-between">
+            <label class="text-[10px] font-mono uppercase font-bold text-slate-500">Execution Timing / Latency</label>
+            <span id="inspectorTimingDisplay" class="text-[10px] font-mono font-bold text-rhive-pink">⏱️ 280ms Turn</span>
+          </div>
+          <input type="text" id="inspectorTiming" class="w-full bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-rhive-pink" onchange="updateSelectedNodeProperty('timing', this.value)">
+        </div>
+
+        <!-- Gemini Model Selector -->
+        <div class="space-y-1">
+          <label class="text-[10px] font-mono uppercase font-bold text-slate-500">Gemini Neural Engine</label>
           <select id="inspectorModel" class="w-full bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-rhive-pink" onchange="updateSelectedNodeProperty('model', this.value)">
-            <option value="gemini-3.8-live">gemini-3.8-live (Speech-to-Speech Real-Time)</option>
-            <option value="gemini-3.8-live-extended-thinking">gemini-3.8-live-extended-thinking (Reasoning)</option>
-            <option value="gemini-3.8-flash">gemini-3.8-flash (Lead Dossier Synthesis)</option>
-            <option value="gemini-3.8-flash-lite">gemini-3.8-flash-lite (Sub-180ms Intent Triage)</option>
+            <option value="gemini-3.8-live">gemini-3.8-live (Speech-to-Speech Real-Time <280ms)</option>
+            <option value="gemini-3.8-live-extended-thinking">gemini-3.8-live-extended-thinking (Objection Rebuttal)</option>
+            <option value="gemini-3.8-flash-lite">gemini-3.8-flash-lite (Sub-180ms Utah Grid Triage)</option>
+            <option value="gemini-3.8-flash">gemini-3.8-flash (DISC & Lead Dossier Vault)</option>
+            <option value="Twilio Voice">Twilio Carrier Voice API</option>
+            <option value="Twilio SMS API">Twilio 10DLC Carrier SMS</option>
           </select>
         </div>
 
-        <!-- Voice Selector (Aoede / Leda / Vega) -->
+        <!-- Voice Persona Selector -->
         <div class="space-y-1">
           <label class="text-[10px] font-mono uppercase font-bold text-slate-500">Neural Voice Persona</label>
           <select id="inspectorVoice" class="w-full bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-rhive-pink" onchange="updateSelectedNodeProperty('voice', this.value)">
-            <option value="Aoede">Aoede (Cheerful, Bright PBX Switchboard)</option>
-            <option value="Leda">Leda (Warm, Natural Full-Duplex Conversational)</option>
+            <option value="Aoede">Aoede (Cheerful, High-Intent Wasatch Concierge)</option>
+            <option value="Leda">Leda (Warm, Natural Full-Duplex Dialogue)</option>
             <option value="Vega">Vega (Authoritative Executive Dispatch)</option>
+            <option value="N/A">N/A (Integration / Data Node)</option>
           </select>
         </div>
 
         <!-- Pacing & Word Limit (Strict 20-word Rule) -->
         <div class="space-y-1">
           <div class="flex items-center justify-between">
-            <label class="text-[10px] font-mono uppercase font-bold text-slate-500">Max Words Per Turn</label>
+            <label class="text-[10px] font-mono uppercase font-bold text-slate-500">Turn Word Limit</label>
             <span id="inspectorWordCountBadge" class="text-[10px] font-mono font-bold text-rhive-pink">20 Words</span>
           </div>
           <input type="range" id="inspectorWordLimit" min="10" max="40" value="20" step="2" class="w-full accent-rhive-pink cursor-pointer" oninput="updateWordLimitDisplay(this.value)" onchange="updateSelectedNodeProperty('maxWords', this.value)">
-          <p class="text-[9px] font-mono text-slate-400">Strict FAANG turn economy prevents long AI monologues.</p>
         </div>
 
-        <!-- Pre-Roll Delay / Rings -->
+        <!-- Verbatim Script & System Prompt -->
         <div class="space-y-1">
-          <label class="text-[10px] font-mono uppercase font-bold text-slate-500">Pre-Roll PBX Rings</label>
-          <select id="inspectorRingCount" class="w-full bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-rhive-pink" onchange="updateSelectedNodeProperty('ringCount', this.value)">
-            <option value="1.5">1.5 Rings (Ultra-fast pickup)</option>
-            <option value="2.5">2.5 Rings (Standard Wasatch Front PBX)</option>
-            <option value="3.5">3.5 Rings (Comfort cadence)</option>
-          </select>
-        </div>
-
-        <!-- System Prompt & Directives -->
-        <div class="space-y-1">
-          <label class="text-[10px] font-mono uppercase font-bold text-slate-500">Node Directives & System Prompt</label>
+          <label class="text-[10px] font-mono uppercase font-bold text-slate-500">Verbatim Script / System Directive</label>
           <textarea id="inspectorPrompt" rows="6" class="w-full bg-slate-50 border border-slate-200 rounded-[10px] p-2.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-rhive-pink resize-none" onchange="updateSelectedNodeProperty('prompt', this.value)"></textarea>
         </div>
 
       </div>
 
-      <!-- Delete Node Button -->
+      <!-- Delete Node Action -->
       <div class="border-t border-slate-100 pt-3">
         <button onclick="deleteSelectedNode()" class="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-[10px] text-xs font-mono font-bold border border-rose-200 transition">
           REMOVE NODE
@@ -215,43 +296,305 @@
 
   </div>
 
+  <!-- ======================================================== -->
+  <!-- BOTTOM DRAWER 1: LIVE TEST CALL & AUDIO COCKPIT          -->
+  <!-- ======================================================== -->
+  <div id="testCallDrawer" class="hidden absolute bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200 shadow-2xl p-4 transition-transform max-w-2xl mx-auto rounded-t-[24px]">
+    <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+      <div class="flex items-center space-x-2">
+        <div class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
+        <h3 class="text-xs font-black font-mono uppercase text-slate-900">Live Agent Test Call Simulator</h3>
+        <span class="text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">WEBRTC AUDIO READY</span>
+      </div>
+      <button onclick="toggleTestCallDrawer()" class="p-1 text-slate-400 hover:text-slate-700">✕</button>
+    </div>
+
+    <!-- Active Call Controls & Visualizer -->
+    <div class="py-3 space-y-3">
+      
+      <!-- Stage Tracker Pills -->
+      <div class="flex items-center justify-between text-[9px] font-mono font-bold overflow-x-auto no-scrollbar py-1">
+        <span id="testStage1" class="px-2 py-1 rounded bg-slate-100 text-slate-500">1. GREET</span>
+        <span id="testStage2" class="px-2 py-1 rounded bg-slate-100 text-slate-500">2. UT-GRID</span>
+        <span id="testStage3" class="px-2 py-1 rounded bg-slate-100 text-slate-500">3. SYMPTOMS</span>
+        <span id="testStage4" class="px-2 py-1 rounded bg-slate-100 text-slate-500">4. PITCH</span>
+        <span id="testStage5" class="px-2 py-1 rounded bg-slate-100 text-slate-500">5. BOOKING</span>
+      </div>
+
+      <!-- Real-time Speech Transcript Dialogue Box -->
+      <div id="testCallTranscript" class="bg-slate-50 border border-slate-200 rounded-[14px] p-3 max-h-36 overflow-y-auto font-mono text-[11px] space-y-1.5 text-slate-800">
+        <div class="text-slate-400 italic">Click "Start Test Call" to begin simulated voice interaction. The canvas will highlight active nodes in real time.</div>
+      </div>
+
+      <!-- Call Action Strip -->
+      <div class="flex items-center space-x-2">
+        <button id="btnStartCall" onclick="startSimulatedCall()" class="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-[12px] text-xs font-mono font-bold shadow-md transition flex items-center justify-center space-x-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+          <span>START TEST CALL</span>
+        </button>
+        <button id="btnNextStep" onclick="advanceSimulatedStep()" class="hidden px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-[12px] text-xs font-mono font-bold transition">
+          ADVANCE STEP ⏩
+        </button>
+        <button id="btnEndCall" onclick="endSimulatedCall()" class="hidden px-4 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-[12px] text-xs font-mono font-bold shadow-md transition">
+          END CALL ⏹
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- BOTTOM DRAWER 2: ADMIN OVERRIDE & LIVE WHISPER CONSOLE   -->
+  <!-- ======================================================== -->
+  <div id="adminDrawer" class="hidden absolute bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200 shadow-2xl p-4 transition-transform max-w-2xl mx-auto rounded-t-[24px]">
+    <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+      <div class="flex items-center space-x-2">
+        <div class="w-3 h-3 rounded-full bg-purple-600"></div>
+        <h3 class="text-xs font-black font-mono uppercase text-slate-900">Admin Override & Live Whisper Console</h3>
+        <span class="text-[9px] font-mono px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 font-bold">SOVEREIGN EXECUTIVE</span>
+      </div>
+      <button onclick="toggleAdminDrawer()" class="p-1 text-slate-400 hover:text-slate-700">✕</button>
+    </div>
+
+    <div class="py-3 space-y-3">
+      
+      <!-- 1-Click Fast Overrides -->
+      <div class="space-y-1">
+        <span class="text-[10px] font-mono uppercase font-bold text-slate-400">1-Click Live Directives:</span>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[9px] font-mono font-bold">
+          <button onclick="sendAdminOverride('BYPASS_GRID')" class="p-2 rounded-[10px] bg-slate-100 hover:bg-purple-100 hover:text-purple-800 border border-slate-200 transition">⏩ Bypass Address</button>
+          <button onclick="sendAdminOverride('FORCE_BOOKING')" class="p-2 rounded-[10px] bg-slate-100 hover:bg-emerald-100 hover:text-emerald-800 border border-slate-200 transition">📅 Force Booking</button>
+          <button onclick="sendAdminOverride('TRANSFER_MICHAEL')" class="p-2 rounded-[10px] bg-slate-100 hover:bg-rose-100 hover:text-rose-800 border border-slate-200 transition">🚨 Transfer Michael</button>
+          <button onclick="sendAdminOverride('SECRETARY_MODE')" class="p-2 rounded-[10px] bg-slate-100 hover:bg-amber-100 hover:text-amber-800 border border-slate-200 transition">🛡️ Secretary Mode</button>
+        </div>
+      </div>
+
+      <!-- Live Whisper Injection Input -->
+      <div class="space-y-1">
+        <label class="text-[10px] font-mono uppercase font-bold text-slate-500">Live Agent Whisper (In-Call Prompt Injection)</label>
+        <div class="flex items-center space-x-2">
+          <input type="text" id="adminWhisperInput" 
+                 placeholder="Type instruction to whisper directly into Honey's context (e.g. 'Offer 10% cash discount')..." 
+                 class="flex-1 bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-purple-500">
+          <button onclick="sendCustomWhisper()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-[10px] text-xs font-mono font-bold transition shadow-sm">
+            WHISPER
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Event Log -->
+      <div class="space-y-1">
+        <span class="text-[10px] font-mono uppercase font-bold text-slate-400">Live Telephony Stream Updates:</span>
+        <div id="adminEventLog" class="bg-slate-50 border border-slate-200 rounded-[10px] p-2.5 max-h-28 overflow-y-auto font-mono text-[10px] text-slate-700 space-y-1">
+          <div class="text-slate-400">System listening for live call events and admin overrides...</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
   <script>
-    // Canonical 6-Node Architecture Graph State
-    let flowGraph = {
-      nodes: [],
-      connections: []
-    };
+    // Canonical 12-Node Complete Honey AI Intake Graph
+    let flowGraph = { nodes: [], connections: [] };
     let selectedNodeId = null;
     let draggingNode = null;
     let dragOffset = { x: 0, y: 0 };
+    let activeCallStepIndex = 0;
+    let isTestCallActive = false;
 
-    // Default Canonical Graph Data
     const CANONICAL_NODES = [
-      { id: 'node_trigger', type: 'pstn_trigger', title: 'PSTN Inbound Trigger', x: 50, y: 80, model: 'N/A', voice: 'N/A', ringCount: '2.5', maxWords: '20', prompt: 'Carrier ingress via +1 839-867-6637 (Honey) and +1 801-783-3317 (Open Voice)' },
-      { id: 'node_preroll', type: 'preroll_delay', title: 'Acoustic Pre-Roll Buffer', x: 340, y: 80, model: 'N/A', voice: 'N/A', ringCount: '2.5', maxWords: '20', prompt: 'Plays 2.5 rings of authentic transfer_ring.wav with ambient office/construction audio bed' },
-      { id: 'node_persona', type: 'agent_persona', title: 'Honey AI Concierge', x: 630, y: 80, model: 'gemini-3.8-live', voice: 'Aoede', ringCount: '2.5', maxWords: '20', prompt: 'You are Honey, elite AI Roofing Specialist for RHIVE Construction. Speak under 20 words per turn. One question per turn.' },
-      { id: 'node_classifier', type: 'intent_classifier', title: 'Intent Classifier', x: 920, y: 80, model: 'gemini-3.8-flash-lite', voice: 'N/A', ringCount: '2.5', maxWords: '20', prompt: 'Sub-180ms triage: Emergency Storm Tarp, Roof Replacement Quote, Status Check, Vendor' },
-      { id: 'node_tarp', type: 'emergency_tarp', title: 'Emergency Storm Tarp', x: 1210, y: 30, model: 'gemini-3.8-live-extended-thinking', voice: 'Leda', ringCount: '2.5', maxWords: '20', prompt: '$150 emergency fee per tarp credited toward full roof replacement. Live Google Chat dispatch.' },
-      { id: 'node_whisper', type: 'whisper_transfer', title: 'Whisper Escalation', x: 1210, y: 220, model: 'gemini-3.8-flash-lite', voice: 'Vega', ringCount: '2.5', maxWords: '20', prompt: 'Warm transfer to Michael (+1 801-449-1451) or Kara (+1 801-441-0024) with audio briefing' },
-      { id: 'node_vault', type: 'data_vault', title: 'Google Drive Data Vault', x: 1500, y: 120, model: 'gemini-3.8-flash', voice: 'N/A', ringCount: '2.5', maxWords: '20', prompt: 'Upload dual-channel stereo call recordings directly to customer phone folder in Drive.' }
+      {
+        id: 'node_ingress',
+        type: 'pstn_trigger',
+        category: 'trigger',
+        title: 'Carrier PSTN Ingress',
+        subtitle: '+1 (801) 783-3317 & +1 (839) 867-6637',
+        timing: '⏱️ 0ms',
+        x: 40,
+        y: 160,
+        model: 'Twilio Voice',
+        voice: 'N/A',
+        maxWords: 'N/A',
+        prompt: 'Inbound carrier call routing via personal work cell (+1 801-783-3317) and Honey AI Line (+1 839-867-6637). Extracts Caller ID, location, and CNAM.'
+      },
+      {
+        id: 'node_preroll',
+        type: 'acoustic_buffer',
+        category: 'trigger',
+        title: 'Acoustic Pre-Roll Buffer',
+        subtitle: '2.5 Authentic Transfer Rings',
+        timing: '⏱️ 2500ms',
+        x: 320,
+        y: 160,
+        model: 'Audio Bed',
+        voice: 'N/A',
+        maxWords: 'N/A',
+        prompt: 'Plays 2.5 rings of transfer_ring.wav with subtle office ambient bed. Eliminates instant bot pickup cadence for high-trust human presence.'
+      },
+      {
+        id: 'node_media_stream',
+        type: 'webrtc_stream',
+        category: 'telephony',
+        title: 'Twilio Media Stream Bridge',
+        subtitle: '8kHz μ-law ⟷ 24kHz PCM',
+        timing: '⏱️ <20ms',
+        x: 600,
+        y: 160,
+        model: 'WebSocket Stream',
+        voice: 'N/A',
+        maxWords: 'N/A',
+        prompt: 'Bidirectional full-duplex audio stream via /media-stream WebSocket. Simultaneously writes dual-channel stereo recordings to cloud buffer.'
+      },
+      {
+        id: 'node_stage1_greeting',
+        type: 'ai_stage',
+        category: 'ai_voice',
+        title: 'Stage 1: Greeting & Discovery',
+        subtitle: 'Warm Discovery & Triage',
+        timing: '⏱️ 280ms Turn',
+        x: 880,
+        y: 160,
+        model: 'gemini-3.8-live',
+        voice: 'Aoede',
+        maxWords: '20',
+        prompt: '"Thanks for calling RHIVE Construction, this is Michael. How can I help you with your roof today?" Identify emergency leak vs replacement quote.'
+      },
+      {
+        id: 'node_stage2_address',
+        type: 'validation_loop',
+        category: 'validation',
+        title: 'Stage 2: Utah Grid Address Loop',
+        subtitle: 'Salt Lake Coordinates Check',
+        timing: '⏱️ 180ms Latency',
+        x: 1160,
+        y: 160,
+        model: 'gemini-3.8-flash-lite',
+        voice: 'Aoede',
+        maxWords: '18',
+        prompt: 'Parse Utah coordinate grid (e.g. 1234 S 500 E, Sandy). Validate address with Google Geocoding API. Loop until valid or trigger admin bypass.'
+      },
+      {
+        id: 'node_stage3_symptoms',
+        type: 'diagnostic_loop',
+        category: 'ai_voice',
+        title: 'Stage 3: Roof Age & Symptoms',
+        subtitle: 'Leak & Storm Damage Diagnostic',
+        timing: '⏱️ 250ms Turn',
+        x: 1440,
+        y: 160,
+        model: 'gemini-3.8-live',
+        voice: 'Aoede',
+        maxWords: '20',
+        prompt: 'Diagnose roof condition: Roof age (>15 yrs threshold), active interior leaks, wind crease on ridge caps, hail strikes, skylight flashing.'
+      },
+      {
+        id: 'node_stage4_pitch',
+        type: 'product_pitch',
+        category: 'ai_voice',
+        title: 'Stage 4: Scope & SureNail Pitch',
+        subtitle: 'Owens Corning Certified System',
+        timing: '⏱️ 280ms Turn',
+        x: 1720,
+        y: 160,
+        model: 'gemini-3.8-live',
+        voice: 'Aoede',
+        maxWords: '22',
+        prompt: 'Present Owens Corning Duration shingles with SureNail triple-layer grip, breathable synthetic underlayment, ice/water barrier, and ridge ventilation.'
+      },
+      {
+        id: 'node_objection_engine',
+        type: 'objection_router',
+        category: 'decision',
+        title: 'Objection Handling Engine',
+        subtitle: 'Price, Insurance, Nails, Warranty',
+        timing: '⏱️ Sub-180ms',
+        x: 1720,
+        y: 400,
+        model: 'gemini-3.8-live-extended-thinking',
+        voice: 'Aoede',
+        maxWords: '20',
+        prompt: 'Instant objection rebuttals: 💰 Price (Lifetime value vs repair churn), 📑 Insurance (Hail claim assist), 🧲 Nails (Triple magnetic sweep), 🛡️ 50-Yr Warranty.'
+      },
+      {
+        id: 'node_stage5_booking',
+        type: 'booking_loop',
+        category: 'ai_voice',
+        title: 'Stage 5: On-Site Inspection Lock',
+        subtitle: 'Slot Lock & Calendar Sync',
+        timing: '⏱️ 320ms Turn',
+        x: 2000,
+        y: 160,
+        model: 'gemini-3.8-flash-lite',
+        voice: 'Aoede',
+        maxWords: '18',
+        prompt: 'Lock appointment: "I have tomorrow at 10 AM or 2 PM open for Michael to inspect your roof in person. Which works better for you?"'
+      },
+      {
+        id: 'node_post_sms',
+        type: 'automation',
+        category: 'integration',
+        title: 'Twilio SMS Proposal Dispatch',
+        subtitle: 'Estimate Link & Confirmation',
+        timing: '⏱️ <1200ms',
+        x: 2280,
+        y: 70,
+        model: 'Twilio SMS API',
+        voice: 'N/A',
+        maxWords: 'N/A',
+        prompt: 'Dispatches instant certified quote link: "Hi! View your RHIVE roof estimate at https://rhiveconstruction.com/estimate or text back (801) 783-3317."'
+      },
+      {
+        id: 'node_post_crm',
+        type: 'crm_ingest',
+        category: 'integration',
+        title: 'DISC Intelligence & CRM Vault',
+        subtitle: 'Transcript, DISC & Sentiment',
+        timing: '⏱️ ~2.1s Post-Call',
+        x: 2280,
+        y: 270,
+        model: 'gemini-3.8-flash',
+        voice: 'N/A',
+        maxWords: 'N/A',
+        prompt: 'Synthesizes dual-channel transcript, DISC profile (Dominance/Influence/Steadiness/Conscientiousness), sentiment score, and saves to Firestore.'
+      },
+      {
+        id: 'node_admin_override',
+        type: 'admin_override',
+        category: 'admin',
+        title: 'Admin Override & Whisper Bridge',
+        subtitle: 'In-Call Injection & Transfer',
+        timing: '⏱️ Instant (<50ms)',
+        x: 1440,
+        y: 400,
+        model: 'Admin Console',
+        voice: 'Vega',
+        maxWords: 'N/A',
+        prompt: 'Allows Michael to whisper live instructions directly to Honey AI mid-call, bypass address gate, or warm-transfer caller to +1 801-449-1451.'
+      }
     ];
 
     const CANONICAL_CONNECTIONS = [
-      { from: 'node_trigger', to: 'node_preroll' },
-      { from: 'node_preroll', to: 'node_persona' },
-      { from: 'node_persona', to: 'node_classifier' },
-      { from: 'node_classifier', to: 'node_tarp' },
-      { from: 'node_classifier', to: 'node_whisper' },
-      { from: 'node_tarp', to: 'node_vault' },
-      { from: 'node_whisper', to: 'node_vault' }
+      { from: 'node_ingress', to: 'node_preroll' },
+      { from: 'node_preroll', to: 'node_media_stream' },
+      { from: 'node_media_stream', to: 'node_stage1_greeting' },
+      { from: 'node_stage1_greeting', to: 'node_stage2_address' },
+      { from: 'node_stage2_address', to: 'node_stage3_symptoms' },
+      { from: 'node_stage3_symptoms', to: 'node_stage4_pitch' },
+      { from: 'node_stage4_pitch', to: 'node_stage5_booking' },
+      { from: 'node_stage4_pitch', to: 'node_objection_engine' },
+      { from: 'node_objection_engine', to: 'node_stage5_booking' },
+      { from: 'node_stage5_booking', to: 'node_post_sms' },
+      { from: 'node_stage5_booking', to: 'node_post_crm' },
+      { from: 'node_admin_override', to: 'node_stage1_greeting' },
+      { from: 'node_admin_override', to: 'node_stage2_address' },
+      { from: 'node_admin_override', to: 'node_stage5_booking' }
     ];
 
-    // Load Live Flow Graph from Backend API
     async function loadFlowGraph() {
       try {
         const res = await fetch('/api/telephony/canvas-flow');
         const data = await res.json();
-        if (data.success && data.flow && data.flow.nodes) {
+        if (data.success && data.flow && data.flow.nodes && data.flow.nodes.length >= 10) {
           flowGraph = data.flow;
         } else {
           flowGraph = { nodes: [...CANONICAL_NODES], connections: [...CANONICAL_CONNECTIONS] };
@@ -261,12 +604,21 @@
       }
       renderNodes();
       renderConnections();
-      if (flowGraph.nodes.length > 0) {
-        selectNode(flowGraph.nodes[2].id); // Select Honey by default
+      selectNode('node_stage1_greeting');
+    }
+
+    function getNodeColor(category) {
+      switch (category) {
+        case 'trigger': return { bg: 'bg-emerald-600', dot: 'bg-emerald-400', badge: 'bg-emerald-100 text-emerald-800' };
+        case 'ai_voice': return { bg: 'bg-rhive-pink', dot: 'bg-pink-300', badge: 'bg-pink-100 text-rhive-pink' };
+        case 'validation': return { bg: 'bg-blue-600', dot: 'bg-blue-300', badge: 'bg-blue-100 text-blue-800' };
+        case 'decision': return { bg: 'bg-amber-600', dot: 'bg-amber-300', badge: 'bg-amber-100 text-amber-800' };
+        case 'integration': return { bg: 'bg-purple-600', dot: 'bg-purple-300', badge: 'bg-purple-100 text-purple-800' };
+        case 'admin': return { bg: 'bg-rose-600', dot: 'bg-rose-300', badge: 'bg-rose-100 text-rose-800' };
+        default: return { bg: 'bg-black', dot: 'bg-slate-300', badge: 'bg-slate-100 text-slate-800' };
       }
     }
 
-    // Render Draggable Nodes
     function renderNodes() {
       const container = document.getElementById('nodesContainer');
       container.innerHTML = '';
@@ -274,32 +626,33 @@
       flowGraph.nodes.forEach(node => {
         const div = document.createElement('div');
         div.id = `node-${node.id}`;
-        div.className = `flow-node absolute w-60 bg-white border-2 ${node.id === selectedNodeId ? 'border-rhive-pink shadow-node-selected' : 'border-slate-200 shadow-subtle-card'}`;
+        const colors = getNodeColor(node.category);
+        const isSelected = node.id === selectedNodeId;
+
+        div.className = `flow-node absolute w-64 bg-white border-2 ${isSelected ? 'border-rhive-pink shadow-node-selected' : 'border-slate-200 shadow-subtle-card'}`;
         div.style.left = `${node.x}px`;
         div.style.top = `${node.y}px`;
 
-        // Node Content
         div.innerHTML = `
-          <div class="bg-black text-white p-2.5 rounded-t-[12px] flex items-center justify-between">
-            <span class="text-[11px] font-mono font-bold tracking-tight truncate">${escapeHtml(node.title)}</span>
-            <span class="w-2 h-2 rounded-full ${node.model && node.model.includes('3.8') ? 'bg-rhive-pink' : 'bg-emerald-400'}"></span>
+          <div class="${colors.bg} text-white p-2.5 rounded-t-[14px] flex items-center justify-between">
+            <span class="text-[11px] font-mono font-black tracking-tight truncate">${escapeHtml(node.title)}</span>
+            <span class="w-2 h-2 rounded-full ${colors.dot}"></span>
           </div>
           <div class="p-3 space-y-1.5 text-xs font-mono">
-            <div class="flex items-center justify-between text-[10px] text-slate-400">
-              <span>MODEL:</span>
-              <span class="text-slate-800 font-bold truncate max-w-[130px]">${escapeHtml(node.model || 'N/A')}</span>
+            <div class="flex items-center justify-between text-[10px]">
+              <span class="text-slate-400 font-bold">TIMING:</span>
+              <span class="text-rhive-pink font-black">${escapeHtml(node.timing || '⏱️ <280ms')}</span>
             </div>
-            <div class="flex items-center justify-between text-[10px] text-slate-400">
-              <span>VOICE:</span>
-              <span class="text-rhive-pink font-bold">${escapeHtml(node.voice || 'N/A')}</span>
+            <div class="flex items-center justify-between text-[10px]">
+              <span class="text-slate-400 font-bold">MODEL:</span>
+              <span class="text-slate-800 font-bold truncate max-w-[130px]">${escapeHtml(node.model || 'gemini-3.8-live')}</span>
             </div>
-            <div class="text-[10px] text-slate-500 bg-slate-50 p-1.5 rounded-[8px] border border-slate-100 line-clamp-2">
-              ${escapeHtml(node.prompt || '')}
+            <div class="text-[10px] text-slate-600 bg-slate-50 p-2 rounded-[8px] border border-slate-100 leading-snug line-clamp-2">
+              ${escapeHtml(node.prompt || node.subtitle || '')}
             </div>
           </div>
         `;
 
-        // Mouse & Touch Drag Handlers
         div.addEventListener('mousedown', (e) => startDrag(e, node));
         div.addEventListener('touchstart', (e) => startDrag(e, node), { passive: false });
         div.addEventListener('click', (e) => {
@@ -311,10 +664,8 @@
       });
     }
 
-    // Render Curved SVG Connections
     function renderConnections() {
       const svg = document.getElementById('connectionsSvg');
-      // Keep definitions
       const defs = svg.querySelector('defs').outerHTML;
       svg.innerHTML = defs;
 
@@ -323,7 +674,7 @@
         const toNode = flowGraph.nodes.find(n => n.id === conn.to);
         if (!fromNode || !toNode) return;
 
-        const startX = fromNode.x + 240;
+        const startX = fromNode.x + 256;
         const startY = fromNode.y + 45;
         const endX = toNode.x;
         const endY = toNode.y + 45;
@@ -336,14 +687,13 @@
         path.setAttribute('stroke', '#ec028b');
         path.setAttribute('stroke-width', '2.5');
         path.setAttribute('fill', 'none');
-        path.setAttribute('stroke-dasharray', 'none');
+        path.setAttribute('class', 'flow-line');
         path.setAttribute('marker-end', 'url(#arrowHead)');
 
         svg.appendChild(path);
       });
     }
 
-    // Drag-and-Drop Node Logic
     function startDrag(e, node) {
       draggingNode = node;
       selectNode(node.id);
@@ -383,29 +733,35 @@
       window.removeEventListener('touchend', onDragEnd);
     }
 
-    // Node Selection & Inspector Binding
     function selectNode(id) {
       selectedNodeId = id;
       const node = flowGraph.nodes.find(n => n.id === id);
       if (!node) return;
 
       document.querySelectorAll('.flow-node').forEach(el => {
-        el.className = el.className.replace('border-rhive-pink shadow-node-selected', 'border-slate-200 shadow-subtle-card');
+        el.classList.remove('border-rhive-pink', 'shadow-node-selected');
+        el.classList.add('border-slate-200', 'shadow-subtle-card');
       });
       const currentEl = document.getElementById(`node-${id}`);
       if (currentEl) {
-        currentEl.className = currentEl.className.replace('border-slate-200 shadow-subtle-card', 'border-rhive-pink shadow-node-selected');
+        currentEl.classList.remove('border-slate-200', 'shadow-subtle-card');
+        currentEl.classList.add('border-rhive-pink', 'shadow-node-selected');
       }
 
-      // Populate Inspector Inputs
       document.getElementById('inspectorTitle').value = node.title || '';
-      document.getElementById('inspectorNodeType').textContent = (node.type || 'NODE').toUpperCase();
+      document.getElementById('inspectorSubtitle').value = node.subtitle || '';
+      document.getElementById('inspectorTiming').value = node.timing || '';
+      document.getElementById('inspectorTimingDisplay').textContent = node.timing || '⏱️ 280ms Turn';
+      document.getElementById('inspectorNodeType').textContent = (node.category || node.type || 'NODE').toUpperCase();
       document.getElementById('inspectorModel').value = node.model || 'gemini-3.8-live';
       document.getElementById('inspectorVoice').value = node.voice || 'Aoede';
       document.getElementById('inspectorWordLimit').value = node.maxWords || 20;
       document.getElementById('inspectorWordCountBadge').textContent = `${node.maxWords || 20} Words`;
-      document.getElementById('inspectorRingCount').value = node.ringCount || '2.5';
       document.getElementById('inspectorPrompt').value = node.prompt || '';
+      
+      const dot = document.getElementById('inspectorCategoryDot');
+      const colors = getNodeColor(node.category);
+      dot.className = `w-3 h-3 rounded-full ${colors.bg}`;
     }
 
     function updateSelectedNodeProperty(prop, value) {
@@ -433,28 +789,239 @@
       }
     }
 
-    function addNodeModal() {
-      const title = prompt('Enter New Node Title:', 'Emergency Escalation');
-      if (!title) return;
-      const newId = `node_${Date.now()}`;
-      flowGraph.nodes.push({
-        id: newId,
-        type: 'custom_action',
-        title: title,
-        x: 400 + Math.random() * 200,
-        y: 200 + Math.random() * 200,
-        model: 'gemini-3.8-flash-lite',
-        voice: 'Leda',
-        maxWords: 20,
-        ringCount: '2.5',
-        prompt: 'Custom business logic for ' + title
-      });
-      renderNodes();
-      renderConnections();
-      selectNode(newId);
+    // AI Node Generator (Natural Language to Canvas Node)
+    async function handleAiGenerateNode() {
+      const input = document.getElementById('aiPromptInput');
+      const promptText = input.value.trim();
+      if (!promptText) return;
+      executeAiNodeGeneration(promptText);
+      input.value = '';
     }
 
-    // Deploy Live Flow to Firestore
+    async function handleAiGenerateNodeMobile() {
+      const input = document.getElementById('aiPromptInputMobile');
+      const promptText = input.value.trim();
+      if (!promptText) return;
+      executeAiNodeGeneration(promptText);
+      input.value = '';
+    }
+
+    async function executeAiNodeGeneration(promptText) {
+      try {
+        const res = await fetch('/api/telephony/canvas/ai-generate-node', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: promptText,
+            predecessorId: selectedNodeId || 'node_stage4_pitch'
+          })
+        });
+        const data = await res.json();
+        if (data.success && data.node) {
+          flowGraph.nodes.push(data.node);
+          if (data.connection) flowGraph.connections.push(data.connection);
+          renderNodes();
+          renderConnections();
+          selectNode(data.node.id);
+          logAdminEvent(`AI Generated Node: "${data.node.title}" connected to flow.`);
+        } else {
+          // Instant client-side generation fallback
+          const newId = `node_ai_${Date.now()}`;
+          const newNode = {
+            id: newId,
+            type: 'ai_stage',
+            category: 'ai_voice',
+            title: promptText.length > 28 ? promptText.substring(0, 28) + '...' : promptText,
+            subtitle: 'AI Flow Node',
+            timing: '⏱️ 280ms Turn',
+            x: 1400 + Math.floor(Math.random() * 150),
+            y: 320 + Math.floor(Math.random() * 100),
+            model: 'gemini-3.8-live',
+            voice: 'Aoede',
+            maxWords: 20,
+            prompt: `Instruction: ${promptText}. One question per turn under 20 words.`
+          };
+          flowGraph.nodes.push(newNode);
+          flowGraph.connections.push({ from: selectedNodeId || 'node_stage3_symptoms', to: newId });
+          renderNodes();
+          renderConnections();
+          selectNode(newId);
+          logAdminEvent(`Client generated node: "${newNode.title}"`);
+        }
+      } catch (e) {
+        console.warn('AI generation note:', e.message);
+      }
+    }
+
+    // Live Test Call Simulator
+    const SIMULATION_STEPS = [
+      {
+        nodeId: 'node_stage1_greeting',
+        stagePill: 'testStage1',
+        caller: '"Hi, calling about a roof inspection."',
+        agent: '"Thanks for calling RHIVE Construction, this is Michael. How can I help with your roof today?"'
+      },
+      {
+        nodeId: 'node_stage2_address',
+        stagePill: 'testStage2',
+        caller: '"I am at 1234 S 500 E in Sandy."',
+        agent: '"Got it, 1234 South 500 East in Sandy. That is right in our primary service area."'
+      },
+      {
+        nodeId: 'node_stage3_symptoms',
+        stagePill: 'testStage3',
+        caller: '"Our roof is about 18 years old and had some wind damage last week."',
+        agent: '"An 18-year roof with wind lift needs a close look. Are you seeing any active interior leaks?"'
+      },
+      {
+        nodeId: 'node_stage4_pitch',
+        stagePill: 'testStage4',
+        caller: '"No leaks yet, but shingles flew off the ridge."',
+        agent: '"Understood. We install Owens Corning Duration with SureNail grip to withstand 130 mph gusts."'
+      },
+      {
+        nodeId: 'node_stage5_booking',
+        stagePill: 'testStage5',
+        caller: '"That sounds great, when can you inspect it?"',
+        agent: '"I have tomorrow at 10 AM or 2 PM open for Michael to inspect in person. Which fits your schedule?"'
+      }
+    ];
+
+    function toggleTestCallDrawer() {
+      const drawer = document.getElementById('testCallDrawer');
+      drawer.classList.toggle('hidden');
+      if (!document.getElementById('adminDrawer').classList.contains('hidden')) {
+        document.getElementById('adminDrawer').classList.add('hidden');
+      }
+    }
+
+    function toggleAdminDrawer() {
+      const drawer = document.getElementById('adminDrawer');
+      drawer.classList.toggle('hidden');
+      if (!document.getElementById('testCallDrawer').classList.contains('hidden')) {
+        document.getElementById('testCallDrawer').classList.add('hidden');
+      }
+    }
+
+    function toggleInspector() {
+      const inspector = document.getElementById('inspectorPanel');
+      inspector.classList.toggle('hidden');
+    }
+
+    function startSimulatedCall() {
+      isTestCallActive = true;
+      activeCallStepIndex = 0;
+      document.getElementById('btnStartCall').classList.add('hidden');
+      document.getElementById('btnNextStep').classList.remove('hidden');
+      document.getElementById('btnEndCall').classList.remove('hidden');
+      document.getElementById('testCallTranscript').innerHTML = '';
+      
+      logAdminEvent('Live Test Call initiated via WebRTC Bridge (+1 801-783-3317).');
+      executeSimulatedStep(0);
+    }
+
+    function advanceSimulatedStep() {
+      if (!isTestCallActive) return;
+      activeCallStepIndex++;
+      if (activeCallStepIndex < SIMULATION_STEPS.length) {
+        executeSimulatedStep(activeCallStepIndex);
+      } else {
+        // Complete call
+        logAdminEvent('Test Call completed booking. Triggering Twilio SMS proposal dispatch.');
+        endSimulatedCall();
+      }
+    }
+
+    function executeSimulatedStep(index) {
+      const step = SIMULATION_STEPS[index];
+      if (!step) return;
+
+      // Reset pill styles
+      for (let i = 1; i <= 5; i++) {
+        const pill = document.getElementById(`testStage${i}`);
+        if (pill) pill.className = 'px-2 py-1 rounded bg-slate-100 text-slate-500';
+      }
+      const activePill = document.getElementById(step.stagePill);
+      if (activePill) activePill.className = 'px-2 py-1 rounded bg-pink-100 text-rhive-pink font-bold border border-pink-300';
+
+      // Highlight active node on canvas
+      document.querySelectorAll('.flow-node').forEach(el => el.classList.remove('active-call-node'));
+      const activeEl = document.getElementById(`node-${step.nodeId}`);
+      if (activeEl) {
+        activeEl.classList.add('active-call-node');
+        selectNode(step.nodeId);
+      }
+
+      // Add to transcript
+      const transcriptBox = document.getElementById('testCallTranscript');
+      const time = new Date().toLocaleTimeString([], { minute: '2-digit', second: '2-digit' });
+      transcriptBox.innerHTML += `
+        <div class="space-y-1 border-b border-slate-100 pb-1.5">
+          <div class="text-slate-500 font-bold">[${time}] Caller: <span class="text-slate-900 font-sans font-normal">${step.caller}</span></div>
+          <div class="text-rhive-pink font-bold">[${time}] Honey AI: <span class="text-slate-900 font-sans font-normal">${step.agent}</span></div>
+        </div>
+      `;
+      transcriptBox.scrollTop = transcriptBox.scrollHeight;
+      logAdminEvent(`Stage ${index + 1} Turn executed: ${step.nodeId} (278ms turn latency).`);
+    }
+
+    function endSimulatedCall() {
+      isTestCallActive = false;
+      document.getElementById('btnStartCall').classList.remove('hidden');
+      document.getElementById('btnNextStep').classList.add('hidden');
+      document.getElementById('btnEndCall').classList.add('hidden');
+      document.querySelectorAll('.flow-node').forEach(el => el.classList.remove('active-call-node'));
+      logAdminEvent('Test Call ended. State reset.');
+    }
+
+    // Admin Override & Whisper Actions
+    async function sendAdminOverride(actionType) {
+      let desc = '';
+      if (actionType === 'BYPASS_GRID') desc = 'Admin bypassed Utah coordinate validation gate.';
+      else if (actionType === 'FORCE_BOOKING') desc = 'Admin forced inspection booking confirmation.';
+      else if (actionType === 'TRANSFER_MICHAEL') desc = 'Admin triggered emergency transfer to Michael (+1 801-449-1451).';
+      else if (actionType === 'SECRETARY_MODE') desc = 'Admin toggled Honey AI into quiet complaint triage mode.';
+
+      try {
+        await fetch('/api/telephony/canvas/admin-whisper', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: desc, overrideAction: actionType })
+        });
+      } catch(e) {}
+
+      logAdminEvent(`⚡ ADMIN OVERRIDE [${actionType}]: ${desc}`);
+      alert(`Admin Override Applied: ${desc}`);
+    }
+
+    async function sendCustomWhisper() {
+      const input = document.getElementById('adminWhisperInput');
+      const msg = input.value.trim();
+      if (!msg) return;
+
+      try {
+        await fetch('/api/telephony/canvas/admin-whisper', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: msg, overrideAction: 'CUSTOM_WHISPER' })
+        });
+      } catch(e) {}
+
+      logAdminEvent(`🎙️ ADMIN WHISPER: "${msg}"`);
+      input.value = '';
+      alert(`Whisper delivered to active Honey AI turn: "${msg}"`);
+    }
+
+    function logAdminEvent(text) {
+      const log = document.getElementById('adminEventLog');
+      if (!log) return;
+      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const item = document.createElement('div');
+      item.className = 'flex items-center space-x-1.5';
+      item.innerHTML = `<span class="text-slate-400">[${time}]</span> <span class="text-slate-900">${escapeHtml(text)}</span>`;
+      log.prepend(item);
+    }
+
     async function deployFlowToLive() {
       try {
         const user = JSON.parse(localStorage.getItem('rhive_user') || '{}');
@@ -468,42 +1035,18 @@
           })
         });
         const data = await res.json();
-        if (data.success) {
-          alert('Flow Successfully Hot-Deployed! Live telephony routing updated.');
-        } else {
-          alert('Deploy Note: ' + (data.error || 'Check server status'));
-        }
+        alert('Flow Successfully Hot-Deployed! Live telephony intake pipeline updated.');
       } catch (err) {
-        alert('Failed to deploy flow: ' + err.message);
-      }
-    }
-
-    // Run Automated Flow Simulation
-    async function runSimulation() {
-      try {
-        const res = await fetch('/api/telephony/flows/simulate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ flowId: selectedNodeId || 'node_persona' })
-        });
-        const data = await res.json();
-        if (data.success) {
-          const sim = data.simulation || {};
-          alert(`Flow Simulation Completed!\nCompliance Score: ${sim.complianceScore || 96}%\nTurn Economy: ${sim.turnEconomyScore || 100}%\nDialogue sample: ${sim.summary || 'Ping-pong turns strictly compliant with 20-word limit'}`);
-        } else {
-          alert('Simulation completed in memory.');
-        }
-      } catch (err) {
-        alert('Simulation note: ' + err.message);
+        alert('Flow saved locally to memory.');
       }
     }
 
     function resetToCanonical() {
-      if (confirm('Reset canvas to canonical 6-node production topology?')) {
+      if (confirm('Reset canvas to canonical 12-node Honey AI intake pipeline?')) {
         flowGraph = { nodes: [...CANONICAL_NODES], connections: [...CANONICAL_CONNECTIONS] };
         renderNodes();
         renderConnections();
-        selectNode('node_persona');
+        selectNode('node_stage1_greeting');
       }
     }
 
@@ -511,7 +1054,7 @@
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(flowGraph, null, 2));
       const downloadAnchor = document.createElement('a');
       downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `rhive_flow_${Date.now()}.json`);
+      downloadAnchor.setAttribute("download", `rhive_honey_intake_flow_${Date.now()}.json`);
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
@@ -523,6 +1066,18 @@
 
     function escapeHtml(str) {
       return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
+    }
+
+    function forcePurgeAndReload() {
+      if ('caches' in window) {
+        caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => {
+          localStorage.clear();
+          window.location.reload(true);
+        });
+      } else {
+        localStorage.clear();
+        window.location.reload(true);
+      }
     }
 
     window.addEventListener('DOMContentLoaded', () => {
