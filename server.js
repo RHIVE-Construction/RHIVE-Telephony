@@ -3225,10 +3225,28 @@ async function resolveGisAddress(addressStr) {
         ? 'TACTICAL STORM ALERT: ' + condition + ' (' + rainProb + '% precipitation, ' + maxTemp + '°F) forecasted in ' + city + '. If caller has an active leak, roof damage, or needs a repair, mention this upcoming storm to create urgency to schedule tarping or inspection before moisture enters the building.'
         : 'Clear weather in ' + city + ' (' + condition + ', ' + maxTemp + '°F). Do NOT mention the weather during address confirmation or routine quoting.';
 
+      // Intelligent Property Classification & Substrate Auto-Detection
+      const lowerAddr = (addressStr + ' ' + formattedAddress).toLowerCase();
+      const isApt = /\b(apartments?|complex|condos?|apts?)\b/i.test(lowerAddr);
+      const isCommercialWords = /\b(suites?|ste\b|bldg\b|building|plaza|office|warehouse|retail|industrial|center|ctr|parkway|commercial|business|church|school)\b/i.test(lowerAddr);
+      let detectedPropertyType = 'residential';
+      let detectedTypeLabel = 'a single-family residence';
+
+      if (isApt) {
+        detectedPropertyType = 'commercial';
+        detectedTypeLabel = 'an apartment complex';
+      } else if (isCommercialWords || (parcel.bldgSqft && parcel.bldgSqft > 6500)) {
+        detectedPropertyType = 'commercial';
+        detectedTypeLabel = 'a commercial property';
+      }
+
       return {
         verified: true,
         formattedAddress,
         propertyName,
+        propertyType: detectedPropertyType,
+        propertyTypeLabel: detectedTypeLabel,
+        isCommercial: detectedPropertyType === 'commercial',
         city,
         zip,
         lat,
@@ -3981,7 +3999,8 @@ CRITICAL TONE, PACING & BRANDING RULES:
      * When asking for address: "Awesome! What's the address of the house you want us to look at?" or "Where's the home located so I can pull up the aerial scans?"
      * When asking for email: "What's the best email for you so I can shoot that quote over?"
      * When asking for name: "Awesome, who am I chatting with today?" or "And what's your name?"
-     * When asking for phone: "What's your cell number so our tech can text you when they're on the way?"
+     * When asking for phone number (SMART PHONE CAPTURE LOOP): Check calling phone first: "Is the number you're calling from the best number to reach you, or is there a better cell number for updates?" If they prefer another: "Awesome, go ahead and tell me the best number that works best." Keep this simple!
+      * In Commercial Inquiries: "With our commercial accounts, we provide an inspection before completing the quote or repair request so we have exact building specifications. Let's look at the calendar..." and transition directly to booking!
      * When asking about roof: "How old is the roof roughly, and are you seeing any active leaks or shingles coming loose?"
    - TURN ECONOMY: Maximum 30 words per turn. Average target: 10 to 20 words. Keep turns punchy, conversational, and energetic.
    - MANDATED CASUAL AFFIRMATIONS: Use short, natural affirmations like: "Yeah, makes sense", "Gotcha there", "Totally", "For sure", "No doubt", "Interesting", "Ok, awesome".
@@ -4293,7 +4312,7 @@ CASE 4: ROOF REPAIR (DISCRETE 1-QUESTION SEQUENCE):
   * If YES (Active Leak / Dripping):
     - Tarping Escalation Check:
       If preliminary property attributes or Solar data indicate steep pitch (>= 8/12) OR complex roof (> 20 facets):
-      "With preliminary aerial measurements showing steep slopes or complex facets, our crew evaluates safe tie-off on site. Standard emergency mobilization is one hundred fifty dollars, and that entire amount is one hundred percent credited straight toward your permanent repair or replacement with us—so you're not paying a dime extra for emergency protection. Can we get our rapid stabilization crew scheduled for you right now?"
+      "With preliminary aerial measurements showing steep slopes or complex facets, our crew evaluates safe tie-off on site. Standard emergency mobilization is one hundred fifty dollars, and that entire amount is one hundred percent credited straight toward your permanent repair or replacement with us—so you're not paying a dime extra for emergency protection. Would you like to get that leak stopped and schedule your emergency tarp service right now?"
       Otherwise:
       "I completely understand, [FirstName]—water actively coming through the ceiling is stressful, and our first priority is getting out there today to stop that leak before it causes major sheetrock or flooring damage. Our technician will tarp and seal the penetration right away. Standard emergency mobilization is one hundred fifty dollars, and that entire amount is one hundred percent credited straight toward your permanent roof repair or replacement with us—so you're not paying a dime extra for emergency protection. We have our emergency truck available in your area between 11 and 2, or 1 and 4 this afternoon. Which window gives you the most peace of mind today?"
     - (If upcoming storm detected, mention storm urgency to schedule immediately).
@@ -5519,11 +5538,18 @@ class CallSession {
         this.sessionData.slatDeckRisk = prop.slatDeckRisk;
         this.sessionData.addressConfirmed = true;
         console.log('[Address Tool Success] Verified address: ' + prop.formattedAddress + ' -> Property Name: ' + prop.propertyName + ' (Year Built: ' + (prop.yearBuilt || 'N/A') + ', Pre-1972 Slat Risk: ' + prop.isPre1972 + ', Impending Storm: ' + prop.hasImpendingStorm + ')');
+        const propTypeInstruction = prop.isCommercial 
+          ? `ENRICHMENT NOTICE: Satellite & property mapping identifies this as ${prop.propertyTypeLabel}. Verify naturally: "I have ${prop.formattedAddress}... and looking at our property map, it shows as ${prop.propertyTypeLabel}—does that match your property?" Upon caller confirmation, DO NOT ask if this is residential or commercial; automatically route directly to our Commercial Property Inspection flow!`
+          : `Read back the formatted address "${prop.formattedAddress}" verbatim with all directional coordinates and individual digits (e.g. "I have ${prop.formattedAddress.replace(/\b\d+\b/g, m => m.split('').join(', '))}-does that match your property?"). Deliver this address readback approximately 15% slower with calm clarity. As soon as confirmed, return immediately to your normal fast, lively 1.1x conversational speed!`;
+
         return {
           verified: prop.verified,
           formattedAddress: prop.formattedAddress,
           propertyName: prop.propertyName,
-          instructionsForHoney: `Read back the formatted address "${prop.formattedAddress}" verbatim with all directional coordinates and individual digits (e.g. "I have ${prop.formattedAddress.replace(/\b\d+\b/g, m => m.split('').join(', '))}—does that match your property?"). Deliver this address readback approximately 15% slower with calm clarity. As soon as confirmed or on your next turn, immediately return to your normal, lively, natural conversational speed!`,
+          propertyType: prop.propertyType || 'residential',
+          propertyTypeLabel: prop.propertyTypeLabel || 'a single-family residence',
+          isCommercial: !!prop.isCommercial,
+          instructionsForHoney: propTypeInstruction,
           city: prop.city,
           zip: prop.zip,
           hasImpendingStorm: prop.hasImpendingStorm,

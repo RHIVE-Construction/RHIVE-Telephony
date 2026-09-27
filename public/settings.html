@@ -2184,10 +2184,17 @@
           }
         });
 
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        function getWebSocketUrl(path) {
+          const isHttps = window.location.protocol === 'https:';
+          const protocol = isHttps ? 'wss:' : 'ws:';
+          if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            return `${protocol}//${window.location.host}${path}`;
+          }
+          return `wss://rhive-voice-live-bridge-910835773728.us-central1.run.app${path}`;
+        }
         const user = JSON.parse(localStorage.getItem('rhive_auth_user') || '{}');
         const callerName = encodeURIComponent(user.name || 'Michael Robinson (Web)');
-        const wsUrl = protocol + '//' + window.location.host + '/web-voice-stream?agent=intake&callerName=' + callerName;
+        const wsUrl = getWebSocketUrl('/web-voice-stream?agent=intake&callerName=' + callerName);
 
         webVoiceWs = new WebSocket(wsUrl);
 

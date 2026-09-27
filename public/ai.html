@@ -741,8 +741,17 @@
           audio: { channelCount: 1, sampleRate: 16000, echoCancellation: true, noiseSuppression: true }
         });
 
-        const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        testWs = new WebSocket(`${proto}//${window.location.host}/web-voice-stream?agent=intake&callerName=Michael+Robinson`);
+        function getWebSocketUrl(path) {
+          const isHttps = window.location.protocol === 'https:';
+          const protocol = isHttps ? 'wss:' : 'ws:';
+          if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            return `${protocol}//${window.location.host}${path}`;
+          }
+          return `wss://rhive-voice-live-bridge-910835773728.us-central1.run.app${path}`;
+        }
+
+        const wsUrl = getWebSocketUrl('/web-voice-stream?agent=intake&callerName=Michael+Robinson');
+        testWs = new WebSocket(wsUrl);
 
         testWs.onopen = () => {
           status.textContent = '🐝 Honey is listening... Speak into microphone!';

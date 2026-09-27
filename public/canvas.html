@@ -1042,8 +1042,15 @@
         micStatus.className = 'text-[11px] font-mono text-emerald-400 font-bold';
 
         // Connect WebSocket to real telephony bridge
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/web-voice-stream`;
+        function getWebSocketUrl(path) {
+          const isHttps = window.location.protocol === 'https:';
+          const protocol = isHttps ? 'wss:' : 'ws:';
+          if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            return `${protocol}//${window.location.host}${path}`;
+          }
+          return `wss://rhive-voice-live-bridge-910835773728.us-central1.run.app${path}`;
+        }
+        const wsUrl = getWebSocketUrl('/web-voice-stream');
         testWebSocket = new WebSocket(wsUrl);
 
         testWebSocket.onopen = () => {
