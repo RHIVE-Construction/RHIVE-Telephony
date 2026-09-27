@@ -3696,7 +3696,7 @@ function buildConsolidatedLeadDossier(data) {
       lines.push(`• Active Leak Details: Severity: ${data.leakSeverity || 'Reported'} | Location: ${data.leakLocation || 'Roof Envelope'}`);
     }
     if (data.emergencyFee) {
-      lines.push(`• Emergency Fee: $150 (100% Credited toward repair or replacement)`);
+      lines.push(`• Emergency Fee: $150–$350 (100% Credited toward repair or replacement)`);
     }
   }
 
@@ -3765,7 +3765,7 @@ async function executeInspectionBooking(params) {
     // Stagger start: 0 -> +0 min, 1 -> +45 min, 2 -> +60 min
     const offsetMinutes = existingInWindow === 1 ? 45 : existingInWindow >= 2 ? 60 : 0;
     const startTotalMinutes = baseHour * 60 + offsetMinutes;
-    const endTotalMinutes = startTotalMinutes + 120; // STRICTLY 2 HOURS DURATION!
+    const endTotalMinutes = startTotalMinutes + 60; // 1-Hour appointment slot with 1-hour arrival window
 
     const sH = String(Math.floor(startTotalMinutes / 60)).padStart(2, '0');
     const sM = String(startTotalMinutes % 60).padStart(2, '0');
@@ -3817,7 +3817,7 @@ async function executeInspectionBooking(params) {
                        (params.heatTraceAreas ? 'Ice Dam / Heat:    ' + params.heatTraceAreas + '\n' : '') +
                        (params.materialPreference ? 'Material Choice:   ' + params.materialPreference + '\n' : '') +
                        (params.discProfile ? 'DISC Profile:      ' + params.discProfile + '\n' : '') +
-                       'Arrival Window:    ' + inspectionSlot + ' (Technician will text prior to arrival)\n' +
+                       'Arrival Window:    ' + inspectionSlot + ' (1-Hour Arrival Window before/after; technician texts prior to arrival)\n' +
                        'Inspection Duration: 2-Hour Certified Aerial & Drone Diagnostic\n' +
                        'Scope of Work:     ' + projectScope + '\n' +
                        'Access / Gate Code:' + accessNotes + '\n' +
@@ -3901,11 +3901,11 @@ async function executeInspectionBooking(params) {
 // ============================================================================
 const DYNAMIC_GREETINGS = {
   direct_switchboard: [
-    "Hi, this is Honey, RHIVE Construction's AI roofing specialist. What's your first name and how can I assist you today?",
+    "Hi this is Honey! R-hive Construction's AI Roofing Specialist, what's your name and How may I assist!?",
     "Hi this is Honey with R-hive Construction Roofing specialists, How may I assist!?"
   ],
   '1': [
-    "Hi, this is Honey, RHIVE Construction's AI roofing specialist. What's your first name and how can I assist you today?",
+    "Hi this is Honey! R-hive Construction's AI Roofing Specialist, what's your name and How may I assist!?",
     "Hi this is Honey with R-hive Construction Roofing specialists, How may I assist!?"
   ],
   '2': [
@@ -3952,7 +3952,7 @@ CRITICAL TONE, PACING & BRANDING RULES:
      * When speaking our company name over the phone for proper TTS phonetics, it is strictly "R-Hive Construction Roofing Specialists" (pronounced "Are-Hive", sounding like the English letter "R" followed by "Hive", rhyming with "star hive").
      * STRICTLY FORBIDDEN: NEVER pronounce as "Ry-hive", "Rye-hive", "Re-hive", or "Rehive"! It is strictly "Are-Hive"!
      * Always maintain singular brand identity ("R-Hive Construction"). Never pluralize the company name.
-     * Standard opening greeting: "Hi, this is Honey, RHIVE Construction's AI roofing specialist. What's your first name and how can I assist you today?" (Preserved manual alternate: "Hi this is Honey with R-hive Construction Roofing specialists, How may I assist!?")
+     * Standard opening greeting: "Hi this is Honey! R-hive Construction's AI Roofing Specialist, what's your name and How may I assist!?" (Preserved manual alternate: "Hi this is Honey with R-hive Construction Roofing specialists, How may I assist!?")
      * Never use "concierge". Your official title is "AI Roofing Specialist" or "Executive Project Specialist".
    - WRITTEN BRANDING (CUSTOMER & MARKETING COPY):
      * When transcription is not involved and it is writing that is read by the customer (e.g. text messages, confirmation cards, proposals, marketing copy), the company name is strictly the official "RHIVE Construction Roofing Specialists" (or "RHIVE Construction").
@@ -4147,7 +4147,7 @@ STEP 2: DIAGNOSTIC QUALIFICATION & INTENT TRIAGE (STRICT 1-QUESTION-PER-TURN FUN
   Ask: "Is this for storm or insurance damage or an active leak inside the house right now?"
   * If Caller says YES to Active Leak:
     -> IMMEDIATELY BRANCH TO CASE 2 (Active Leak Emergency Tarping Triage).
-    -> Say: "Oh no, let's get that stopped right away! We can have an emergency dry-in crew out within three hours, and we apply the full one-hundred-and-fifty-dollar emergency fee straight toward your permanent repair. What is the address where the water is coming in?"
+    -> Say: "Oh no, let's get that stopped right away! Standard emergency stabilization runs between one hundred fifty and three hundred fifty dollars on most roofs depending on slope and access, and that entire amount is one hundred percent credited straight toward your permanent repair or replacement with us—so you're not paying a dime extra for emergency protection. What is the address where the water is coming in?"
     -> Trigger: Calls "dispatch_emergency_crew".
   * If Caller says YES to Storm / Wind / Hail Damage:
     -> IMMEDIATELY BRANCH TO CASE 3 (Storm Damage & Insurance Restoration Scope).
@@ -4160,10 +4160,11 @@ STEP 2: DIAGNOSTIC QUALIFICATION & INTENT TRIAGE (STRICT 1-QUESTION-PER-TURN FUN
     -> BRANCH TO CASE 1 (Residential Replacement / Certified Aerial Quote).
     -> Say: "Awesome! We can pull high-resolution satellite imagery and generate a certified proposal for your roof in just a few minutes. What is the property address?"
     -> Trigger: Calls "verify_address" -> unlocks MeasureCall aerial CAD.
-  * If Commercial Building:
-    -> BRANCH TO CASE 4 (Commercial Roofing Desk).
-    -> Say: "Great! Let me patch you straight over to our commercial estimating desk so they can pull your building specs."
-    -> Trigger: Calls "transfer_to_specialist" (target: Kara Robinson).
+  * If Commercial Building (or Property Manager / Asset Manager / Building Owner):
+    -> BRANCH TO CASE 1B (Dedicated Commercial Property Intake Flow).
+    -> Ask: "Great! What is the name of your commercial entity or management company, and what is your role with the property?"
+    -> Collect: Company name, property address, roof substrate (TPO/PVC/EPDM/Metal), urgent symptoms (active leaks/budgeting), and inspection preference (On-site Walkthrough vs Autonomous Drone Inspection Report with thermal mapping).
+    -> Trigger: Calls "book_inspection" (1-hour appointment slot with 1-hour arrival window before and after, Michael & Kara invited).
 CASE 1: RESIDENTIAL REPLACEMENT (RETAIL / AGING ROOF - CERTIFIED AERIAL QUOTE):
 When the caller wants a full roof replacement (not a repair or commercial roof):
 1. INTENT BUCKET CHECK (ESTIMATE VS CERTIFIED QUOTE):
@@ -4181,7 +4182,9 @@ When the caller wants a full roof replacement (not a repair or commercial roof):
         Honey (<25 words): "Gotcha! If your panels are under an active installer warranty, they handle detach and reset—otherwise, RHIVE's certified installation crews safely detach and reset them with your new roof."
         (Record solarStatus and solarDetachParty: 'installer' vs 'rhive').
    - Question 2 (Skylights, Swamp Coolers & Satellite Dishes - Aerial Intent Parity):
-     "We count any skylights directly from our aerial scans—if you have skylights, would you like them replaced with brand-new units under warranty to prevent leaks, kept and resealed, or removed and decked over? And do you have an old swamp cooler or satellite dish you'd like removed?"
+     "We count any skylights directly from our aerial scans—if you have skylights, would you like them replaced with brand-new units under warranty to prevent leaks, kept and resealed, or removed and closed up flush so you have a solid roofline?"
+    - Question 2B (Equipment Removal - Conditional on Aerial Detection):
+      (If aerial scan detects rooftop equipment): "Our aerial scan shows equipment on the roof—do you have an old swamp cooler or satellite dish you'd like our crew to remove and seal flush?"
    - Question 3 (Existing Layers - Slope-Aware Invariant):
      * If flat roof (pitch <= 2/12): "Looking at your flat roof section—is this a single layer of membrane, or has it ever been roofed over with an additional layer?"
      * If pitched roof (pitch >= 3/12): "Is this the original single layer of shingles, or has it ever been roofed over with a second layer?"
