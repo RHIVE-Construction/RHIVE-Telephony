@@ -8694,6 +8694,7 @@ app.get('/health', (req, res) => {
 // Dynamic Google Identity Services Configuration & Whitelist Gate
 const AUTHORIZED_PERSONNEL = {
   'michael@rhiveconstruction.com': { name: 'Michael Robinson', role: 'Owner & CEO (Super Admin)', canEditFlows: true, canMakeCalls: true, canSendSms: true, canViewRecordings: true },
+  'mjrob14@gmail.com':             { name: 'Michael Robinson (Personal)', role: 'Owner & CEO (Super Admin)', canEditFlows: true, canMakeCalls: true, canSendSms: true, canViewRecordings: true },
   'kara@rhiveconstruction.com':    { name: 'Kara Robinson', role: 'President & Owner (Executive Ops)', canEditFlows: true, canMakeCalls: true, canSendSms: true, canViewRecordings: true },
   'sheena@rhiveconstruction.com':  { name: 'Sheena', role: 'Lead Estimator (Estimation Lead)', canEditFlows: false, canMakeCalls: true, canSendSms: true, canViewRecordings: false },
   'van@rhiveconstruction.com':     { name: 'Van', role: 'Field Operations (Field Specialist)', canEditFlows: false, canMakeCalls: true, canSendSms: true, canViewRecordings: false }

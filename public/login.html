@@ -7,6 +7,26 @@
   <meta name="theme-color" content="#ffffff">
   <link rel="icon" type="image/png" href="/rhive-logo-white.png">
 
+  <!-- Instant Cache & Stale Service Worker Eradication Protocol (Purges EPA/Omni) -->
+  <script>
+    (function purgeStalePWA() {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          for (var i = 0; i < regs.length; i++) {
+            regs[i].unregister();
+          }
+        });
+      }
+      if ('caches' in window) {
+        caches.keys().then(function(names) {
+          for (var i = 0; i < names.length; i++) {
+            caches.delete(names[i]);
+          }
+        });
+      }
+    })();
+  </script>
+
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -87,11 +107,28 @@
       <!-- Live Error / Notification Banner -->
       <div id="statusBanner" class="hidden rounded-[14px] p-3 text-xs font-mono"></div>
 
-      <!-- 1-Click Super Admin Fast Pass for Michael -->
-      <button onclick="handleInstantSuperAdmin()" class="w-full py-3 px-4 bg-gradient-to-r from-rhive-pink to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white font-mono font-bold text-xs uppercase tracking-wider rounded-[14px] shadow-pink-glow transition flex items-center justify-center space-x-2">
-        <span>⚡</span>
-        <span>Instant Clearance as Michael (CEO)</span>
-      </button>
+      <!-- 1-Click Fast Pass for Michael (Work & Personal) -->
+      <div class="space-y-2">
+        <button onclick="handleInstantClearance('michael@rhiveconstruction.com')" class="w-full py-3 px-4 bg-gradient-to-r from-rhive-pink to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white font-mono font-bold text-xs uppercase tracking-wider rounded-[14px] shadow-pink-glow transition flex items-center justify-center space-x-2 cursor-pointer">
+          <span>⚡</span>
+          <span>1-Click Sign-In: Work (michael@rhiveconstruction.com)</span>
+        </button>
+        <button onclick="handleInstantClearance('mjrob14@gmail.com')" class="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-mono font-bold text-xs uppercase tracking-wider rounded-[14px] shadow-sm transition flex items-center justify-center space-x-2 cursor-pointer">
+          <span>⚡</span>
+          <span>1-Click Sign-In: Personal (mjrob14@gmail.com)</span>
+        </button>
+      </div>
+
+      <!-- Access Key Banner -->
+      <div class="p-3 bg-amber-50 border-2 border-amber-200 rounded-[14px] flex items-center justify-between font-mono text-xs">
+        <div>
+          <span class="text-amber-800 font-bold uppercase text-[10px] block">Executive Access Key:</span>
+          <span class="text-slate-900 font-extrabold text-sm tracking-widest select-all">rhive2026</span>
+        </div>
+        <button type="button" onclick="quickFillPasskey()" class="px-2.5 py-1 bg-amber-200 hover:bg-amber-300 text-amber-900 font-bold text-[10px] uppercase rounded-[8px] transition">
+          Auto Fill
+        </button>
+      </div>
 
       <!-- Executive Email & Passkey Form -->
       <form id="emailLoginForm" class="space-y-3.5" onsubmit="handleEmailAuthSubmit(event)">
@@ -145,8 +182,12 @@
         </div>
         <div class="grid grid-cols-2 gap-1.5 text-[11px] font-mono">
           <button type="button" onclick="quickSelectUser('michael@rhiveconstruction.com')" class="p-2 bg-white hover:bg-pink-50 border border-slate-200 hover:border-rhive-pink rounded-[10px] text-left transition flex flex-col">
-            <span class="font-bold text-slate-900 truncate">Michael Robinson</span>
-            <span class="text-[9px] text-rhive-pink font-semibold">CEO (Super Admin)</span>
+            <span class="font-bold text-slate-900 truncate">Michael (Work)</span>
+            <span class="text-[9px] text-rhive-pink font-semibold">michael@rhive...</span>
+          </button>
+          <button type="button" onclick="quickSelectUser('mjrob14@gmail.com')" class="p-2 bg-white hover:bg-pink-50 border border-slate-200 hover:border-rhive-pink rounded-[10px] text-left transition flex flex-col">
+            <span class="font-bold text-slate-900 truncate">Michael (Personal)</span>
+            <span class="text-[9px] text-rhive-pink font-semibold">mjrob14@gmail...</span>
           </button>
           <button type="button" onclick="quickSelectUser('kara@rhiveconstruction.com')" class="p-2 bg-white hover:bg-pink-50 border border-slate-200 hover:border-rhive-pink rounded-[10px] text-left transition flex flex-col">
             <span class="font-bold text-slate-900 truncate">Kara Robinson</span>
@@ -155,10 +196,6 @@
           <button type="button" onclick="quickSelectUser('sheena@rhiveconstruction.com')" class="p-2 bg-white hover:bg-pink-50 border border-slate-200 hover:border-rhive-pink rounded-[10px] text-left transition flex flex-col">
             <span class="font-bold text-slate-900 truncate">Sheena</span>
             <span class="text-[9px] text-slate-400">Lead Estimator</span>
-          </button>
-          <button type="button" onclick="quickSelectUser('van@rhiveconstruction.com')" class="p-2 bg-white hover:bg-pink-50 border border-slate-200 hover:border-rhive-pink rounded-[10px] text-left transition flex flex-col">
-            <span class="font-bold text-slate-900 truncate">Van</span>
-            <span class="text-[9px] text-slate-400">Field Operations</span>
           </button>
         </div>
       </div>
@@ -189,6 +226,11 @@
       input.type = input.type === 'password' ? 'text' : 'password';
     }
 
+    function quickFillPasskey() {
+      document.getElementById('passkeyInput').value = 'rhive2026';
+      showStatus('Passkey filled: rhive2026. Ready to sign in.', false);
+    }
+
     function quickSelectUser(email) {
       document.getElementById('emailInput').value = email;
       document.getElementById('passkeyInput').value = 'rhive2026';
@@ -200,10 +242,14 @@
       return params.get('return') || '/dialer';
     }
 
-    async function handleInstantSuperAdmin() {
-      document.getElementById('emailInput').value = 'michael@rhiveconstruction.com';
+    async function handleInstantClearance(email) {
+      document.getElementById('emailInput').value = email || 'michael@rhiveconstruction.com';
       document.getElementById('passkeyInput').value = 'rhive2026';
       await handleEmailAuthSubmit();
+    }
+
+    async function handleInstantSuperAdmin() {
+      await handleInstantClearance('michael@rhiveconstruction.com');
     }
 
     async function handleEmailAuthSubmit(e) {
@@ -300,6 +346,16 @@
 
     // Auto-check auth on load
     window.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      const urlPasskey = params.get('passkey');
+      const urlEmail = params.get('email');
+      if (urlPasskey === 'rhive2026' || urlPasskey === 'RHIVE2026') {
+        document.getElementById('emailInput').value = urlEmail || 'michael@rhiveconstruction.com';
+        document.getElementById('passkeyInput').value = urlPasskey;
+        handleEmailAuthSubmit();
+        return;
+      }
+
       const existingToken = localStorage.getItem('rhive_auth_token');
       const existingUser = localStorage.getItem('rhive_user');
       if (existingToken && existingUser) {

@@ -5,9 +5,52 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Honey AI Studio | RHIVE Sovereign Telephony OS</title>
   <script>
-    // Private Auth Gate
+    // 1. Instant Cache & Stale Service Worker Eradication Protocol (Purges EPA/Omni)
+    (function purgeStalePWA() {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for (var i = 0; i < registrations.length; i++) {
+            registrations[i].unregister();
+          }
+        });
+      }
+      if ('caches' in window) {
+        caches.keys().then(function(names) {
+          for (var i = 0; i < names.length; i++) {
+            caches.delete(names[i]);
+          }
+        });
+      }
+    })();
+
+    // 2. Private Auth Gate with Direct URL Passkey Support
     (function enforcePrivateAuth() {
-      const token = localStorage.getItem('rhive_auth_token');
+      var params = new URLSearchParams(window.location.search);
+      var urlPasskey = params.get('passkey');
+      var urlEmail = params.get('email') || 'michael@rhiveconstruction.com';
+
+      if (urlPasskey === 'rhive2026' || urlPasskey === 'RHIVE2026') {
+        fetch('/api/auth/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: urlEmail, passkey: urlPasskey })
+        }).then(function(r) { return r.json(); }).then(function(data) {
+          if (data.authorized) {
+            localStorage.setItem('rhive_auth_token', data.token);
+            localStorage.setItem('rhive_user', JSON.stringify({
+              email: data.email,
+              name: data.name,
+              role: data.role,
+              permissions: data.permissions
+            }));
+            window.history.replaceState({}, document.title, window.location.pathname);
+            window.location.reload();
+          }
+        });
+        return;
+      }
+
+      var token = localStorage.getItem('rhive_auth_token');
       if (!token) {
         window.location.replace('/login?return=' + encodeURIComponent(window.location.pathname));
       }
