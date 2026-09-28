@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RHIVE Wasatch Radar — 1-Tap Action</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0b0f19;
+      color: #f8fafc;
+      padding: 20px;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+    .card {
+      background: #161e2e;
+      border: 1px solid #273549;
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 440px;
+      width: 100%;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      text-align: center;
+      box-sizing: border-box;
+    }
+    .badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: bold;
+      text-transform: uppercase;
+      background: #2563eb;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+    .badge.success { background: #10b981; }
+    .badge.ignored { background: #64748b; }
+    h2 { font-size: 22px; margin: 8px 0; color: #ffffff; }
+    p { font-size: 14px; color: #94a3b8; line-height: 1.5; margin: 8px 0 16px 0; }
+    .text-box {
+      background: #0b0f19;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 14px;
+      text-align: left;
+      font-size: 14px;
+      color: #e2e8f0;
+      max-height: 160px;
+      overflow-y: auto;
+      margin-bottom: 16px;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 15px;
+      margin: 12px 0;
+      font-weight: 700;
+      border-radius: 10px;
+      text-decoration: none;
+      font-size: 16px;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-green { background: #10b981; color: #fff; }
+    .btn-blue { background: #2563eb; color: #fff; }
+    .status-toast { font-size: 13px; color: #10b981; margin-top: 10px; font-weight: 600; min-height: 20px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge" id="badge">1-TAP ACTION</div>
+    <h2 id="heading">Preparing Action...</h2>
+    <p id="description">Copying authentic founder response to clipboard and opening Facebook.</p>
+    
+    <div id="copyContainer" style="display:none;">
+      <div class="text-box" id="copyBox"></div>
+      <button class="btn btn-green" id="manualBtn" onclick="manualCopyAndOpen()">📋 Copy & Launch Facebook</button>
+      <div class="status-toast" id="toast"></div>
+    </div>
+    
+    <a class="btn btn-blue" id="directLink" href="https://www.facebook.com" target="_blank" rel="noopener">↗️ Open Facebook Directly</a>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const textToCopy = params.get('text') || '';
+    const targetUrl = params.get('url') || 'https://www.facebook.com';
+    const opt = params.get('opt') || '1';
+    const leadId = params.get('id') || '';
+
+    const badge = document.getElementById('badge');
+    const heading = document.getElementById('heading');
+    const description = document.getElementById('description');
+    const copyContainer = document.getElementById('copyContainer');
+    const copyBox = document.getElementById('copyBox');
+    const directLink = document.getElementById('directLink');
+    const toast = document.getElementById('toast');
+
+    directLink.href = targetUrl;
+
+    if (opt === '2' || opt === 'ignore') {
+      badge.textContent = "LEAD ARCHIVED";
+      badge.className = "badge ignored";
+      heading.textContent = "Lead Ignored / Archived";
+      description.textContent = "This lead has been marked as ignored. No response needed.";
+      directLink.textContent = "Done";
+      directLink.onclick = () => window.close();
+    } else if (textToCopy) {
+      badge.textContent = "COPIED TO CLIPBOARD";
+      badge.className = "badge success";
+      heading.textContent = "Ready to Paste!";
+      description.textContent = "Your authentic founder response is on your clipboard. Tap below if not automatically redirected.";
+      copyBox.textContent = textToCopy;
+      copyContainer.style.display = "block";
+
+      copyToClipboard(textToCopy);
+      setTimeout(() => {
+        window.location.href = targetUrl;
+      }, 500);
+    } else {
+      heading.textContent = "Open Facebook";
+      description.textContent = "Tap below to navigate directly to the community post.";
+    }
+
+    async function copyToClipboard(str) {
+      if (!str) return;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(str);
+          toast.textContent = "✅ Copied to clipboard!";
+        } else {
+          fallbackCopy(str);
+        }
+      } catch(e) {
+        fallbackCopy(str);
+      }
+    }
+
+    function fallbackCopy(str) {
+      const el = document.createElement('textarea');
+      el.value = str;
+      el.setAttribute('readonly', '');
+      el.style.position = 'absolute';
+      el.style.left = '-9999px';
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      toast.textContent = "✅ Copied to clipboard!";
+    }
+
+    function manualCopyAndOpen() {
+      copyToClipboard(textToCopy);
+      toast.textContent = "✅ Copied! Opening Facebook...";
+      setTimeout(() => {
+        window.location.href = targetUrl;
+      }, 350);
+    }
+  </script>
+</body>
+</html>
