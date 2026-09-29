@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "site": "rhive-quantum-quoter",
+    "site": "rhive-telephony",
     "public": "public",
     "ignore": [
       "firebase.json",
