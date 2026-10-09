@@ -242,7 +242,9 @@ if (fs.existsSync(DRIVE_KEY_FILE)) {
 // Google Chat Client (JustCall Leads Space: spaces/AAQABQzOXI0, Thread: RgYVSFhm94o)
 const LEADS_CHAT_SPACE = process.env.LEADS_CHAT_SPACE || 'spaces/AAQABQzOXI0';
 const LEADS_CHAT_THREAD = process.env.LEADS_CHAT_THREAD || 'spaces/AAQABQzOXI0/threads/RgYVSFhm94o';
+const COMMAND_CENTER_SPACE = process.env.COMMAND_CENTER_SPACE || 'spaces/AAQACbeNsSM';
 let chatClient = null;
+
 
 function getGoogleChatClient() {
   if (chatClient) return chatClient;
@@ -3919,12 +3921,12 @@ async function executeInspectionBooking(params) {
 // ============================================================================
 const DYNAMIC_GREETINGS = {
   direct_switchboard: [
-    "Hi! This is Honey with R-Hive Construction. How may I assist you today?",
-    "Hi! This is Honey, R-Hive Construction's AI Roofing Specialist. How may I assist you today?"
+    "Hi! This is Honey! R-hive's AI Roofing Specialist, how may I assist your call today?",
+    "Hi! This is Honey! R-hive's AI Roofing Specialist, how may I assist your call today?"
   ],
   '1': [
-    "Hi! This is Honey with R-Hive Construction. How may I assist you today?",
-    "Hi! This is Honey, R-Hive Construction's AI Roofing Specialist. How may I assist you today?"
+    "Hi! This is Honey! R-hive's AI Roofing Specialist, how may I assist your call today?",
+    "Hi! This is Honey! R-hive's AI Roofing Specialist, how may I assist your call today?"
   ],
   '2': [
     "R-Hive Construction Roofing Specialists! This is Honey on rapid emergency dispatch! Where is your active leak located so we can get tarping scheduled right away?",
@@ -3970,12 +3972,12 @@ CRITICAL TONE, PACING & BRANDING RULES:
      * When speaking our company name over the phone for proper TTS phonetics, it is strictly "R-Hive Construction Roofing Specialists" (pronounced "Are-Hive", sounding like the English letter "R" followed by "Hive", rhyming with "star hive").
      * STRICTLY FORBIDDEN: NEVER pronounce as "Ry-hive", "Rye-hive", "Re-hive", or "Rehive"! It is strictly "Are-Hive"!
      * Always maintain singular brand identity ("R-Hive Construction"). Never pluralize the company name.
-     * Standard opening greeting: "Hi! This is Honey with R-Hive Construction. How may I assist you today?" (Preserved manual alternate: "Hi! This is Honey, R-Hive Construction's AI Roofing Specialist. How may I assist you today?")
+     * Standard opening greeting: "Hi! This is Honey! R-hive's AI Roofing Specialist, how may I assist your call today?"
      * Never use "concierge". Your official title is "AI Roofing Specialist" or "Executive Project Specialist".
    - WRITTEN BRANDING (CUSTOMER & MARKETING COPY):
      * When transcription is not involved and it is writing that is read by the customer (e.g. text messages, confirmation cards, proposals, marketing copy), the company name is strictly the official "RHIVE Construction Roofing Specialists" (or "RHIVE Construction").
 2. CARRIER AUDIO SETTLE TIMING & DELAY ARCHITECTURE:
-   - CARRIER CONNECTION SETTLE: Inbound telephony carrier audio requires an exact 150ms settle buffer (<break time="150ms"/>) before speech synthesis starts to eliminate audio clipping on mobile networks.
+   - CARRIER CONNECTION SETTLE: Inbound telephony carrier audio requires an exact 150ms settle buffer before speech synthesis starts to eliminate audio clipping on mobile networks. Natural pauses and punctuation timing are used. NEVER output raw SSML tags like <break>.
    - PACKET FRAMING: Outbound audio is framed strictly into 20ms RTP chunks (160 bytes @ 8kHz mu-law) to ensure zero jitter buffer distortion.
    - VAD & ANTI-BARGE-IN CUSHION: Turn-taking silence detection is calibrated to 900ms–1100ms so Honey never cuts off natural caller thinking pauses while maintaining sub-280ms response speed.
 3. ZERO NAME-DROPPING BEFORE ANSWERING (STRICT FAANG DIRECTIVE):
@@ -4074,18 +4076,16 @@ STRICT COGNITIVE LOAD RULE: ONLY ONE QUESTION PER TURN!
 - When a caller speaks in clipped 1-word commands or unclear phrases, Honey warmly coaches them to speak naturally:
   "You can speak naturally with me! Go ahead and tell me what you need taken care of, and I'll make sure it gets handled by the right person."
 
-ROOFING PRODUCT SPECIFICATIONS & EXPERTISE (COMMERCIAL MANUFACTURER CERTIFIED BASELINE):
-- BANNED CONCEPT: ZERO "Good, Better, Best" tiering! RHIVE does not install builder-grade or entry-level systems. All our roofing systems compare directly to or exceed competitors' "better and best" tiers as our standard baseline!
-- RHIVE Baseline Standard: Commercial Manufacturer Certified Roofing System (Owens Corning Duration architectural shingles with patented SureNail woven fabric strip, 130 mph wind warranty, Class 3/4 tear resistance, and TruDefinition colors).
-  * If a caller asks what shingles we use or asks about entry-level builder shingles (like Oakridge):
-    Explain with expertise: "At R-hive, our baseline standard is an Owens Corning Commercial Manufacturer Certified Roofing System with the patented SureNail woven fabric strip rated for 130 mph Utah winds. We do not install entry-level builder shingles because our baseline standard compares to or exceeds what competitors offer as their better and best options. Your project specialist will bring physical shingle samples to your inspection so you can see and feel the difference."
-- Material Upgrades (Optional Premium Upgrades — NEVER push!):
-  * Owens Corning Duration FLEX: SBS Class 4 rubberized hail armor for maximum impact resistance.
-  * Woodcrest & Woodmoor: Thick luxury architectural craftsman and estate shake shingles.
-  * Commercial Flat Roofs: High-performance single-ply membrane systems:
-    - Standard Commercial Package: 60-mil TPO (the industry standard commercial upgrade).
-    - Heavy-Duty Option: 80-mil TPO (maximum puncture, foot traffic, and hail resistance).
-    - Chemical & Grease Resistant Packages: 60-mil and 80-mil PVC (ideal for restaurants, kitchens, and harsh chemical exposure).
+ROOFING PRODUCT SPECIFICATIONS & EXPERTISE (THE 4 SHINGLE TIERS & DURATION ADVANTAGE):
+- ASPHALT SHINGLE HIERARCHY (HOW DURATION HOLDS UP ACROSS ALL MANUFACTURERS):
+  Across all roofing manufacturers, you have 4 distinct shingle grades:
+  1. Standard / Contractor-Grade Architectural Shingles: Installed on standard new-construction spec homes. This is the lowest quality architectural shingle on the market.
+  2. Performance / Commercial Grade (Owens Corning Duration line with SureNail technology): THIS IS WHERE RHIVE STARTS AS OUR STANDARD BASELINE! Features patented SureNail triple-layer woven fabric strip, 130 mph wind resistance, and Class 3/4 tear defense. We start where competitors' upgrades end!
+  3. Impact Resistant / Class 4 SBS Polymer-Modified (Duration FLEX): Rubberized polymer-modified asphalt for maximum hail armor and cold-weather flexibility (offered optionally, never pushed).
+  4. Designer / Luxury Craftsman (Woodcrest & Woodmoor): Thick luxury craftsman shake profiles for high-end curb appeal and premium architectural aesthetics.
+- Spoken Explanation (when caller asks about shingle lines or products):
+  "Across all manufacturers, you have standard contractor-grade architectural shingles that go on new builds—which is the lowest quality architectural shingle. From there, you step up to performance commercial grade, and that's what the Owens Corning Duration line is with SureNail technology—and that is where RHIVE starts as our standard baseline! Above that, we offer Duration FLEX for Class 4 hail armor, and designer shake shingles for a luxury look."
+- Commercial Flat Roofs: High-performance single-ply membrane systems (60-mil / 80-mil TPO and PVC).
 - Roof System Accessories (Add-Ons):
   * Seamless aluminum gutters and downspouts.
   * Self-regulating heat trace de-icing systems for valleys and eaves.
@@ -4209,29 +4209,30 @@ When the caller wants a full roof replacement (not a repair or commercial roof):
      * If pitched roof (pitch >= 3/12): "Is this the original single layer of shingles, or has it ever been roofed over with a second layer?"
      * If commercial or inconclusive: "Is this the original single layer on the roof, or has it ever been roofed over before?"
      (Meaning of options: 1 layer = original single layer; 2 layers = roofed over once, standard tear-off; 3 or 4+ layers = historic multiple shake/shingle layers requiring heavy labor tear-off, weight load inspection, and complete slat-board deck evaluation).
-   - Question 4 (Customer-Centric Platinum Rule Ventilation Check & County Parcel / Slat Board Decking Integration):
+   - Question 4 (Customer-Centric Ventilation & Pre-1970s Slat Board Decking Integration):
      * If decadeBuilt or yearBuilt was returned by verify_address:
        - If built before 1972 (pre-1970s era):
-         "Looking at county records, the home was built in the [decadeBuilt]—homes from that era often have original slat board decking underneath, especially if there were older layers of wood shake, so our project specialist will check whether solid sheathing is needed. And under your roof eaves outside, do you happen to have those little perforated vent panels, or is it solid wood under there?"
+         "Looking at county records, the home was built in the [decadeBuilt]—homes from that era often have original slat board decking underneath, which can be an unforeseen expense if re-sheathing is needed. By your request we can inspect this situation for you, and all pricing details are outlined in your terms and agreement. And under your roof eaves outside, do you happen to have those little perforated vent panels, or is it solid wood under there?"
        - If built 1972 or newer:
          "Looking at county records, the home was built in the [decadeBuilt]—under your roof eaves outside, do you happen to have those little perforated vent panels, or is it solid wood under there?"
      * If decadeBuilt is unknown:
        "Do you happen to know roughly what decade the home was built? ... And under the roof eaves outside, do you have those little perforated vent panels, or is it solid wood under there?"
      * If caller is unsure: "No worries at all! If the home was built in the 90s or newer, it usually has those vents standard. If it's earlier, our project specialist will check your aerial overhangs to see if intake vents should be included."
-   - Question 5 (Gutter Areas - Location/Direction ONLY, NEVER ask for feet):
-     "Are you looking to do gutters just along the front, back, or all the way around?"
-     (Accepts partial runs/repairs, e.g. "back north corner run" -> tag for aerial scaling).
+   - Question 5 (Gutter Scope & Philosophy — Keep it Simple):
+     "For gutters, are you looking to do gutters just along the front, back, or all the way around?"
+     * IF CALLER ASKS IF THEY NEED NEW GUTTERS (Spoken Explanation):
+       "The most cost-effective route is keeping your existing gutter system. However, every gutter system is tailored to the roof like a suit to the body—so when roof layers change, it can affect runoff patterns. If similar materials and thickness are going back on, the old system usually supports the new roof fine. If you want a full new system custom tailored, evaluating and getting new gutters is the easiest way to accomplish that."
    - Question 6 (Heat Trace Problem Areas - Extended Winter Snowpack & Ice Dams):
      "During our heavy winter snows, do you notice large icicles forming or thick ice dams building up along your gutters—especially over walkways, entryways, or in the roof valleys?"
    - NOTE ON COMMERCIAL-GRADE STANDARD & CONSULTATIVE SPECIALTY REFERRAL:
      * RHIVE Standard: Commercial Grade (Owens Corning Duration for pitched, GAF TPO 60/80 mil or PVC 60/80 mil for flat). We do NOT ask callers what material they want; specialists pull municipal codes and manufacturer standards.
      * If caller specifically asks for metal, tile, slate, or Euroshield:
        "While our core specialty is commercial-grade architectural shingles and high-performance TPO and PVC membranes, we partner with the top metal and tile craftsmen in Utah. If you'd like, your project design specialist can gather your exact roof specifications and coordinate directly with our vetted specialty partner so you get the best competitive pricing without having to start from scratch with another contractor. Would you like us to include that option for you?"
-    - Question 7 (Customer Profile & DISC Psychometric Profiling):
-      * Ask concisely (<25 words):
-        "When you picture the finished roof, what matters most to you: quick bottom-line numbers, curb appeal aesthetics, maximum warranty protection, or detailed technical specifications?"
-      * Timeline: "And for your timeline, are you hoping to get on the install schedule right away, or are you in the research and comparison phase?"
-    - NOTE ON DECKING: Never interrogate the caller about decking condition! It is unknown until tear-off. Standard contract includes damaged OSB replacement ($78.13/sheet) upon tear-off.
+    - Question 7 (Simplified Customer Priority & DISC Psychometrics — Easy & Conversational):
+      * Ask concisely (<20 words):
+        "When it comes to your new roof, what matters most to you: getting on the schedule quickly, keeping costs down, or maximum warranty protection?"
+      * (D = speed/schedule, C = cost/numbers, S/I = warranty protection and peace of mind).
+    - NOTE ON DECKING: Never speak specific dollar figures (like $78/sheet) out loud over the phone! Decking condition is verified upon tear-off or upon caller request during an on-site evaluation, and all standard unit pricing is documented cleanly in the written proposal terms and agreement.
 
 3. VOICE-FIRST QUOTE CAPTURE & REPEAT/ESCAPE HATCH DIGITAL FORM GATE:
    - PRIMARY DIRECTIVE (VOICE FIRST): 100% OF QUOTE INTAKE MUST BE COMPLETED OVER VOICE!
@@ -4841,8 +4842,37 @@ const FOUNDER_ADMIN_TOOLS = [
       },
       required: ['commitMessage']
     }
+  },
+  {
+    name: 'dispatch_antigravity_task',
+    description: 'FOUNDER ONLY (+18019284434): Dispatches a multi-file software engineering task or feature build directly to the Antigravity agent in MJR_EPA via Google Chat Command Center (spaces/AAQACbeNsSM) and TICK.md ledger. Honey verbally confirms task title and target repo back to Michael Robinson.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        targetRepo: {
+          type: 'STRING',
+          enum: ['MJR_EPA', 'rhive-os', 'RHIVE-Telephony', 'Commercial-Quote-Builder', 'all'],
+          description: 'Target repository to modify, audit, or build.'
+        },
+        taskTitle: {
+          type: 'STRING',
+          description: 'Concise 5-10 word title of the coding task.'
+        },
+        taskDescription: {
+          type: 'STRING',
+          description: 'Detailed technical requirements, scope, and rationale spoken by Michael.'
+        },
+        priority: {
+          type: 'STRING',
+          enum: ['P0_CRITICAL', 'P1_HIGH', 'P2_NORMAL'],
+          description: 'Priority level of the engineering task.'
+        }
+      },
+      required: ['targetRepo', 'taskTitle', 'taskDescription']
+    }
   }
 ];
+
 
 // ============================================================================
 // CALL SESSION INSTANCE
@@ -5034,6 +5064,13 @@ class CallSession {
     this.pendingHangup = true;
     this.hangupReason = reason;
     console.log(`[CallSession ${this.callSid}] 🛡️ Graceful hangup armed (Reason: ${reason}). Waiting for speech synthesis to complete...`);
+
+    // If model is already done speaking (or not actively speaking), initiate audio drain immediately!
+    if (!this.isModelSpeaking) {
+      console.log(`[CallSession ${this.callSid}] 🛡️ Model is not actively speaking. Initiating 1500ms audio drain before carrier disconnect...`);
+      this.onTurnCompleteForHangup(1500);
+      return;
+    }
 
     // Safety ceiling: If turnComplete never fires within 20s, force disconnect
     if (!this.safetyHangupTimer) {
@@ -6466,6 +6503,73 @@ class CallSession {
         };
       }
 
+      if (name === 'dispatch_antigravity_task') {
+        if (!isMichaelPersonalTest(this.callerPhone)) {
+          return { error: 'Unauthorized. Founder override only.' };
+        }
+        const targetRepo = String(args?.targetRepo || 'MJR_EPA');
+        const taskTitle = String(args?.taskTitle || 'Voice-Dispatched Task').slice(0, 100);
+        const taskDesc = String(args?.taskDescription || 'No description provided.').slice(0, 2000);
+        const priority = String(args?.priority || 'P1_HIGH');
+
+        console.log(`[CallSession ${this.callSid}] 🤖 Founder dispatched Antigravity Task: "${taskTitle}" (${targetRepo})`);
+
+        const cardText = 
+          `⚡ *VOICE-DISPATCHED ENGINEERING TASK FROM MICHAEL ROBINSON*\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `🎯 *Target Repo:* \`${targetRepo}\`\n` +
+          `📋 *Task:* *${taskTitle}*\n` +
+          `🚨 *Priority:* \`${priority}\`\n\n` +
+          `📝 *Spoken Directive:*\n` +
+          `"${taskDesc}"\n\n` +
+          `⏰ *Timestamp:* ${new Date().toLocaleString()}\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `🤖 *Antigravity Autonomous Swarm: QUEUED FOR EXECUTION*`;
+
+        // 1. Dispatch to Google Chat Command Center
+        try {
+          const chat = getGoogleChatClient();
+          if (chat) {
+            chat.spaces.messages.create({
+              parent: COMMAND_CENTER_SPACE,
+              requestBody: { text: cardText }
+            }).then(res => {
+              console.log(`[Google Chat] Dispatched Antigravity task to ${COMMAND_CENTER_SPACE}: ${res.data?.name}`);
+            }).catch(err => {
+              console.warn(`[Google Chat] Failed to dispatch Antigravity task card:`, err.message);
+            });
+          }
+        } catch (cErr) {
+          console.warn(`[Google Chat] Direct chat client error:`, cErr.message);
+        }
+
+        // 2. Append to TICK.md in MJR_EPA if accessible
+        try {
+          const tickPath = path.resolve(__dirname, '..', '..', 'MJR_EPA', 'TICK.md');
+          if (fs.existsSync(tickPath)) {
+            let tickContent = fs.readFileSync(tickPath, 'utf8');
+            const taskLine = `  - "[N1] VOICE_DISPATCH_${Date.now()}: ${taskTitle} in ${targetRepo}. QA_EXIT:0."\n`;
+            if (tickContent.includes('todo:')) {
+              tickContent = tickContent.replace('todo:\n', `todo:\n${taskLine}`);
+              fs.writeFileSync(tickPath, tickContent, 'utf8');
+              console.log(`[TICK.md] Successfully queued voice task into MJR_EPA TICK.md`);
+            }
+          }
+        } catch (tErr) {
+          console.warn(`[TICK.md] Could not write to TICK.md:`, tErr.message);
+        }
+
+        return {
+          success: true,
+          dispatched: true,
+          taskTitle,
+          targetRepo,
+          destination: `${COMMAND_CENTER_SPACE} & TICK.md`,
+          spokenConfirmation: `Michael, I have dispatched the task "${taskTitle}" for ${targetRepo} directly to the Antigravity engineering swarm in your Command Center.`
+        };
+      }
+
+
       if (name === 'hangup_call') {
         if (this.isTransferred) {
           console.log('[CallSession ' + this.callSid + '] Call was transferred to ' + this.sessionData.targetSpecialist + '. Skipping hangup.');
@@ -6501,6 +6605,30 @@ class CallSession {
       const muLawInbound = Buffer.from(payloadBase64, 'base64');
       const energy = calculateEnergy(muLawInbound);
       const pcm16k = muLaw8kToPcm16k(muLawInbound, 1.0); // 1.0 flat gain
+
+      // FAREWELL BUFFER ABORT CHECK:
+      // If a hangup was armed or disconnect timer is running, and the caller speaks (e.g. "Wait!", "Hold on!"),
+      // immediately abort the disconnect countdown, disarm pendingHangup, and yield floor back to caller!
+      if (this.pendingHangup || this.disconnectTimer) {
+        if (energy >= this.BARGE_IN_ENERGY_THRESHOLD) {
+          console.log(`[CallSession ${this.callSid}] 🛑 Caller spoke during pending hangup / farewell drain (Energy: ${Math.round(energy)}). Aborting hangup to assist caller!`);
+          if (this.disconnectTimer) {
+            clearTimeout(this.disconnectTimer);
+            this.disconnectTimer = null;
+          }
+          if (this.safetyHangupTimer) {
+            clearTimeout(this.safetyHangupTimer);
+            this.safetyHangupTimer = null;
+          }
+          this.pendingHangup = false;
+          this.hangupReason = null;
+          this.isModelSpeaking = false;
+          this.isUserSpeaking = true;
+          if (this.streamSid && this.twilioWs && this.twilioWs.readyState === WebSocket.OPEN) {
+            this.twilioWs.send(JSON.stringify({ event: 'clear', streamSid: this.streamSid }));
+          }
+        }
+      }
 
       // INTELLIGENT DUAL-ZONE VAD & BACKGROUND NOISE GATE:
       // Zone 1: When Honey is speaking (model turn active):

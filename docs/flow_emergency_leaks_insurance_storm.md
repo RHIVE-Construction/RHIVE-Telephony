@@ -1,4 +1,4 @@
-﻿# 🚨 Flow 2: Emergency Active Leaks & Insurance Storm Damage Restoration
+# 🚨 Flow 2: Emergency Active Leaks & Insurance Storm Damage Restoration
 **System OS:** ANTIGRAVITY V8.0  
 **Swarm Revision:** Revision 67 Master Alignment  
 **Target Environment:** Google Cloud Run (`rhive-voice-live-bridge`)  
@@ -15,7 +15,7 @@ Flow 2 unifies all urgent distress calls, active water intrusions, and insurance
 
 ```mermaid
 flowchart TD
-    Inbound["Caller Inbound: Active Leak or Storm/Hail Damage"] --> HoneyGreet["Honey Ring-1 Direct Greeting (Empathetic Triage)<br/>'Hi, this is Honey! R-hive's AI Roofing Specialist, what can we take care of on your roof today!?'"]
+    Inbound["Caller Inbound: Active Leak or Storm/Hail Damage"] --> HoneyGreet["Honey Ring-1 Direct Greeting (Empathetic Triage)<br/>'Hi! This is Honey! R-hive's AI Roofing Specialist, how may I assist your call today?'"]
     HoneyGreet --> AddressCapture["Address Capture & GIS Polygon Check (Utah County & Salt Lake County)"]
     
     AddressCapture --> AddressGate["Mandatory Address Audio Confirmation Gate:<br/>Honey reads back geocoded address, pauses, and awaits caller confirmation"]

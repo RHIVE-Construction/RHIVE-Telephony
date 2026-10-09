@@ -1,8 +1,8 @@
-﻿# 🏗️ RHIVE Master Telephony Swarm: Technical Workflow Specification
+# 🏗️ RHIVE Master Telephony Swarm: Technical Workflow Specification
 **System OS:** ANTIGRAVITY V8.0 (Sovereign Execution Builder)  
 **Swarm Revision:** Revision 67 Production Release  
 **Target Environment:** Google Cloud Run (`rhive-voice-live-bridge`)  
-**Live Telephony Endpoint:** `+1 (839) 867-6637` (+1 839-86-ROOFS) *(All calls to RHIVE Main are forwarded here for Honey to answer directly)*  
+**Live Telephony Endpoint:** `+1 (839) 867-6637` (+1 839-86-ROOFS) *(All calls to RHIVE Main are forwarded here via JustCall for Honey to answer directly)*  
 **Assigned Swarm Roles:** Honey (AI Roofing Specialist), Kara Robinson (VP Operations), Michael Robinson (General Contractor)  
 **Core Voice Engine:** Google Gemini 3.8 Live (`gemini-3.8-live` & `gemini-3.8-live-extended-thinking`)  
 
@@ -16,10 +16,10 @@ The RHIVE telephony swarm operates on a unified, high-speed multimodal pipeline 
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                   RHIVE INBOUND TELEPHONY ROUTING MATRIX                    │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ Inbound Call -> Direct Ring-1 Answer (No Robotic Menus / Zero IVR Delay)    │
-│ Honey Greeting: "Hi, this is Honey! R-hive's AI Roofing Specialist,        │
-│                  what can we take care of on your roof today!?"        │
-│                  (+150ms carrier settle pause + audible vocal smile)        │
+│ Inbound Call -> Forwarded via JustCall -> Ring-1 Direct Answer (No IVR)      │
+│ Honey Greeting: "Hi! This is Honey! R-hive's AI Roofing Specialist,         │
+│                  how may I assist your call today?"                         │
+│                  (+150ms carrier settle pause + radiant vocal smile)        │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ Address Audio Confirmation Gate:                                            │
 │ -> Geocodes via verify_address, reads back full address, pauses and awaits   │
@@ -36,6 +36,10 @@ The RHIVE telephony swarm operates on a unified, high-speed multimodal pipeline 
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
+> [!NOTE]
+> **JustCall Forwarding Infrastructure:**
+> Inbound calls dialed to RHIVE Main numbers are seamlessly forwarded to `+1 (839) 867-6637` within the JustCall carrier configuration. Honey answers directly on the first ring, completely eliminating robotic touch-tone menus while keeping JustCall's central CDR records and call logs synchronized.
+
 ---
 
 ## 2. Dedicated Standalone Flow Specifications (The 4 Pillars)
@@ -44,10 +48,10 @@ Each canonical flow has been architected into a comprehensive standalone deep-di
 
 | Pillar | Dedicated Master Artifact | Primary Swarm Role | Target Outcome |
 | :--- | :--- | :--- | :--- |
-| **Flow 1** | [flow_quotes_residential_commercial.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/flow_quotes_residential_commercial.md) | Honey & Project Specialist Team | Certified Quote Requested & Project Specialist SMS Dispatched |
-| **Flow 2** | [flow_emergency_leaks_insurance_storm.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/flow_emergency_leaks_insurance_storm.md) | Honey & Emergency Dispatch / Claim Swarm | Calculated 3-Hour Arrival Cushion Booked ($150 Credited Fee Acknowledged) |
-| **Flow 3** | [flow_trade_suppliers_permitting_compliance.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/flow_trade_suppliers_permitting_compliance.md) | Honey & Kara (VP Operations) | Screened Warm Whisper PBX Transfer to Kara (+150ms Settle, Say 1/2 or Press 1/2) |
-| **Flow 4** | [flow_anti_spam_quarantine.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/flow_anti_spam_quarantine.md) | Honey (Anti-Spam Sentry) | 2-Question Qualification Gate -> Polite Quarantine to info@rhiveconstruction.com |
+| **Flow 1** | [flow_quotes_residential_commercial.md](file:///c:/Users/mjrob/OneDrive/Desktop/App%20Repo%20s/RHIVE-Construction/RHIVE-Telephony/docs/flow_quotes_residential_commercial.md) | Honey & Project Specialist Team | Certified Aerial CAD Quote Requested, Google Solar Stamped, or On-Site Window Booked |
+| **Flow 2** | [flow_emergency_leaks_insurance_storm.md](file:///c:/Users/mjrob/OneDrive/Desktop/App%20Repo%20s/RHIVE-Construction/RHIVE-Telephony/docs/flow_emergency_leaks_insurance_storm.md) | Honey & Emergency Dispatch / Claim Swarm | Calculated 3-Hour Arrival Cushion Booked ($150 Credited Fee Acknowledged) |
+| **Flow 3** | [flow_trade_suppliers_permitting_compliance.md](file:///c:/Users/mjrob/OneDrive/Desktop/App%20Repo%20s/RHIVE-Construction/RHIVE-Telephony/docs/flow_trade_suppliers_permitting_compliance.md) | Honey & Kara (VP Operations) | Screened Warm Whisper PBX Transfer to Kara (+150ms Settle, Say 1/2 or Press 1/2, 25s Timeout) |
+| **Flow 4** | [flow_anti_spam_quarantine.md](file:///c:/Users/mjrob/OneDrive/Desktop/App%20Repo%20s/RHIVE-Construction/RHIVE-Telephony/docs/flow_anti_spam_quarantine.md) | Honey (Anti-Spam Sentry) | 2-Question Qualification Gate -> Polite Quarantine to info@rhiveconstruction.com (Zero Upward Transfer) |
 
 ---
 
@@ -67,46 +71,37 @@ Each canonical flow has been architected into a comprehensive standalone deep-di
      > *"Perfect! For the 9917 South property, are you looking to replace an aging roof..."*
    * The shorthand is stamped into Google Chat and Google Drive lead dossiers as `🏷️ Property Name: [propertyName]`.
 
-### B. Why Certified Quotes Do NOT Require On-Site Truck Rolls
-* A certified quote has a **Project Specialist** order custom high-resolution aerial CAD measurements (via precision Roofr scans) and build out the complete engineering scope. 
+### B. Remote Aerial CAD Precision & Google Solar Integration
+* A certified quote has a **Project Specialist** order custom high-resolution aerial CAD measurements (via Google Solar and satellite CAD tools) and build out the complete engineering scope. 
 * We do **NOT** need to be physically at the address to engineer a full certified replacement quote.
+* Initial Google Solar measurements (pitches, SQ per pitch, facet count, total squares with waste factor) are stamped into customer records upon address confirmation.
 
 ### C. The ONLY 5 Exceptions Requiring An On-Site Physical Inspection:
 1. **Active Leak Tarping:** Emergency leak stabilization. Standard mobilization is $150 (covering all leaks from a single weather event, 100% credited to permanent repair/claim; escalates only for catastrophic multi-plane failure or steep rope/harness rigging). *(Routes to Flow 2)*.
 2. **Roof Older Than 15 Years (Repair Request):** Shingles have reached asphalt embrittlement (loss of volatile plasticizers); physical evaluation is required to diagnose whether a spot repair will hold or if a partial/full replacement is necessary.
-3. **Commercial Roofing (All Types):** Applies to all commercial properties—both low-slope/flat single-ply membrane (TPO/PVC) and steep-pitch commercial roofs—requiring commercial core sampling, rooftop HVAC curb diagnostics, parapet wall flashing inspection, or structural engineering review.
-4. **Insurance Damage / Storm Claim (Strict UPPA Statutory Compliance):** 
-   * Under Utah Code § 31A-26 (Unauthorized Practice of Public Adjusting), contractors cannot determine claim approval, advise whether damage qualifies for insurance coverage, or negotiate claim payouts.
-   * RHIVE conducts an **on-site roof damage inspection** to document visible storm damage and prepare an objective **scope of work report to know what it will take to get either the repair or replacement taken care of**, giving the property owner an informed baseline before meeting their insurance adjuster. *(Routes to Flow 2)*.
-5. **Explicit Homeowner Request:** Homeowner or commercial property manager explicitly requests an on-site physical walk.
+3. **Pre-1972 Slat Board Decking Inspection (Upon Caller Request):** Slat board decking is an unforeseen expense; if caller requests an evaluation, RHIVE inspects decking condition on-site. Pricing is outlined in the written terms and agreement, never spoken aloud over the phone.
+4. **Commercial Roofing (All Types):** Applies to all commercial properties—both low-slope/flat single-ply membrane (TPO/PVC) and steep-pitch commercial roofs—requiring commercial core sampling, rooftop HVAC curb diagnostics, parapet wall flashing inspection, or structural engineering review.
+5. **Insurance Damage / Storm Claim (Strict UPPA Statutory Compliance) / Explicit Homeowner Request:** 
+   * Under Utah Code § 31A-26 (UPPA), contractors cannot determine claim approval or negotiate claim payouts.
+   * RHIVE conducts an **on-site roof damage inspection** to document visible storm damage and prepare an objective **scope of work report to know what it will take to get either the repair or replacement taken care of**. Or whenever the customer explicitly asks for an on-site visit.
 
-### D. Standardized Stages & The Quote Bucket (Repairs as Partial Replacements)
-```
-├── 1. ESTIMATE STAGE
-│   └── Estimate: Used exclusively for rough ballpark figures or instant online pricing.
-│
-└── 2. CERTIFIED QUOTE REQUESTED STAGE (The Quote Bucket)
-    ├── Certified Quote: Used for full roof replacement engineering.
-    ├── Partial Replacement / Repair Plan:
-    │   * Along the Wasatch Front, south and west roof facets absorb 3x higher UV radiation,
-    │     thermal contraction, and wind uplift compared to north and east slopes.
-    │   * Consequently, repairs on older roofs are formally engineered as Partial Replacements
-    │     of the compromised slopes/facets to prevent collateral shingle tear-off cracking.
-    ├── Service Agreement: Governs recurring commercial/residential maintenance & multi-year penetration seals.
-    └── Maintenance Visit: A one-time routine tune-up, debris clear, and penetration seal.
-```
+### D. The 4 Asphalt Shingle Tiers & RHIVE Commercial Baseline
+Across all roofing manufacturers, asphalt shingles fall into 4 distinct quality tiers:
+1. **Standard / Contractor-Grade Architectural Shingles:** Installed on spec new builds; lowest quality architectural shingle.
+2. **Performance / Commercial Grade (Owens Corning Duration with SureNail Technology):** **THIS IS WHERE RHIVE STARTS AS OUR STANDARD BASELINE!** Features patented SureNail triple-layer woven fabric strip, 130 mph wind resistance, and Class 3/4 tear defense.
+3. **Impact Resistant / Class 4 SBS Polymer-Modified (Duration FLEX):** Rubberized polymer-modified asphalt for maximum hail armor and cold-weather flexibility (offered optionally, never pushed).
+4. **Designer / Luxury Craftsman (Woodcrest & Woodmoor):** Thick luxury craftsman shake profiles for high-end curb appeal.
 
-### E. The Calculated 3-Hour Arrival Cushion Algorithm
-Instead of quoting arbitrary time blocks, Honey calculates dynamic arrival windows via Google Calendar:
-1. The system queries Google Calendar API via DWD for the **next available 1-hour service appointment** (e.g., 1:00 PM – 2:00 PM).
-2. The engine injects a **1-hour cushion before and 1-hour cushion after**, generating a customer-facing 3-hour arrival cushion:
-   $$\text{Arrival Window} = [\text{Start Time} - 1\,\text{hr},\; \text{End Time} + 1\,\text{hr}]$$
-   *(Example: A 1:00 PM – 2:00 PM technician slot yields a promised customer arrival window of 12:00 PM – 3:00 PM).*
-3. Honey verbalizes: *"I can lock in our crew lead for an arrival between twelve noon and three PM today. Does that work for you?"*
+### E. Gutter Scope Philosophy (Simple "Suit to the Body" Metaphor)
+* The most cost-effective route is keeping the existing gutter system.
+* However, every gutter system is tailored to the roof like a suit to the body—altering roof layers can affect water runoff patterns.
+* If similar materials and thickness go back on, the old system usually supports the new roof fine.
+* If the customer wants a full new system custom tailored, evaluating and getting new gutters is the easiest way to accomplish that.
 
-### F. Product Positioning Invariant (Commercial-Grade Upgraded Baseline)
-* **Owens Corning Duration** is positioned as our **upgraded commercial-grade performance line featuring SureNail Technology**, never as "standard" or basic shingles.
-* **Duration FLEX Class 4 SBS polymer-modified shingles** is an available upgrade option, but Honey **must NOT push it** aggressively just because a storm or hail event occurred. It is offered neutrally if the caller inquires about maximum impact resistance.
+### F. Simplified Customer Priority & DISC Question (<20 Words)
+* Honey asks simply:
+  > *"When it comes to your new roof, what matters most to you: getting on the schedule quickly, keeping costs down, or maximum warranty protection?"*
+* Speed = D; Cost = C; Warranty = S/I.
 
 ### G. Kara Warm Whisper Protocol Specification
 * **Target:** Kara Robinson (`+1 801-441-0024`).
@@ -115,8 +110,16 @@ Instead of quoting arbitrary time blocks, Honey calculates dynamic arrival windo
 * **Dual Input Modes:** Kara can either **speak ("One" / "Two")** or **press DTMF ("1" / "2")**:
   - Say "1" or press 1: Accept call and bridge audio.
   - Say "2" or press 2: Send caller to priority memo & trigger intelligent two-way fallback SMS.
+* **Screening Timeout:** 25 seconds.
 * **Carrier PBX Greeting Filter:** Server actively filters out carrier PBX greetings (*"connecting to kara at our hive construction..."*), preventing voicemail or automated answering messages from false-triggering conference connection.
-* **Fallback Protocol:** If Kara declines or does not answer within 18 seconds (4 rings), Honey triggers an instant two-way SMS from Kara's line (`801-441-0024`) directly to the caller, takes a detailed memo, and commits a priority callback within 30 minutes, dispatching an immediate SMS alert to Kara and Michael.
+* **Fallback Protocol:** If Kara declines or does not answer within 25 seconds, Twilio redirects to `/transfer-fallback`, immediately reconnecting the caller to Honey Live and dispatching a proactive interactive SMS from Kara's line (`801-441-0024`).
+
+### H. Graceful Hangup & Transfer Fallback Invariants
+* **Closing Phrasing:** Always ask: *"Is there anything else I can assist you with today?"*.
+* **1500ms Audio Buffer Drain:** `onTurnCompleteForHangup` waits 1500ms after speech generation finishes to allow Twilio's RTP jitter buffer to completely drain.
+* **Immediate Drain When Speech Complete:** If `armGracefulHangup` is called when speech is already finished, drain begins immediately without a 20-second stall.
+* **Farewell Barge-In Intercept:** If the caller speaks during the 1500ms farewell drain, the disconnect timer is cancelled immediately and the line remains open with Honey listening.
+* **Zero Upward Delegation for Solicitors & Complaints:** Cold sales pitches, unverified threats, and angry roadside sign complaints are strictly quarantined to written review (`info@rhiveconstruction.com`) and never transferred live to Michael or Kara.
 
 ---
 
@@ -124,11 +127,10 @@ Instead of quoting arbitrary time blocks, Honey calculates dynamic arrival windo
 
 | Swarm Node | Scope & Function | Document Link |
 | :--- | :--- | :--- |
-| **Flow 1** | Residential & Commercial Certified Quotes, Repairs & Maintenance | [flow_quotes_residential_commercial.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/flow_quotes_residential_commercial.md) |
-| **Flow 2** | Emergency Active Leak Tarping ($150+ Credited) & Insurance Restoration | [flow_emergency_leaks_insurance_storm.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/flow_emergency_leaks_insurance_storm.md) |
-| **Flow 3** | Trade Partners, Material Suppliers, Municipal Permitting & Compliance | [flow_trade_suppliers_permitting_compliance.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/flow_trade_suppliers_permitting_compliance.md) |
-| **Flow 4** | Cold Solicitor & Unsolicited Marketing Anti-Spam Perimeter Quarantine | [flow_anti_spam_quarantine.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/flow_anti_spam_quarantine.md) |
-| **Master Spec** | Complete Master Telephony System Specifications & Swarm Architecture | [master_telephony_workflow_specification.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/master_telephony_workflow_specification.md) |
-| **Flowchart** | Visual End-to-End Decision Flowchart & Script Matrix | [customer_telephony_flowchart.md](file:///C:/Users/mjrob/.gemini/antigravity/brain/0ea1d186-c0b7-4d42-8bc0-3cea6c384d14/customer_telephony_flowchart.md) |
+| **Flow 1** | Residential & Commercial Certified Quotes, Repairs & Maintenance | [flow_quotes_residential_commercial.md](file:///c:/Users/mjrob/OneDrive/Desktop/App%20Repo%20s/RHIVE-Construction/RHIVE-Telephony/docs/flow_quotes_residential_commercial.md) |
+| **Flow 2** | Emergency Active Leak Tarping ($150+ Credited) & Insurance Restoration | [flow_emergency_leaks_insurance_storm.md](file:///c:/Users/mjrob/OneDrive/Desktop/App%20Repo%20s/RHIVE-Construction/RHIVE-Telephony/docs/flow_emergency_leaks_insurance_storm.md) |
+| **Flow 3** | Trade Partners, Material Suppliers, Municipal Permitting & Compliance | [flow_trade_suppliers_permitting_compliance.md](file:///c:/Users/mjrob/OneDrive/Desktop/App%20Repo%20s/RHIVE-Construction/RHIVE-Telephony/docs/flow_trade_suppliers_permitting_compliance.md) |
+| **Flow 4** | Cold Solicitor & Unsolicited Marketing Anti-Spam Perimeter Quarantine | [flow_anti_spam_quarantine.md](file:///c:/Users/mjrob/OneDrive/Desktop/App%20Repo%20s/RHIVE-Construction/RHIVE-Telephony/docs/flow_anti_spam_quarantine.md) |
+| **Master Spec** | Complete Master Telephony System Specifications & Swarm Architecture | [master_telephony_workflow_specification.md](file:///c:/Users/mjrob/OneDrive/Desktop/App%20Repo%20s/RHIVE-Construction/RHIVE-Telephony/docs/master_telephony_workflow_specification.md) |
+| **Flowchart** | Visual End-to-End Decision Flowchart & Script Matrix | [customer_telephony_flowchart.md](file:///c:/Users/mjrob/OneDrive/Desktop/App%20Repo%20s/RHIVE-Construction/RHIVE-Telephony/docs/customer_telephony_flowchart.md) |
 | **Live Bridge** | Production GCP Cloud Run Speech-to-Speech WebSocket Implementation | [server.js](file:///c:/Users/mjrob/OneDrive/Desktop/App%20Repo%20s/RHIVE-Construction/RHIVE-Telephony/server.js) |
-
