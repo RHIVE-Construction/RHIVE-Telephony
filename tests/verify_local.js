@@ -68,6 +68,21 @@ async function runTests() {
   assert(verifyHtml.includes('--accent: #ec028b;'), 'Project Verification Form includes RHIVE Pink brand color (#ec028b)');
   assert(verifyHtml.includes('--primary: #08137C;'), 'Project Verification Form includes RHIVE Blue brand color (#08137C)');
 
+  // Static Test 1D: V4 Cyberpunk Chamfered Super-App (Dialer, Mobile, AI Studio & PWA Service Worker)
+  const dialerHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'dialer.html'), 'utf8');
+  const mobileHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'mobile.html'), 'utf8');
+  const aiHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'ai.html'), 'utf8');
+  const swJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'sw.js'), 'utf8');
+
+  assert(!/<input[^>]*type=["']checkbox["']/i.test(dialerHtml), 'dialer.html strictly adheres to NO CHECKBOX rule (Chamfered Quantum Switches)');
+  assert(!/<input[^>]*type=["']checkbox["']/i.test(mobileHtml), 'mobile.html strictly adheres to NO CHECKBOX rule (Chamfered Quantum Switches)');
+  assert(!/<input[^>]*type=["']checkbox["']/i.test(aiHtml), 'ai.html strictly adheres to NO CHECKBOX rule (Chamfered Quantum Switches)');
+  assert(!swJs.includes('self.registration.unregister()'), 'public/sw.js keeps PWA Service Worker active for Pixel 8 & Pixel 11 XL');
+  assert(dialerHtml.includes('clip-path: polygon'), 'dialer.html enforces 45-degree Cyberpunk Chamfer geometry');
+  assert(dialerHtml.includes('googleAccountAvatar'), 'dialer.html features logged-in Google Account Avatar badge in ultra-slim 40px header');
+  assert(dialerHtml.includes('outboundCallerIdSelect'), 'dialer.html includes JustCall-style Outbound Caller ID selector');
+  assert(dialerHtml.includes('inAppGoogleChatPanel') && dialerHtml.includes('tabMeet') && dialerHtml.includes('tabNotes') && dialerHtml.includes('tabHoney'), 'dialer.html embeds In-App Google Chat, Meet, Notes & Dedicated Honey AI tabs');
+
   console.log(`\nSpawning local server on port ${TEST_PORT}...`);
   const serverPath = path.join(__dirname, '..', 'server.js');
   serverProc = spawn('node', [serverPath], {
@@ -336,6 +351,47 @@ async function runTests() {
     assert(res.data.length > 1000000, `Local MP3 payload verified (${(res.data.length / 1024 / 1024).toFixed(2)} MB)`);
   } catch(e) {
     assert(false, 'GET /audio/...mp3 error: ' + e.message);
+  }
+
+  // Test 17: V4 Super-App In-App Google Chat, Meet, Notes & Shared Drive Routing APIs
+  try {
+    const chatRes = await axios.get(`http://localhost:${TEST_PORT}/api/workspace/chat?channelId=space-field-ops`);
+    assert(chatRes.status === 200 && chatRes.data.success === true && Array.isArray(chatRes.data.messages), 'GET /api/workspace/chat returns In-App Google Chat Spaces & DMs');
+
+    const chatSendRes = await axios.post(`http://localhost:${TEST_PORT}/api/workspace/chat/send`, {
+      channelId: 'space-field-ops',
+      sender: 'Michael Robison',
+      text: 'Verified flashing on Sandy project.',
+      projectRef: 'Residential/Chad_Evenhuis_Sandy'
+    });
+    assert(chatSendRes.status === 200 && chatSendRes.data.success === true, 'POST /api/workspace/chat/send appends message and syncs project reference');
+
+    const meetSnapRes = await axios.post(`http://localhost:${TEST_PORT}/api/workspace/meet/snap`, {
+      projectCategory: 'Residential',
+      projectFolder: 'Chad_Evenhuis_Sandy',
+      caption: 'Valley_Flashing_Check.jpg'
+    });
+    assert(meetSnapRes.status === 200 && meetSnapRes.data.success === true && meetSnapRes.data.snapshot.driveFolderId === '1vkfdY4OYdljEevai3oZTGxUGSqytekSi', 'POST /api/workspace/meet/snap routes capture to Residential Shared Drive ID (1vkfdY4OYdljEevai3oZTGxUGSqytekSi)');
+
+    const driveRes = await axios.get(`http://localhost:${TEST_PORT}/api/drive/projects`);
+    assert(driveRes.status === 200 && driveRes.data.sharedDrive && driveRes.data.sharedDrive.commercialId === '1Vq4gODo_veMJUoE6KzOSTX-gc9EVXAU8', 'GET /api/drive/projects verifies Commercial (1Vq4g...XAU8) & Residential (1vkfd...ekSi) Shared Drive routing');
+
+    const bindRes = await axios.post(`http://localhost:${TEST_PORT}/api/drive/bind-contact`, {
+      name: 'Sarah Evenhuis',
+      phone: '+18015550199',
+      role: 'Additional Homeowner',
+      category: 'Residential',
+      projectFolder: 'Chad_Evenhuis_Sandy'
+    });
+    assert(bindRes.status === 200 && bindRes.data.success === true, 'POST /api/drive/bind-contact binds additional homeowner phone number to Residential project folder');
+
+    const notesRes = await axios.get(`http://localhost:${TEST_PORT}/api/workspace/notes`);
+    assert(notesRes.status === 200 && notesRes.data.success === true && Array.isArray(notesRes.data.notes), 'GET /api/workspace/notes returns In-App Notes & Pinned Checklists');
+
+    const slotsRes = await axios.get(`http://localhost:${TEST_PORT}/api/calendar/route-slots`);
+    assert(slotsRes.status === 200 && slotsRes.data.success === true && Array.isArray(slotsRes.data.slots), 'GET /api/calendar/route-slots returns Route-Optimized Google Calendar slots');
+  } catch (e) {
+    assert(false, 'V4 Super-App API test error: ' + e.message);
   }
 
   console.log(`\n================================================================`);

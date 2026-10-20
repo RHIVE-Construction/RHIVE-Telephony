@@ -15,8 +15,12 @@
 flowchart TD
     Dial["Caller Dials Office Line / Forwarded from RHIVE Main via JustCall"] --> Ring1["Honey Ring-1 Direct Answer (Zero IVR Menus / Pure Voice)<br/>150ms Settle Delay + Radiant Vocal Smile<br/>'Hi! This is Honey! R-hive's AI Roofing Specialist, how may I assist your call today?'"]
 
+    %% Name Verification Gate
+    Ring1 --> NameCapture["Caller States Name"]
+    NameCapture --> NameVerify["First Name Spelling Verification Gate:<br/>Honey: 'Hi Sarah! Is that spelled S-A-R-A-H?'<br/>Honey PAUSES & WAITS for verbal confirmation right there"]
+
     %% Direct Address & Intent Flow
-    Ring1 --> AddrCapture1["Customer States Reason & Property Address"]
+    NameVerify --> AddrCapture1["Customer States Reason & Property Address"]
     AddrCapture1 --> ToolProp1["TOOL: verify_address<br/>OpenStreetMap Geocoding + Utah County Parcel ($0.00) + Open-Meteo County Weather"]
     
     ToolProp1 --> AddrConfirm{"Mandatory Audio Verification Gate:<br/>Honey reads back: 'I have [Address], [City], Utah [Zip]—does that match your property?'<br/>Honey PAUSES & WAITS for verbal confirmation"}
@@ -31,9 +35,9 @@ flowchart TD
     %% Case 1: Residential Replacement (Core Business Model - Remote Aerial + 15-Min Video Option)
     Q_Intent -->|Case 1: New Customers & Certified Quotes| RemoteAerial["Core Model: Remote Aerial Measurement & 15-Min Video Call<br/>Honey: 'We measure your roof via precision aerial engineering to deliver<br/>a certified quote without interrupting your day with a truck roll.'"]
     RemoteAerial --> WeatherUrgency1["County & City Weather Urgency:<br/>'Looking at [County] weather, with upcoming [precipitation/wind]% forecast for [City],<br/>locking in your scope early ensures you beat the seasonal schedule surge.'"]
-    WeatherUrgency1 --> VideoCallOption{"Visible from Ground?<br/>Offer 15-Minute Remote Phone Video Call"}
-    VideoCallOption -->|Homeowner Walks Outside| VideoSlot["Schedule 15-Minute Remote Video Call Inspection<br/>Specialist inspects live from ground via smartphone video"]
-    VideoCallOption -->|Aerial Scan Preferred| MeasureCall["MeasureCall Ping-Pong Sequence (1 Question / Turn):<br/>1. Structural additions & Solar detach warranty?<br/>2. Skylights, swamp coolers & satellite removals?<br/>3. Layer count (slope-aware)?<br/>4. Ventilation & Slat Decking Check (unforeseen expense, terms in agreement)?<br/>5. Gutters (Simple 'suit to body' metaphor: front, back, all-around)?<br/>6. Winter ice dams & heat trace hotspots?<br/>7. Shingle Hierarchy: Contractor -> Duration baseline -> Flex -> Designer?<br/>8. Simplified DISC psychometrics & timeline (<20 words)?"]
+    WeatherUrgency1 --> VideoCallOption{"Visible from Ground?<br/>Offer 15-Minute Remote Video Call via Google Meet"}
+    VideoCallOption -->|Homeowner Walks Outside| VideoSlot["Schedule 15-Minute Remote Video Call Inspection<br/>Specialist inspects live from ground via Google Meet / Calendar stream"]
+    VideoCallOption -->|Aerial Scan Preferred| MeasureCall["MeasureCall Ping-Pong Sequence (1 Question / Turn):<br/>1. Structural additions & Solar detach warranty?<br/>2. Skylights, swamp coolers & satellite removals?<br/>3. Layer count (slope-aware)?<br/>4. Ventilation & Slat Decking Custom Talking Point (unforeseen expense in written agreement)?<br/>5. Gutters (Simple 'suit to body' metaphor: front, back, all-around)?<br/>6. Winter ice dams & heat trace hotspots?<br/>7. Simplified DISC (<20 words): Speed (D) vs Cost (C) vs Warranty (S/I)?<br/>(NOTE: We do NOT ask what material they prefer; Duration is standard baseline)"]
     VideoSlot --> CloseProtocol
     MeasureCall --> CloseProtocol
 
@@ -44,10 +48,10 @@ flowchart TD
 
     %% Case 3: Storm Damage, Leaks & Emergency Tarping
     Q_Intent -->|Case 3: Storm Damage, Leaks & Emergency Tarping| LeakCheck{"Active Leak / Dripping Inside Now?"}
-    LeakCheck -->|Yes| ActiveTarp["Emergency Leak Tarping ($150 Mobilization Fee Credited to Scope)<br/>Covers all leaks from a single weather event unless catastrophic multi-plane/steep rigging.<br/>Honey checks County & City Weather Urgency:<br/>'It looks like there is an [X]% chance of rain in [County] moving into [City]...'"]
+    LeakCheck -->|Yes| ActiveTarp["Emergency Leak Tarping:<br/>If filing insurance: In our experience, emergency mitigation (tarping) has always been approved by insurance!<br/>If NOT filing insurance: $150 Mobilization Fee 100% credited toward repair/replacement.<br/>Covers all leaks from single weather event unless catastrophic collapse/steep rigging.<br/>Weather Urgency: Check precipitation moving into area."]
     ActiveTarp --> CloseProtocol
 
-    LeakCheck -->|No / Storm Insurance Claim| InsurancePath["Forensic storm damage scope documentation for adjuster (UPPA Compliant)<br/>TOOL: get_available_windows"]
+    LeakCheck -->|No / Storm Insurance Claim| InsurancePath["Forensic storm damage scope documentation for adjuster (UPPA Compliant)<br/>TOOL: get_available_windows<br/>(Zero product upgrade pitching on distress calls)"]
     InsurancePath --> PresentSlots
 
     %% Case 4: Roof Repairs (Partial Replacements vs Clear Photos vs On-Site)
@@ -57,7 +61,7 @@ flowchart TD
     RepairAge -->|Younger than 15 Years| RepairTriage{"Has visible exterior photos?"}
     RepairTriage -->|Exterior Photos| SendPhotoSMS["Text clear exterior roof photos back to specialist<br/>Reviewed within 24 hours"]
     SendPhotoSMS --> CloseProtocol
-    RepairAge -->|No Photos / Cannot Access| VideoOrOnSite["Offer 15-Minute Remote Video Call from Ground<br/>or On-Site Inspection Window"]
+    RepairAge -->|No Photos / Cannot Access| VideoOrOnSite["Offer 15-Minute Remote Video Call via Google Meet<br/>or On-Site Inspection Window"]
     VideoOrOnSite --> PresentSlots
 
     %% Calendar Booking Branch
@@ -75,11 +79,11 @@ flowchart TD
     SpamPath --> GracefulDrop["Event-Driven Speech Buffer Disconnect<br/>Wait turnComplete + 1500ms audio drain -> terminate carrier cleanly<br/>(Abort if caller speaks during buffer)"]
 
     %% Mandatory 4-Step Close Sequence
-    CloseProtocol["Mandatory 4-Step Closing Sequence:<br/>Recap -> text to cell ending in [last 4] -> secondary check -> 'Goodbye!' -> 1500ms drain"]
+    CloseProtocol["Mandatory 4-Step Closing Sequence:<br/>Recap -> text access to certified quote to number ending in [last 4] -> secondary check -> 'Goodbye!' -> 1500ms drain"]
     CloseProtocol --> Step1["Step 1: Express Authentic Gratitude (with Vocal Smile)"]
-    Step1 --> Step2["Step 2: Communication Channel & Contact Confirmation<br/>'We will reach out to the number ending in [last 4 digits]'"]
+    Step1 --> Step2["Step 2: Communication Channel & Contact Confirmation<br/>'We will text access to the certified quote to the number ending in [last 4 digits]'"]
     Step2 --> Step3["Step 3: Secondary Check: 'Is there anything else I can assist you with today?'"]
-    Step3 --> Step4["Step 4: Graceful Voice Disconnect (1500ms Audio Buffer Flush)"]
+    Step3 --> Step4["Step 4: Graceful Voice Disconnect (1500ms Audio Buffer Flush & Farewell Abort)"]
 ```
 
 ---
@@ -89,11 +93,12 @@ flowchart TD
 | Turn | Intent / Trigger | Honey Spoken Output (Strict Acoustic Standard) | Backend State & Tool Execution |
 | :--- | :--- | :--- | :--- |
 | **0** | Inbound Call Connect | *(Carrier settle 150ms)*<br/>`"Hi! This is Honey! R-hive's AI Roofing Specialist, how may I assist your call today?"` | CallSession initialized; ambient audio loaded; JustCall CDR synced. |
+| **0B**| First Name Stated | `"Awesome! Is that spelled [S-A-R-A-H]?"`<br/>*(Honey pauses and waits for verbal confirmation right there)* | `update_caller_profile` called; first name spelling confirmed. |
 | **1** | Address Stated | `verify_address` geocodes address; Honey reads back:<br/>`"I have [Address], [City], Utah [Zip]—does that match your property?"` | `verify_address` called; Google Solar pitch matrix & parcel data queried. |
 | **2** | Audio Confirmation | Caller confirms; Honey derives shorthand:<br/>`"Perfect! For the [propertyName], are you looking for a certified quote on an aging roof..."` | `addressConfirmed = true`; `propertyName` adopted. |
-| **3** | Core Intake (Ping-Pong) | Honey asks **strictly 1 question per turn** (<25 words):<br/>- Solar panels & structural additions<br/>- Skylights, coolers & satellite dishes<br/>- Slope-aware layer count<br/>- Eave intake vents & pre-1972 slat deck unforeseen expense<br/>- Gutters ("suit to body" metaphor)<br/>- Heat trace ice dam problem areas<br/>- 4-Tier Shingle Hierarchy (Duration baseline standard)<br/>- Simplified DISC: *"When it comes to your new roof, what matters most to you: getting on the schedule quickly, keeping costs down, or maximum warranty protection?"* | Session fields updated; Google Solar CAD geometry stamped. |
-| **4** | On-Site Exception | If one of the 5 exceptions applies:<br/>Honey queries `get_available_windows` and offers top 2 arrival windows: *"I have an arrival window open tomorrow between 9 AM and 12 noon, or tomorrow afternoon between 1 PM and 4 PM..."* | `get_available_windows` -> `book_inspection` executed on calendar. |
-| **5** | Closing Protocol | 1. Gratitude: `"Awesome, [Name]! We have everything we need..."`<br/>2. Recap: Name & email phonetic spelling.<br/>3. Channel: `"Texting proposal to the number ending in [last 4]..."`<br/>4. Secondary check: `"Is there anything else I can assist you with today?"`<br/>5. Farewell: `"You are so welcome! Have a wonderful day! Goodbye!"` | `hangup_call` armed; 1500ms buffer drain executed; abort if caller speaks. |
+| **3** | Core Intake (Ping-Pong) | Honey asks **strictly 1 question per turn** (<25 words):<br/>- Solar panels & structural additions<br/>- Skylights, coolers & satellite dishes<br/>- Slope-aware layer count<br/>- Eave intake vents & pre-1972 slat deck custom talking point (unforeseen expenses in agreement)<br/>- Gutters ("suit to body" metaphor)<br/>- Heat trace ice dam problem areas<br/>- Simplified DISC (<20 words): *"When it comes to your new roof, what matters most to you: getting on the schedule quickly, keeping costs down, or maximum warranty protection?"*<br/>*(NOTE: We do NOT ask what material they prefer; Duration is baseline standard)* | Session fields updated; Google Solar CAD geometry stamped. |
+| **4** | On-Site Exception | If one of the 5 exceptions applies (Commercial, Emergency Tarp, Repair >15yo embrittlement, UPPA storm scope, or homeowner request):<br/>Honey queries `get_available_windows` and offers top 2 arrival windows: *"I have an arrival window open tomorrow between 9 AM and 12 noon, or tomorrow afternoon between 1 PM and 4 PM..."* | `get_available_windows` -> `book_inspection` executed on calendar. |
+| **5** | Closing Protocol | 1. Gratitude: `"Awesome, [Name]! We have everything we need..."`<br/>2. Recap: Name & email phonetic spelling.<br/>3. Channel: `"Texting access to the certified quote to the number ending in [last 4]..."`<br/>4. Secondary check: `"Is there anything else I can assist you with today?"`<br/>5. Farewell: `"You are so welcome! Have a wonderful day! Goodbye!"` | `hangup_call` armed; 1500ms buffer drain executed; abort if caller speaks. |
 
 ---
 

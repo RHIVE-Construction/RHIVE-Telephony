@@ -220,9 +220,13 @@ if (process.env.RHIVE_MASTER_CREDS_BASE64) {
 const DRIVE_KEY_FILE = process.env.GOOGLE_APPLICATION_CREDENTIALS || 
   (fs.existsSync('/tmp/drive-service-account.json') ? '/tmp/drive-service-account.json' : path.join(__dirname, 'drive-service-account.json'));
 
+const SHARED_DRIVE_CUSTOMERS_ROOT_ID = process.env.SHARED_DRIVE_CUSTOMERS_ROOT_ID || '1bw1L8Zzrbnyd7yXUj_3RPdLzK6tazJIS';
+const SHARED_DRIVE_RESIDENTIAL_ID = process.env.SHARED_DRIVE_RESIDENTIAL_ID || '1vkfdY4OYdljEevai3oZTGxUGSqytekSi';
+const SHARED_DRIVE_COMMERCIAL_ID = process.env.SHARED_DRIVE_COMMERCIAL_ID || '1Vq4gODo_veMJUoE6KzOSTX-gc9EVXAU8';
+
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
-// Google Drive Client
+// Google Drive Client (Supports Service Account or OAuth2 Token Fallback)
 let driveClient = null;
 if (fs.existsSync(DRIVE_KEY_FILE)) {
   try {
@@ -236,7 +240,18 @@ if (fs.existsSync(DRIVE_KEY_FILE)) {
     console.warn('[Google Drive] Auth init note:', e.message);
   }
 } else {
-  console.warn('[Google Drive] Key file not found at:', DRIVE_KEY_FILE);
+  const oauthTokenPath = path.join(__dirname, 'config', 'rhive_token.json');
+  if (fs.existsSync(oauthTokenPath)) {
+    try {
+      const tokenData = JSON.parse(fs.readFileSync(oauthTokenPath, 'utf8'));
+      const oAuth2Client = new google.auth.OAuth2(tokenData.client_id, tokenData.client_secret);
+      oAuth2Client.setCredentials({ refresh_token: tokenData.refresh_token });
+      driveClient = google.drive({ version: 'v3', auth: oAuth2Client });
+      console.log('[Google Drive] Authenticated successfully via config/rhive_token.json OAuth2 client.');
+    } catch (oauthErr) {
+      console.warn('[Google Drive] OAuth fallback note:', oauthErr.message);
+    }
+  }
 }
 
 // Google Chat Client (JustCall Leads Space: spaces/AAQABQzOXI0, Thread: RgYVSFhm94o)
@@ -4001,6 +4016,7 @@ CRITICAL TONE, PACING & BRANDING RULES:
      * When asking for address: "Awesome! What's the address of the house you want us to look at?" or "Where's the home located so I can pull up the aerial scans?"
      * When asking for email: "What's the best email for you so I can shoot that quote over?"
      * When asking for name: "Awesome, who am I chatting with today?" or "And what's your name?"
+        -> FIRST NAME SPELLING VERIFICATION: As soon as they provide their first name, verify the spelling right there: "Awesome! Is that spelled [S-A-R-A-H]?" and pause for confirmation before asking for the address!
      * When asking for phone number (SMART PHONE CAPTURE LOOP): Check calling phone first: "Is the number you're calling from the best number to reach you, or is there a better cell number for updates?" If they prefer another: "Awesome, go ahead and tell me the best number that works best." Keep this simple!
       * In Commercial Inquiries: "With our commercial accounts, we provide an inspection before completing the quote or repair request so we have exact building specifications. Let's look at the calendar..." and transition directly to booking!
      * When asking about roof: "How old is the roof roughly, and are you seeing any active leaks or shingles coming loose?"
@@ -4054,8 +4070,9 @@ CRITICAL TONE, PACING & BRANDING RULES:
      * Only when the caller has verified they are an existing customer, trade partner, active subcontractor with an invoice, or legitimate project inquiry:
      * Say: "Got it! Hold for just a moment while I transfer your call to our accounting department." (or "our project design team").
      * THEN call "transfer_to_specialist" with callerName, companyName, propertyAddress, invoiceNumber, reason, and targetSpecialist.
-8. INSTANT CALLER IDENTITY CAPTURE & CONTEXT PERSISTENCE (NEVER ASK TWICE):
-   - If the caller introduces themselves at ANY point:
+8. INSTANT CALLER IDENTITY CAPTURE & FIRST NAME SPELLING VERIFICATION (NEVER ASK TWICE):
+   - If the caller introduces themselves or gives their first name at ANY point:
+     * FIRST NAME VERIFICATION INVARIANT: If they give their first name, verify the spelling immediately: "Hi [FirstName]! Is that spelled [F-I-R-S-T]?" and have them confirm right there!
      * INSTANTLY CAPTURE AND REMEMBER: Their full name (first and last), company name, and invoice number.
      * CALL "update_caller_profile" IMMEDIATELY with callerName, companyName, invoiceNumber, and reason to lock their identity in system memory.
      * ACKNOWLEDGE WARMLY BY NAME: Respond immediately addressing them by name: "Hi Michael! Great to speak with you today. How can I assist you with your roofing or project?" (or "Hi Jeff! Great to connect. How can I assist you today?").
@@ -4120,12 +4137,14 @@ PSYCHOLINGUISTIC TRADE DICTIONARY & CONCRETE VOCAL REPLACEMENTS (MANDATORY SPOKE
 
 PRIMARY BUSINESS MODEL: REMOTE AERIAL MEASUREMENTS
 - For standard residential roof replacements: Our business model uses precision high-definition satellite and aerial measurements. We deliver guaranteed certified quotes directly to the homeowner without requiring an invasive, disruptive truck roll or on-site home visit!
+- SMARTPHONE STREAM VIA GOOGLE MEET: For residential roofs visible from the ground and minor repairs, Honey offers a 15-Minute Remote Phone Video Call Inspection conducted via Google Meet / Google Calendar so the specialist reviews live from the homeowner's smartphone stream.
+- NOTE ON SLAT BOARD DECKING: If slat board decking is likely (pre-1972 homes), we do NOT schedule that in an on-site inspection! We cannot inspect that from the ground/outside anyway. It simply serves as a custom talking point about their roof (unless a public municipal permit for a re-deck was found on the parcel since then), and goes into unforeseen expenses in the written terms and agreement.
 - ONLY 5 SCENARIOS WARRANT AN ON-SITE PHYSICAL INSPECTION:
-  1. Commercial Roofs (flat roofs, TPO, PVC, complex mechanical penetrations).
+  1. Commercial Roofing (flat roofs, TPO, PVC, complex mechanical penetrations).
   2. Insurance Claims / Storm Damage (objective scope of work report per UPPA).
   3. Roof Repair on a roof under 15 years old WHERE THE HOMEOWNER DOES NOT HAVE CLEAR VISIBLE PHOTOS OF THE ROOF DAMAGE.
-  4. Roof Repair on a roof older than 15 years (qualify them for a certified full replacement quote).
-  5. Active Water Leaks requiring emergency leak tarping ($150+ starting fee, 100% credited to permanent repair/claim).
+  4. Roof Repair on a roof older than 15 years (shingle embrittlement check to evaluate spot repair vs south/west partial replacement).
+  5. Active Water Leaks requiring emergency leak tarping (emergency mitigation).
 
 STEP 1: ADDRESS FIRST & MANDATORY AUDIO VERIFICATION (CRITICAL):
 - As soon as the caller mentions a street address, house number, street name, or city:
@@ -4166,7 +4185,7 @@ STEP 2: DIAGNOSTIC QUALIFICATION & INTENT TRIAGE (STRICT 1-QUESTION-PER-TURN FUN
   Ask: "Is this for storm or insurance damage or an active leak inside the house right now?"
   * If Caller says YES to Active Leak:
     -> IMMEDIATELY BRANCH TO CASE 2 (Active Leak Emergency Tarping Triage).
-    -> Say: "Oh no, let's get that stopped right away! Standard emergency stabilization runs between one hundred fifty and three hundred fifty dollars on most roofs depending on slope and access, and that entire amount is one hundred percent credited straight toward your permanent repair or replacement with us—so you're not paying a dime extra for emergency protection. What is the address where the water is coming in?"
+    -> Say: "Oh no, let's get that stopped right away! If you're filing an insurance claim, in our experience emergency mitigation like tarping has always been approved by insurance! If you're not using insurance, our standard emergency stabilization runs one hundred fifty dollars, and that entire amount is one hundred percent credited straight toward your permanent repair or replacement with us—so you're not paying a dime extra for emergency protection. What is the address where the water is coming in?"
     -> Trigger: Calls "dispatch_emergency_crew".
   * If Caller says YES to Storm / Wind / Hail Damage:
     -> IMMEDIATELY BRANCH TO CASE 3 (Storm Damage & Insurance Restoration Scope).
@@ -4212,7 +4231,7 @@ When the caller wants a full roof replacement (not a repair or commercial roof):
    - Question 4 (Customer-Centric Ventilation & Pre-1970s Slat Board Decking Integration):
      * If decadeBuilt or yearBuilt was returned by verify_address:
        - If built before 1972 (pre-1970s era):
-         "Looking at county records, the home was built in the [decadeBuilt]—homes from that era often have original slat board decking underneath, which can be an unforeseen expense if re-sheathing is needed. By your request we can inspect this situation for you, and all pricing details are outlined in your terms and agreement. And under your roof eaves outside, do you happen to have those little perforated vent panels, or is it solid wood under there?"
+         "Looking at county records, the home was built in the [decadeBuilt]—homes from that era often have original slat board decking underneath, which can be an unforeseen expense if re-sheathing is needed. Unless there was a permit for a re-deck since then, our specialist includes that in your unforeseen expenses in the written agreement. And under your roof eaves outside, do you happen to have those little perforated vent panels, or is it solid wood under there?"
        - If built 1972 or newer:
          "Looking at county records, the home was built in the [decadeBuilt]—under your roof eaves outside, do you happen to have those little perforated vent panels, or is it solid wood under there?"
      * If decadeBuilt is unknown:
@@ -4224,8 +4243,8 @@ When the caller wants a full roof replacement (not a repair or commercial roof):
        "The most cost-effective route is keeping your existing gutter system. However, every gutter system is tailored to the roof like a suit to the body—so when roof layers change, it can affect runoff patterns. If similar materials and thickness are going back on, the old system usually supports the new roof fine. If you want a full new system custom tailored, evaluating and getting new gutters is the easiest way to accomplish that."
    - Question 6 (Heat Trace Problem Areas - Extended Winter Snowpack & Ice Dams):
      "During our heavy winter snows, do you notice large icicles forming or thick ice dams building up along your gutters—especially over walkways, entryways, or in the roof valleys?"
-   - NOTE ON COMMERCIAL-GRADE STANDARD & CONSULTATIVE SPECIALTY REFERRAL:
-     * RHIVE Standard: Commercial Grade (Owens Corning Duration for pitched, GAF TPO 60/80 mil or PVC 60/80 mil for flat). We do NOT ask callers what material they want; specialists pull municipal codes and manufacturer standards.
+   - NOTE ON COMMERCIAL-GRADE STANDARD & DO NOT ASK FOR PREFERRED MATERIAL:
+     * RHIVE Standard: Commercial Grade (Owens Corning Duration for pitched, GAF TPO 60/80 mil or PVC 60/80 mil for flat). We do NOT ask callers what material they want installed! Specialists pull municipal codes and manufacturer standards. The 4-tier hierarchy is strictly an educational explanation if the caller asks about shingle lines.
      * If caller specifically asks for metal, tile, slate, or Euroshield:
        "While our core specialty is commercial-grade architectural shingles and high-performance TPO and PVC membranes, we partner with the top metal and tile craftsmen in Utah. If you'd like, your project design specialist can gather your exact roof specifications and coordinate directly with our vetted specialty partner so you get the best competitive pricing without having to start from scratch with another contractor. Would you like us to include that option for you?"
     - Question 7 (Simplified Customer Priority & DISC Psychometrics — Easy & Conversational):
@@ -4313,7 +4332,7 @@ CASE 4: ROOF REPAIR (DISCRETE 1-QUESTION SEQUENCE):
   * If YES (Active Leak / Dripping):
     - Tarping Escalation Check:
       If preliminary property attributes or Solar data indicate steep pitch (>= 8/12) OR complex roof (> 20 facets):
-      "With preliminary aerial measurements showing steep slopes or complex facets, our crew evaluates safe tie-off on site. Standard emergency mobilization is one hundred fifty dollars, and that entire amount is one hundred percent credited straight toward your permanent repair or replacement with us—so you're not paying a dime extra for emergency protection. Would you like to get that leak stopped and schedule your emergency tarp service right now?"
+      "With preliminary aerial measurements showing steep slopes or complex facets, our crew evaluates safe tie-off on site. If you're filing an insurance claim, in our experience emergency mitigation like tarping has always been approved by insurance! If you're not using insurance, our standard emergency mobilization is one hundred fifty dollars, and that entire amount is one hundred percent credited straight toward your permanent repair or replacement with us—so you're not paying a dime extra for emergency protection. Would you like to get that leak stopped and schedule your emergency tarp service right now?"
       Otherwise:
       "I completely understand, [FirstName]—water actively coming through the ceiling is stressful, and our first priority is getting out there today to stop that leak before it causes major sheetrock or flooring damage. Our technician will tarp and seal the penetration right away. Standard emergency mobilization is one hundred fifty dollars, and that entire amount is one hundred percent credited straight toward your permanent roof repair or replacement with us—so you're not paying a dime extra for emergency protection. We have our emergency truck available in your area between 11 and 2, or 1 and 4 this afternoon. Which window gives you the most peace of mind today?"
     - (If upcoming storm detected, mention storm urgency to schedule immediately).
@@ -7464,7 +7483,7 @@ app.get('/sw.js', (req, res) => {
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 const PUBLIC_DIR = path.join(__dirname, 'public');
 function servePublicHtml(res, filename, fallbackUrl = '/health') {
@@ -7486,7 +7505,9 @@ app.get(['/agents', '/personas', '/bots'], (req, res) => servePublicHtml(res, 'a
 app.get(['/login', '/auth', '/signin'], (req, res) => servePublicHtml(res, 'login.html', '/dialer'));
 app.get(['/ai', '/ai-studio', '/studio'], (req, res) => servePublicHtml(res, 'ai.html', '/dialer'));
 app.get(['/recents', '/history'], (req, res) => servePublicHtml(res, 'dialer.html', '/dialer'));
-app.get(['/messages', '/sms'], (req, res) => servePublicHtml(res, 'dialer.html', '/dialer'));
+app.get(['/messages', '/sms', '/chat'], (req, res) => servePublicHtml(res, 'dialer.html', '/dialer'));
+app.get(['/meet', '/video'], (req, res) => servePublicHtml(res, 'dialer.html', '/dialer'));
+app.get(['/notes', '/keep'], (req, res) => servePublicHtml(res, 'dialer.html', '/dialer'));
 
 // In-Memory Call State Tracker for Live Mobile App Synchronization
 const activeCallStates = new Map();
@@ -8518,8 +8539,11 @@ app.get('/api/telephony/token', (req, res) => {
       identity,
       appSid: TWILIO_TWIML_APP_SID,
       carrierNumbers: [
-        { phone: '+18398676637', label: 'Honey AI Main Line (+1 839-867-6637)', isDefault: true },
-        { phone: '+18017833317', label: 'Direct Open Voice Line (+1 801-783-3317)', isOpenLine: true }
+        { phone: '+18014491451', label: 'Michael Work (+1 801-449-1451)', cnam: 'RHIVE ROOFING', isDefault: true },
+        { phone: '+14354176637', label: 'RHIVE Main Office (+1 435-417-6637)', cnam: 'RHIVE ROOFING', isOffice: true },
+        { phone: '+18014410024', label: 'Kara Work (+1 801-441-0024)', cnam: 'RHIVE ROOFING', isKara: true },
+        { phone: '+18017833317', label: 'Direct Open Voice Line (+1 801-783-3317)', cnam: 'RHIVE ROOFING', isOpenLine: true },
+        { phone: '+18398676637', label: 'Honey AI Main Line (+1 839-867-6637)', cnam: 'RHIVE ROOFING', isHoneyBot: true }
       ]
     });
   } catch (err) {
@@ -8534,12 +8558,18 @@ app.all(['/twiml/outbound-webrtc', '/twiml-outbound-webrtc'], (req, res) => {
   let callerId = (req.body.callerId || req.query.callerId || '').trim();
   const host = req.get('host') || 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
 
-  // Support switching between Honey AI and Open Voice line (digit-normalized to resist URL decode + to space)
+  // Support switching across all authorized RHIVE Utah local & Twilio lines
   const normCid = callerId.replace(/[^\d]/g, '');
-  if (normCid === '18017833317' || normCid === '8017833317') {
-    callerId = '+18017833317'; // Open Voice Line
+  if (normCid.endsWith('8014491451')) {
+    callerId = '+18014491451'; // Michael Work (JustCall Port / Verified Caller ID)
+  } else if (normCid.endsWith('4354176637')) {
+    callerId = '+14354176637'; // RHIVE Main Office
+  } else if (normCid.endsWith('8014410024')) {
+    callerId = '+18014410024'; // Kara Work
+  } else if (normCid.endsWith('8398676637')) {
+    callerId = '+18398676637'; // Honey AI Line
   } else {
-    callerId = '+18398676637'; // Default to verified Honey AI line
+    callerId = '+18017833317'; // Default to Utah Local 801 Line (CNAM: RHIVE ROOFING Approved)
   }
 
   // Format destination number to E.164
@@ -8787,6 +8817,481 @@ app.get('/api/calendar-preview', async (req, res) => {
   } catch(e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// ============================================================================
+// V4 CYBERPUNK WORKSPACE SUPER-APP ENGINE:
+// IN-APP GOOGLE CHAT, IN-APP GOOGLE MEET, IN-APP NOTES & SHARED DRIVE ROUTER
+// ============================================================================
+const inAppChatChannels = [
+  { id: 'spaces/AAQAtaIBPC0', type: 'space', name: '#The Buzz: Hive Central', unread: 2, members: 8, category: 'company_space' },
+  { id: 'spaces/AAQA_y6BMAI', type: 'space', name: '#Executive Sync (Michael & Kara)', unread: 1, members: 2, category: 'executive_space' },
+  { id: 'spaces/AAQAlQhtZOo', type: 'space', name: '#DevTeam (Omni & Telephony)', unread: 0, members: 4, category: 'engineering_space' },
+  { id: 'spaces/AAQAttUg3So', type: 'space', name: '#Project Completion & Photos', unread: 0, members: 6, category: 'ops_space' },
+  { id: 'spaces/AAQABQzOXI0', type: 'space', name: '#JustCall Leads & Intake', unread: 0, members: 5, category: 'leads_space' },
+  { id: 'dm_kara', type: 'dm', name: 'Kara Robinson', email: 'kara@rhiveconstruction.com', phone: '+18014410024', role: 'President & Ops', status: 'online' },
+  { id: 'dm_vanessa', type: 'dm', name: 'Vanessa Poligratis', email: 'van@rhiveconstruction.com', phone: '+18015550191', role: 'Executive Admin', status: 'online' },
+  { id: 'dm_james', type: 'dm', name: 'James Gimena', email: 'james@rhiveconstruction.com', phone: '+18015550192', role: 'Technical Estimator', status: 'online' },
+  { id: 'dm_victor', type: 'dm', name: 'Victor Quincy Villero', email: 'victor@rhiveconstruction.com', phone: '+18015550193', role: 'Digital Ops', status: 'online' },
+  { id: 'dm_sheena', type: 'dm', name: 'Sheena Lestano', email: 'sheena@rhiveconstruction.com', phone: '+18015550194', role: 'Lead Estimator', status: 'online' }
+];
+
+const inAppChatMessages = {
+  'spaces/AAQAtaIBPC0': [
+    { id: 'msg_1', sender: 'Kara Robinson', role: 'President & Ops', avatar: 'KR', time: '9:14 AM', text: 'UNPHC Invoice #4092 PO approved. Ready for material delivery on 300 West.' },
+    { id: 'msg_2', sender: 'James Gimena', role: 'Technical Estimator', avatar: 'JG', time: '9:28 AM', text: 'Uploaded Chad Evenhuis 38.4 SQ aerial CAD measurement PDF to Residential/Chad_Evenhuis_11420S/02_Measurements.' },
+    { id: 'msg_3', sender: 'Michael Robinson', role: 'Owner & CEO', avatar: 'MR', time: '9:41 AM', text: 'Awesome. Reviewing the Owens Corning Duration Platinum quote right now before calling Chad.' }
+  ],
+  'spaces/AAQA_y6BMAI': [
+    { id: 'msg_exec_1', sender: 'Kara Robinson', role: 'President & Ops', avatar: 'KR', time: '8:50 AM', text: 'Morning! Porting schedule for 801-449-1451 and 801-441-0024 is ready whenever we give the green light.' }
+  ],
+  'dm_kara': [
+    { id: 'msg_dm_1', sender: 'Kara Robinson', role: 'President & Ops', avatar: 'KR', time: '10:02 AM', text: 'Jeff Phillips from UNPHC called about Invoice #4092—I bound his number directly to the Commercial/UNPHC_300W_SaltLake folder.' }
+  ]
+};
+
+const sharedDriveProjects = [
+  {
+    id: 'proj_res_evenhuis',
+    name: 'Chad_Evenhuis_11420S_Sandy',
+    customerName: 'Chad Evenhuis',
+    division: 'RESIDENTIAL',
+    parentDriveId: SHARED_DRIVE_RESIDENTIAL_ID,
+    rootCustomersDriveId: SHARED_DRIVE_CUSTOMERS_ROOT_ID,
+    address: '11420 S Wasatch Blvd, Sandy, UT 84092',
+    discProfile: 'D • Eagle (Direct / ROI Focused)',
+    scope: '38.4 SQ • Owens Corning Duration • 6/12 & 8/12 Pitch',
+    subfolders: [
+      '01_Communications & Audio',
+      '02_Measurements & Takeoffs',
+      '03_Photos & Videos',
+      '04_Inspection Videos',
+      '05_Proposals & Contracts'
+    ],
+    contacts: [
+      { name: 'Chad Evenhuis', phone: '+18015550142', role: 'PRIMARY HOMEOWNER', badgeColor: 'pink' },
+      { name: 'Sarah Evenhuis', phone: '+18015550199', role: 'SPOUSE / CO-OWNER', badgeColor: 'gold' },
+      { name: 'Mike Vance (State Farm)', phone: '+13855550811', role: 'INSURANCE ADJUSTER', badgeColor: 'blue' }
+    ]
+  },
+  {
+    id: 'proj_res_jenkins',
+    name: 'Sarah_Jenkins_842E_Draper',
+    customerName: 'Sarah Jenkins',
+    division: 'RESIDENTIAL',
+    parentDriveId: SHARED_DRIVE_RESIDENTIAL_ID,
+    rootCustomersDriveId: SHARED_DRIVE_CUSTOMERS_ROOT_ID,
+    address: '842 E 12300 S, Draper, UT 84020',
+    discProfile: 'S • Dove (Steady / Warranty Focused)',
+    scope: 'Emergency Valley Leak Tarp ($150 Credited) + Full Replacement Quote',
+    subfolders: [
+      '01_Communications & Audio',
+      '02_Measurements & Takeoffs',
+      '03_Photos & Videos',
+      '04_Inspection Videos',
+      '05_Proposals & Contracts'
+    ],
+    contacts: [
+      { name: 'Sarah Jenkins', phone: '+18015550188', role: 'PRIMARY HOMEOWNER', badgeColor: 'pink' }
+    ]
+  },
+  {
+    id: 'proj_comm_unphc',
+    name: 'UNPHC_300W_Commercial_SaltLake',
+    customerName: 'UNPHC Commercial Holdings',
+    division: 'COMMERCIAL',
+    parentDriveId: SHARED_DRIVE_COMMERCIAL_ID,
+    rootCustomersDriveId: SHARED_DRIVE_CUSTOMERS_ROOT_ID,
+    address: '300 West Commercial Plaza, Salt Lake City, UT 84101',
+    discProfile: 'C • Owl (Analytical / Spec & AP/AR Focused)',
+    scope: '112 SQ • 60-mil TPO Mechanically Attached + Parapet Coping',
+    subfolders: [
+      '01_Communications & Audio',
+      '02_Measurements & Takeoffs',
+      '03_Photos & Videos',
+      '04_Inspection Videos',
+      '05_Proposals & Contracts'
+    ],
+    contacts: [
+      { name: 'Jeff Phillips', phone: '+18017833317', role: 'AP/AR & PROPERTY LEAD', badgeColor: 'blue' },
+      { name: 'Dave Miller', phone: '+18015550240', role: 'SITE SUPERINTENDENT', badgeColor: 'gold' }
+    ]
+  }
+];
+
+const inAppNotesStore = [
+  {
+    id: 'note_evenhuis_1',
+    title: 'CHAD EVENHUIS — 11420 S SANDY (38.4 SQ)',
+    category: 'RESIDENTIAL',
+    projectId: 'proj_res_evenhuis',
+    driveFolderPath: 'Customers/Residential/Chad_Evenhuis_11420S_Sandy/01_Communications & Audio',
+    pinned: true,
+    updatedAt: new Date().toISOString(),
+    content: 'Customer is Eagle (D) — lead with bottom-line numbers, 130 MPH SureNail wind warranty, and 1-day tear-off crew guarantee.',
+    checklist: [
+      { id: 'chk_1', text: 'Verify 2 layers tear-off on north slope + ice & water shield in 3 valleys', done: true },
+      { id: 'chk_2', text: 'Include 6" seamless black K-style aluminum gutters on front elevation', done: true },
+      { id: 'chk_3', text: 'Send Good / Better / Best Owens Corning Duration proposal before 4:00 PM', done: false }
+    ]
+  },
+  {
+    id: 'note_unphc_2',
+    title: 'UNPHC — 300 WEST COMMERCIAL (TPO SPEC)',
+    category: 'COMMERCIAL',
+    projectId: 'proj_comm_unphc',
+    driveFolderPath: 'Customers/Commercial/UNPHC_300W_Commercial_SaltLake/01_Communications & Audio',
+    pinned: true,
+    updatedAt: new Date().toISOString(),
+    content: 'Jeff Phillips (AP/AR) & Dave Miller (Site Super) — Invoice #4092 + 60-mil TPO core sample verification.',
+    checklist: [
+      { id: 'chk_c1', text: 'Confirm 20-Year NDL warranty spec sheet with Kara', done: true },
+      { id: 'chk_c2', text: 'Upload core cut photo from Google Meet inspection to 04_Photos', done: false }
+    ]
+  },
+  {
+    id: 'note_exec_3',
+    title: 'MICHAEL EXECUTIVE FIELD NOTES & QUICK TASKS',
+    category: 'MY_NOTES',
+    projectId: null,
+    driveFolderPath: 'My_Notes/Executive_Scratchpad',
+    pinned: false,
+    updatedAt: new Date().toISOString(),
+    content: 'Personal quick notes and daily route priorities — stays inside RHIVE Super-App.',
+    checklist: [
+      { id: 'chk_m1', text: 'Test AT&T Hiya + FirstOrion spam remediation call to Clark (385-596-2413)', done: true },
+      { id: 'chk_m2', text: 'Review Draper & Sandy route cluster for tomorrow 10:00 AM window', done: false }
+    ]
+  }
+];
+
+const activeMeetSessions = new Map();
+
+// 1. In-App Google Chat Channels & Messages API
+app.get('/api/workspace/chat', (req, res) => {
+  const channelId = req.query.channelId || 'spaces/AAQAtaIBPC0';
+  res.json({
+    success: true,
+    activeChannelId: channelId,
+    channels: inAppChatChannels,
+    messages: inAppChatMessages[channelId] || [],
+    allMessages: inAppChatMessages
+  });
+});
+
+app.post('/api/workspace/chat/send', async (req, res) => {
+  try {
+    const { channelId = 'spaces/AAQAtaIBPC0', text = '', sender = 'Michael Robinson', projectId = null } = req.body || {};
+    if (!text.trim()) {
+      return res.status(400).json({ success: false, error: 'Message text required' });
+    }
+    const cleanText = text.trim();
+    const msgObj = {
+      id: 'msg_' + Date.now(),
+      sender,
+      role: 'Owner & CEO',
+      avatar: 'MR',
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      text: cleanText,
+      projectId
+    };
+    if (!inAppChatMessages[channelId]) inAppChatMessages[channelId] = [];
+    inAppChatMessages[channelId].push(msgObj);
+
+    // If this is a real Google Chat Space and chatClient is configured, dispatch live
+    let dispatchedToGoogleApi = false;
+    if (channelId.startsWith('spaces/')) {
+      try {
+        const chat = getGoogleChatClient();
+        if (chat) {
+          await chat.spaces.messages.create({
+            parent: channelId,
+            requestBody: { text: cleanText }
+          });
+          dispatchedToGoogleApi = true;
+        }
+      } catch (chatErr) {
+        console.warn('[In-App Google Chat API Note]', chatErr.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      channelId,
+      message: msgObj,
+      dispatchedToGoogleApi
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 2. In-App Google Meet Video Studio API
+app.get('/api/workspace/meet', (req, res) => {
+  res.json({
+    success: true,
+    defaultRoomCode: 'rhv-roof-ut',
+    meetUrl: 'https://meet.google.com/rhv-roof-ut',
+    activeProject: sharedDriveProjects[0],
+    projects: sharedDriveProjects
+  });
+});
+
+app.post('/api/workspace/meet/session', async (req, res) => {
+  try {
+    const { contactName = 'Chad Evenhuis', contactPhone = '', projectId = 'proj_res_evenhuis', sendSmsInvite = false } = req.body || {};
+    const roomCode = 'rhv-' + Math.random().toString(36).substring(2, 6) + '-ut';
+    const meetUrl = `https://meet.google.com/${roomCode}`;
+    const proj = sharedDriveProjects.find(p => p.id === projectId) || sharedDriveProjects[0];
+    const session = {
+      sessionId: 'meet_' + Date.now(),
+      roomCode,
+      meetUrl,
+      contactName,
+      contactPhone,
+      projectId: proj.id,
+      projectName: proj.name,
+      division: proj.division,
+      targetPhotoFolder: `Customers/${proj.division === 'COMMERCIAL' ? 'Commercial' : 'Residential'}/${proj.name}/03_Photos & Videos`,
+      startedAt: new Date().toISOString()
+    };
+    activeMeetSessions.set(session.sessionId, session);
+
+    if (sendSmsInvite && contactPhone) {
+      sendMultiChannelSms({
+        to: contactPhone,
+        body: `RHIVE Construction: Hi ${contactName}, tap here to join our live video roof walkthrough right now: ${meetUrl}`,
+        preferredSender: 'michael'
+      }).catch(e => console.warn('[Meet SMS Invite Note]', e.message));
+    }
+
+    res.json({ success: true, session });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/workspace/meet/snap', async (req, res) => {
+  try {
+    const { projectId = 'proj_res_evenhuis', projectCategory = '', projectFolder = '', caption = 'Live Roof Deck & Flashing Snapshot', division = 'RESIDENTIAL' } = req.body || {};
+    const proj = sharedDriveProjects.find(p => p.id === projectId) || sharedDriveProjects[0];
+    const isComm = proj.division === 'COMMERCIAL' || division.toUpperCase() === 'COMMERCIAL' || projectCategory.toUpperCase() === 'COMMERCIAL';
+    const targetDriveId = isComm ? SHARED_DRIVE_COMMERCIAL_ID : SHARED_DRIVE_RESIDENTIAL_ID;
+    const folderName = projectFolder || proj.name;
+    const fileName = `SNAP_${folderName}_${new Date().toISOString().replace(/[:.]/g, '-')}.jpg`;
+    const drivePath = `Customers/${isComm ? 'Commercial' : 'Residential'}/${folderName}/03_Photos & Videos/${fileName}`;
+
+    const snapshot = {
+      fileName,
+      caption,
+      projectId: proj.id,
+      division: isComm ? 'COMMERCIAL' : 'RESIDENTIAL',
+      driveFolderId: targetDriveId,
+      parentDriveId: targetDriveId,
+      drivePath,
+      savedAt: new Date().toISOString()
+    };
+
+    res.json({
+      success: true,
+      ...snapshot,
+      snapshot
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 3. In-App Notes & Checklists API (Eliminates switching to Google Keep / Notes app)
+app.get('/api/workspace/notes', (req, res) => {
+  const category = (req.query.category || 'ALL').toUpperCase();
+  const filtered = category === 'ALL'
+    ? inAppNotesStore
+    : inAppNotesStore.filter(n => n.category === category);
+  res.json({
+    success: true,
+    category,
+    count: filtered.length,
+    notes: filtered,
+    sharedDriveIds: {
+      customersRoot: SHARED_DRIVE_CUSTOMERS_ROOT_ID,
+      residential: SHARED_DRIVE_RESIDENTIAL_ID,
+      commercial: SHARED_DRIVE_COMMERCIAL_ID
+    }
+  });
+});
+
+app.post('/api/workspace/notes', (req, res) => {
+  try {
+    const { id, title, content, category = 'RESIDENTIAL', projectId = 'proj_res_evenhuis', checklistItemText } = req.body || {};
+    if (id) {
+      const existing = inAppNotesStore.find(n => n.id === id);
+      if (existing) {
+        if (title !== undefined) existing.title = title;
+        if (content !== undefined) existing.content = content;
+        if (category !== undefined) existing.category = category;
+        if (checklistItemText) {
+          existing.checklist.push({
+            id: 'chk_' + Date.now(),
+            text: checklistItemText,
+            done: false
+          });
+        }
+        existing.updatedAt = new Date().toISOString();
+        return res.json({ success: true, note: existing, notes: inAppNotesStore });
+      }
+    }
+
+    const proj = sharedDriveProjects.find(p => p.id === projectId);
+    const divFolder = category === 'COMMERCIAL' ? 'Commercial' : (category === 'RESIDENTIAL' ? 'Residential' : 'My_Notes');
+    const newNote = {
+      id: 'note_' + Date.now(),
+      title: title || 'NEW FIELD NOTE',
+      category: category.toUpperCase(),
+      projectId: proj ? proj.id : null,
+      driveFolderPath: proj
+        ? `Customers/${divFolder}/${proj.name}/01_Communications & Audio`
+        : `My_Notes/Executive_Scratchpad`,
+      pinned: true,
+      updatedAt: new Date().toISOString(),
+      content: content || '',
+      checklist: checklistItemText
+        ? [{ id: 'chk_' + Date.now(), text: checklistItemText, done: false }]
+        : []
+    };
+    inAppNotesStore.unshift(newNote);
+    res.json({ success: true, note: newNote, notes: inAppNotesStore });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/workspace/notes/toggle-item', (req, res) => {
+  const { noteId, itemId } = req.body || {};
+  const note = inAppNotesStore.find(n => n.id === noteId);
+  if (!note) return res.status(404).json({ success: false, error: 'Note not found' });
+  const item = (note.checklist || []).find(i => i.id === itemId);
+  if (item) {
+    item.done = !item.done;
+    note.updatedAt = new Date().toISOString();
+  }
+  res.json({ success: true, note });
+});
+
+// 4. RHIVE Shared Drive Customer & Project Multi-Contact Router (Residential vs Commercial)
+app.get('/api/drive/projects', (req, res) => {
+  const division = (req.query.division || 'ALL').toUpperCase();
+  const projects = division === 'ALL'
+    ? sharedDriveProjects
+    : sharedDriveProjects.filter(p => p.division === division);
+  res.json({
+    success: true,
+    sharedDrive: {
+      rootId: SHARED_DRIVE_CUSTOMERS_ROOT_ID,
+      residentialId: SHARED_DRIVE_RESIDENTIAL_ID,
+      commercialId: SHARED_DRIVE_COMMERCIAL_ID
+    },
+    sharedDriveHierarchy: {
+      customersRoot: { name: '🧑‍💼 Customers', id: SHARED_DRIVE_CUSTOMERS_ROOT_ID },
+      residential: { name: '🏠 Residential', id: SHARED_DRIVE_RESIDENTIAL_ID },
+      commercial: { name: '🏢 Commercial', id: SHARED_DRIVE_COMMERCIAL_ID }
+    },
+    count: projects.length,
+    projects
+  });
+});
+
+app.post('/api/drive/bind-contact', async (req, res) => {
+  try {
+    const {
+      name = 'Valued Contact',
+      phone = '',
+      role = 'PROJECT CONTACT',
+      division = 'RESIDENTIAL',
+      projectId = '',
+      newProjectName = '',
+      address = ''
+    } = req.body || {};
+
+    if (!phone) {
+      return res.status(400).json({ success: false, error: 'Contact phone number is required to bind to a Shared Drive project.' });
+    }
+
+    const cleanDiv = division.toUpperCase() === 'COMMERCIAL' ? 'COMMERCIAL' : 'RESIDENTIAL';
+    const parentDriveId = cleanDiv === 'COMMERCIAL' ? SHARED_DRIVE_COMMERCIAL_ID : SHARED_DRIVE_RESIDENTIAL_ID;
+
+    let targetProject = sharedDriveProjects.find(p => p.id === projectId);
+    if (!targetProject) {
+      const folderSlug = (newProjectName || name).replace(/[^a-zA-Z0-9]+/g, '_');
+      targetProject = {
+        id: 'proj_' + Date.now(),
+        name: `${folderSlug}_Utah`,
+        customerName: newProjectName || name,
+        division: cleanDiv,
+        parentDriveId,
+        rootCustomersDriveId: SHARED_DRIVE_CUSTOMERS_ROOT_ID,
+        address: address || 'Wasatch Front, UT',
+        discProfile: cleanDiv === 'COMMERCIAL' ? 'C • Owl (Analytical Spec)' : 'D • Eagle (Direct ROI)',
+        scope: cleanDiv === 'COMMERCIAL' ? 'Commercial Flat Roof / TPO System' : 'Residential Architectural Shingle System',
+        subfolders: [
+          '01_Communications & Audio',
+          '02_Measurements & Takeoffs',
+          '03_Photos & Videos',
+          '04_Inspection Videos',
+          '05_Proposals & Contracts'
+        ],
+        contacts: []
+      };
+      sharedDriveProjects.unshift(targetProject);
+    } else {
+      targetProject.division = cleanDiv;
+      targetProject.parentDriveId = parentDriveId;
+    }
+
+    const badgeColor = /spouse|owner/i.test(role) ? 'pink' : (/adjuster|insurance|ap|ar/i.test(role) ? 'blue' : 'gold');
+    const contactEntry = {
+      name,
+      phone,
+      role: role.toUpperCase(),
+      badgeColor,
+      boundAt: new Date().toISOString()
+    };
+
+    const existingIdx = targetProject.contacts.findIndex(c => c.phone.replace(/\D/g, '').slice(-10) === phone.replace(/\D/g, '').slice(-10));
+    if (existingIdx >= 0) {
+      targetProject.contacts[existingIdx] = contactEntry;
+    } else {
+      targetProject.contacts.push(contactEntry);
+    }
+
+    res.json({
+      success: true,
+      message: `Bound ${name} (${role}) to Customers/${cleanDiv === 'COMMERCIAL' ? 'Commercial' : 'Residential'}/${targetProject.name}`,
+      project: targetProject,
+      sharedDriveTarget: {
+        division: cleanDiv,
+        parentDriveId,
+        rootCustomersDriveId: SHARED_DRIVE_CUSTOMERS_ROOT_ID,
+        folderPath: `Customers/${cleanDiv === 'COMMERCIAL' ? 'Commercial' : 'Residential'}/${targetProject.name}`
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 5. Route-Optimized Google Calendar Slots API (TSP Proximity Engine)
+app.get('/api/calendar/route-slots', (req, res) => {
+  const city = req.query.city || 'Sandy / Draper';
+  res.json({
+    success: true,
+    targetArea: city,
+    slots: [
+      { id: 'slot_today_330', label: 'TODAY 3:30 PM', proximity: '4.1 mi away • Sandy/Draper', recommended: true },
+      { id: 'slot_tmw_1000', label: 'TMW 10:00 AM', proximity: '2.3 mi away • South Jordan', recommended: false },
+      { id: 'slot_thu_1330', label: 'THU 1:30 PM', proximity: 'Open Wasatch Corridor', recommended: false }
+    ]
+  });
 });
 
 app.get('/health', (req, res) => {

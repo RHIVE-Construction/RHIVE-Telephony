@@ -1,5 +1,5 @@
-// RHIVE Telephony Service Worker (v85 - Emergency Cache Buster & Worker Purge)
-const CACHE_NAME = 'rhive-telephony-v85';
+// RHIVE Telephony Service Worker (v100 - Pixel 8 & Pixel 11 XL Sovereign PWA Engine)
+const CACHE_NAME = 'rhive-telephony-v100';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -8,20 +8,17 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
-      console.log('[SW] Purging all legacy and foreign caches...');
       return Promise.all(
-        keys.map((key) => {
-          console.log('[SW] Deleting cache:', key);
-          return caches.delete(key);
-        })
+        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
       );
-    }).then(() => self.registration.unregister())
-      .then(() => self.clients.claim())
+    }).then(() => self.clients.claim())
   );
 });
 
-// Direct network passthrough: Never serve cached HTML shells
+// Network-first passthrough so live telephony state is always fresh while satisfying Android PWA installability
 self.addEventListener('fetch', (event) => {
-  // Allow all network requests to proceed natively
-  return;
+  if (event.request.method !== 'GET') return;
+  event.respondWith(
+    fetch(event.request).catch(() => caches.match(event.request))
+  );
 });

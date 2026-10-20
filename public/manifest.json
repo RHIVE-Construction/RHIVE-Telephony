@@ -1,13 +1,13 @@
 {
-  "name": "RHIVE Telephony",
+  "name": "RHIVE Telephony & Google Workspace Hub",
   "short_name": "RHIVE Phone",
-  "description": "RHIVE Sovereign Mobile Telephony Node - Pixel 8 Pro",
-  "start_url": "/mobile",
+  "description": "RHIVE Cyberpunk Chamfered Telephony, Google Chat, Google Meet & Notes Super-App (Pixel 8 & Pixel 11 XL)",
+  "start_url": "/dialer",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#ffffff",
-  "theme_color": "#ffffff",
+  "background_color": "#000000",
+  "theme_color": "#EC028B",
   "icons": [
     {
       "src": "/rhive-logo-white.png",

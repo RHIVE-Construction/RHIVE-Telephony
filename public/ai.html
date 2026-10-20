@@ -5,25 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Honey AI Studio | RHIVE Sovereign Telephony OS</title>
   <script>
-    // 1. Instant Cache & Stale Service Worker Eradication Protocol (Purges EPA/Omni)
-    (function purgeStalePWA() {
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-          for (var i = 0; i < registrations.length; i++) {
-            registrations[i].unregister();
-          }
-        });
-      }
-      if ('caches' in window) {
-        caches.keys().then(function(names) {
-          for (var i = 0; i < names.length; i++) {
-            caches.delete(names[i]);
-          }
-        });
-      }
-    })();
-
-    // 2. Private Auth Gate with Direct URL Passkey Support
+    // 1. Private Auth Gate with Direct URL Passkey Support
     (function enforcePrivateAuth() {
       var params = new URLSearchParams(window.location.search);
       var urlPasskey = params.get('passkey');
@@ -208,17 +190,17 @@
           </div>
         </div>
 
-        <!-- Vocal Smile & Energy Mode -->
+        <!-- Vocal Smile & Energy Mode (Quantum Switch - Zero Checkbox) -->
         <div class="space-y-1 bg-slate-50 p-3 rounded-[14px] border border-slate-100">
           <div class="flex items-center justify-between">
             <div>
               <div class="text-[11px] font-mono font-bold text-slate-700 uppercase">Audible Vocal Smile</div>
               <div class="text-[9px] font-mono text-slate-400">Maintains raised formants & upbeat optimism</div>
             </div>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" id="smileToggle" checked onchange="markUnsaved()" class="sr-only peer">
-              <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rhive-pink"></div>
-            </label>
+            <button type="button" id="smileToggle" role="switch" aria-checked="true" data-checked="true" onclick="toggleSmileSwitch(this)" class="w-12 h-6 bg-rhive-pink text-white font-mono text-[9px] font-black px-1.5 flex items-center justify-between transition shadow-sm" style="clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);">
+              <span id="smileToggleLabel">ON</span>
+              <span class="w-3.5 h-3.5 bg-white block"></span>
+            </button>
           </div>
         </div>
 
@@ -687,6 +669,19 @@
       markUnsaved();
     }
 
+    function toggleSmileSwitch(btn) {
+      const isChecked = btn.dataset.checked === 'true';
+      const next = !isChecked;
+      btn.dataset.checked = String(next);
+      btn.setAttribute('aria-checked', String(next));
+      const lbl = document.getElementById('smileToggleLabel');
+      if (lbl) lbl.textContent = next ? 'ON' : 'OFF';
+      btn.className = next
+        ? 'w-12 h-6 bg-rhive-pink text-white font-mono text-[9px] font-black px-1.5 flex items-center justify-between transition shadow-sm'
+        : 'w-12 h-6 bg-slate-300 text-slate-700 font-mono text-[9px] font-black px-1.5 flex items-center justify-between transition shadow-sm';
+      markUnsaved();
+    }
+
     function markUnsaved() {
       const badge = document.getElementById('saveBadge');
       badge.textContent = 'UNSAVED CHANGES';
@@ -702,7 +697,7 @@
       const payload = {
         voice: document.getElementById('voiceSelect').value,
         speed: parseFloat(document.getElementById('paceSlider').value),
-        tone: document.getElementById('smileToggle').checked ? 'smiling_high_energy' : 'standard',
+        tone: document.getElementById('smileToggle').dataset.checked !== 'false' ? 'smiling_high_energy' : 'standard',
         bargeInSensitivity: parseInt(document.getElementById('bargeSlider').value, 10),
         systemInstruction: document.getElementById('promptEditor').value
       };
