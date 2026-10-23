@@ -390,6 +390,25 @@ async function runTests() {
 
     const slotsRes = await axios.get(`http://localhost:${TEST_PORT}/api/calendar/route-slots`);
     assert(slotsRes.status === 200 && slotsRes.data.success === true && Array.isArray(slotsRes.data.slots), 'GET /api/calendar/route-slots returns Route-Optimized Google Calendar slots');
+
+    // Test 18: V4.6 Past Calls, WebRTC Parent/Child Recording Proxy, Verbatim Transcripts & AI Post-Call SMS Action Generator
+    const callsRes = await axios.get(`http://localhost:${TEST_PORT}/api/mobile/calls`);
+    assert(callsRes.status === 200 && callsRes.data.success === true && callsRes.data.calls.length > 0, `GET /api/mobile/calls returns ${callsRes.data.calls.length} enriched call records with recordings & transcripts`);
+
+    const jenniferCall = callsRes.data.calls.find(c => String(c.contact_phone || c.to || '').includes('4252310700')) || callsRes.data.calls[0];
+    assert(jenniferCall && jenniferCall.has_recording === true && jenniferCall.recording_url, `Recent call (${jenniferCall?.contact_name}) has playable recording_url: ${jenniferCall?.recording_url}`);
+    assert(jenniferCall && jenniferCall.transcript && jenniferCall.transcript.length > 40, `Recent call (${jenniferCall?.contact_name}) includes timestamped verbatim transcript`);
+
+    const streamRes = await axios.get(`http://localhost:${TEST_PORT}/api/telephony/recording-stream/CAab9d4132d01ba9703a9b169fbbb67ca2`, {
+      responseType: 'arraybuffer'
+    });
+    assert(streamRes.status === 200 && (streamRes.headers['content-type'] || '').startsWith('audio/') && streamRes.data.byteLength > 1000, `GET /api/telephony/recording-stream/CAab9d4132d01ba9703a9b169fbbb67ca2 streams ${streamRes.data.byteLength} bytes of ${streamRes.headers['content-type']}`);
+
+    const trRes = await axios.get(`http://localhost:${TEST_PORT}/api/telephony/calls/CAab9d4132d01ba9703a9b169fbbb67ca2/transcript`);
+    assert(trRes.status === 200 && trRes.data.success === true && trRes.data.transcript.includes('Monday at 12:20'), 'GET /api/telephony/calls/CAab9d4132d01ba9703a9b169fbbb67ca2/transcript returns verbatim Jennifer dialogue');
+
+    const suggestRes = await axios.get(`http://localhost:${TEST_PORT}/api/telephony/calls/CAab9d4132d01ba9703a9b169fbbb67ca2/suggest-sms?phone=+14252310700`);
+    assert(suggestRes.status === 200 && suggestRes.data.firstName === 'Jennifer' && suggestRes.data.appointmentDateTime === 'Monday at 12:20 PM' && suggestRes.data.suggestedSms.startsWith('Hi Jennifer, we are messaging to confirm'), 'GET /api/telephony/calls/:callSid/suggest-sms extracts Jennifer + Monday at 12:20 PM + 1852 East Gentile Street and generates SMS confirmation');
   } catch (e) {
     assert(false, 'V4 Super-App API test error: ' + e.message);
   }
