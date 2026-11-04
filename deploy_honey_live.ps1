@@ -1,22 +1,22 @@
 # ==============================================================================
-# RHIVE TELEPHONY V5.0 - 1-COMMAND HONEY LIVE CLOUD RUN RESTORE & AUDIO VERIFIER
+# RHIVE TELEPHONY V5.5 - 1-COMMAND HONEY LIVE CLOUD RUN RESTORE & AUDIO VERIFIER
 # Project: rhive-quantum-quoter (910835773728) | Region: us-central1
 # Service: rhive-voice-live-bridge
 # ==============================================================================
 $ErrorActionPreference = "Stop"
 
 Write-Host "`n==================================================================" -ForegroundColor Cyan
-Write-Host " RHIVE TELEPHONY V5.0 - HONEY LIVE CLOUD RUN DEPLOYMENT & CANARY" -ForegroundColor Cyan
+Write-Host " RHIVE TELEPHONY V5.5 - HONEY LIVE CLOUD RUN DEPLOYMENT & CANARY" -ForegroundColor Cyan
 Write-Host "==================================================================`n" -ForegroundColor Cyan
 
 # 1. Verify gcloud authentication
-Write-Host "[1/4] Verifying Google Cloud authentication..." -ForegroundColor Yellow
+Write-Host "[1/5] Verifying Google Cloud authentication..." -ForegroundColor Yellow
 try {
     $activeToken = gcloud auth print-access-token 2>$null
     if (-not $activeToken) { throw "Token expired" }
-    Write-Host "  ✅ Authenticated with Google Cloud CLI." -ForegroundColor Green
+    Write-Host "  [OK] Authenticated with Google Cloud CLI." -ForegroundColor Green
 } catch {
-    Write-Host "  ⚠️  gcloud session expired. Launching interactive login..." -ForegroundColor Yellow
+    Write-Host "  [AUTH] gcloud session expired. Launching interactive login..." -ForegroundColor Yellow
     gcloud auth login
 }
 
@@ -56,7 +56,7 @@ Get-Content ".env" | ForEach-Object {
 $updateEnvArg = "^@^" + ($envPairs -join "@")
 
 # 3. Deploy Cloud Run with --min-instances 1 (0ms cold start), --timeout 3600 & --session-affinity
-Write-Host "`n[2/4] Deploying rhive-voice-live-bridge (Rev 67 / v1.7.0) to Cloud Run..." -ForegroundColor Yellow
+Write-Host "`n[2/5] Deploying rhive-voice-live-bridge (v1.8.0 / Rev 67) to Cloud Run..." -ForegroundColor Yellow
 gcloud run deploy rhive-voice-live-bridge `
     --source . `
     --project rhive-quantum-quoter `
@@ -68,18 +68,34 @@ gcloud run deploy rhive-voice-live-bridge `
     --update-env-vars="$updateEnvArg"
 
 # 4. Sync Firebase Hosting rewrites (/voice-stream-fallback + UI)
-Write-Host "`n[3/4] Syncing Firebase Hosting rewrites..." -ForegroundColor Yellow
+Write-Host "`n[3/5] Syncing Firebase Hosting rewrites..." -ForegroundColor Yellow
 npx firebase deploy --only hosting --project rhive-quantum-quoter
 
-# 5. Live Production AQuA Canary & Honey RTP Audio Frame Proof
-Write-Host "`n[4/4] Running Live Production AQuA Health & WSS Audio Stream Verification..." -ForegroundColor Yellow
+# 5. Provision 5-Minute Cloud Scheduler AQuA Canary (Idempotent, Non-Blocking)
+Write-Host "`n[4/5] Ensuring 5-minute Cloud Scheduler AQuA Voice Canary job..." -ForegroundColor Yellow
+try {
+    $canaryUri = "https://rhive-voice-live-bridge-910835773728.us-central1.run.app/api/telephony/aqua-canary"
+    $existingJob = gcloud scheduler jobs describe rhive-aqua-voice-canary --location=us-central1 --project=rhive-quantum-quoter 2>$null
+    if ($LASTEXITCODE -eq 0 -and $existingJob) {
+        gcloud scheduler jobs update http rhive-aqua-voice-canary --location=us-central1 --project=rhive-quantum-quoter --schedule="*/5 * * * *" --uri="$canaryUri" --http-method=POST | Out-Null
+        Write-Host "  [OK] Updated Cloud Scheduler job: rhive-aqua-voice-canary (every 5 min)." -ForegroundColor Green
+    } else {
+        gcloud scheduler jobs create http rhive-aqua-voice-canary --location=us-central1 --project=rhive-quantum-quoter --schedule="*/5 * * * *" --uri="$canaryUri" --http-method=POST | Out-Null
+        Write-Host "  [OK] Created Cloud Scheduler job: rhive-aqua-voice-canary (every 5 min)." -ForegroundColor Green
+    }
+} catch {
+    Write-Host "  [INFO] Cloud Scheduler optional step skipped (can be enabled anytime)." -ForegroundColor DarkGray
+}
+
+# 6. Live Production AQuA Canary & Honey RTP Audio Frame Proof
+Write-Host "`n[5/5] Running Live Production AQuA Health and WSS Audio Stream Verification..." -ForegroundColor Yellow
 node -e '
 const axios = require("axios");
 const { WebSocket } = require("ws");
 (async () => {
   const host = "rhive-voice-live-bridge-910835773728.us-central1.run.app";
   const health = await axios.get("https://" + host + "/api/telephony/aqua-health");
-  console.log("  ✅ Production AQuA Status:", health.data.agentStatus, "| Persona:", health.data.voicePersona, "| Model:", health.data.voiceModel);
+  console.log("  [OK] Production AQuA Status:", health.data.agentStatus, "| Persona:", health.data.voicePersona, "| Model:", health.data.voiceModel);
 
   let frames = 0;
   let ttfa = null;
@@ -113,13 +129,13 @@ const { WebSocket } = require("ws");
   });
 
   if (frames < 15) {
-    console.error("  ❌ Production Honey stream returned insufficient audio frames:", frames);
+    console.error("  [FAIL] Production Honey stream returned insufficient audio frames:", frames);
     process.exit(1);
   }
-  console.log("  ✅ LIVE HONEY VERIFIED ANSWERING: Synthesized", frames, "G.711u RTP audio frames (TTFA:", ttfa + "ms)!");
+  console.log("  [OK] LIVE HONEY VERIFIED ANSWERING: Synthesized", frames, "G.711u RTP audio frames (TTFA:", ttfa + "ms)!");
 })();
 '
 
 Write-Host "`n==================================================================" -ForegroundColor Green
-Write-Host " 🎉 HONEY IS LIVE, WARM (--min-instances 1), AND ANSWERING CALLS!" -ForegroundColor Green
+Write-Host " [LIVE] HONEY IS LIVE, WARM (--min-instances 1), AND ANSWERING!" -ForegroundColor Green
 Write-Host "==================================================================`n" -ForegroundColor Green

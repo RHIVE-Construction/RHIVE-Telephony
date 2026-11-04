@@ -499,6 +499,23 @@ async function runTests() {
 
     const postLiveFallbackRes = await axios.post(`http://localhost:${TEST_PORT}/voice-stream-fallback?callSid=${liveCallSid}&caller=%2B18015550199`);
     assert(postLiveFallbackRes.status === 200 && postLiveFallbackRes.data.includes('<Hangup/>') && !postLiveFallbackRes.data.includes('<Gather'), 'POST /voice-stream-fallback cleanly hangs up (<Hangup/>) after verified Honey spoken session');
+
+    // Test 20: V5.5 Phase 2 & Phase 3 (Avalon Lexicon, ADK Sub-Agents, NON_BLOCKING Scheduling, AQuA Canary & Closed-Loop Self-Tune)
+    assert(aiHtml.includes('aquaGoldfishSentinelBar'), 'ai.html embeds Chamfered Google AQuA + Elephant-Goldfish Live Sentinel Bar');
+
+    const lexRes = await axios.post(`http://localhost:${TEST_PORT}/api/workspace/lexicon-normalize`, {
+      text: "arhive roofing installed owen's cornering duration flex with shore nail on 1852 east gentle street in too illa"
+    });
+    assert(lexRes.status === 200 && lexRes.data.normalized.includes('R-HIVE Construction') && lexRes.data.normalized.includes('Owens Corning Duration FLEX') && lexRes.data.normalized.includes('SureNail') && lexRes.data.normalized.includes('Gentile Street') && lexRes.data.normalized.includes('Tooele'), `POST /api/workspace/lexicon-normalize corrects 5 domain homophones: "${lexRes.data.normalized}"`);
+
+    const subRes = await axios.get(`http://localhost:${TEST_PORT}/api/telephony/subagents`);
+    assert(subRes.status === 200 && Array.isArray(subRes.data.subagents) && subRes.data.subagents.length === 4 && subRes.data.nonBlockingToolScheduling?.verify_address === 'WHEN_IDLE' && subRes.data.nonBlockingToolScheduling?.update_caller_profile === 'SILENT', 'GET /api/telephony/subagents exposes 4 ADK specialist sub-agents and NON_BLOCKING WHEN_IDLE/SILENT tool matrix');
+
+    const canaryRes = await axios.post(`http://localhost:${TEST_PORT}/api/telephony/aqua-canary`);
+    assert(canaryRes.status === 200 && canaryRes.data.canaryStatus === 'LIVE_VOICE_VERIFIED' && canaryRes.data.handshakeLatencyMs > 0, `POST /api/telephony/aqua-canary verifies live Gemini 3.8 handshake (${canaryRes.data.handshakeLatencyMs}ms)`);
+
+    const selfTuneRes = await axios.post(`http://localhost:${TEST_PORT}/api/telephony/aqua-self-tune`, {});
+    assert(selfTuneRes.status === 200 && selfTuneRes.data.goldfishColdAudit?.passed === true && selfTuneRes.data.readyForOneTapApproval === true, `POST /api/telephony/aqua-self-tune synthesizes cold-verified directive: "${(selfTuneRes.data.candidateDirective || '').substring(0, 52)}..."`);
   } catch (e) {
     assert(false, 'V5.0 AQuA / Goldfish / Live Honey Audio test error: ' + e.message);
   }

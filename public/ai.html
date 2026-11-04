@@ -107,6 +107,23 @@
     </div>
   </header>
 
+  <!-- V5.5 Google AQuA + Elephant-Goldfish (EGM) Live Sentinel Ribbon -->
+  <section id="aquaGoldfishSentinelBar" class="max-w-6xl w-full mx-auto px-4 sm:px-6 pt-4">
+    <div style="clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);" class="bg-slate-950 text-white border border-pink-500/40 p-3.5 flex flex-wrap items-center justify-between gap-3 font-mono">
+      <div class="flex items-center flex-wrap gap-2.5">
+        <span id="aquaStatusPill" style="clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);" class="px-2.5 py-1 bg-emerald-500/20 border border-emerald-400 text-emerald-300 text-[10px] font-bold uppercase tracking-wider">🛡️ AQuA: CHECKING...</span>
+        <span class="text-[10px] text-slate-300">Zero-Dead-Air Rescue: <b class="text-white">ARMED</b></span>
+        <span class="text-[10px] text-slate-300">Async Tools: <b class="text-pink-400">NON_BLOCKING + WHEN_IDLE</b></span>
+        <span class="text-[10px] text-slate-300">Lexicon: <b class="text-amber-300">AVALON WASATCH</b></span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button type="button" onclick="runAquaCanaryCheck()" style="clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white text-[10px] font-bold uppercase transition">📡 Live Canary</button>
+        <button type="button" onclick="runAquaGoldfishSelfTune()" style="clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);" class="px-3 py-1.5 bg-[#ec028b] hover:bg-pink-600 text-white text-[10px] font-bold uppercase transition">🐟 AQuA → Goldfish Self-Tune</button>
+      </div>
+    </div>
+    <div id="aquaSelfTuneOutput" class="hidden mt-2 bg-white border border-slate-300 p-3 text-[11px] font-mono text-slate-800"></div>
+  </section>
+
   <!-- Main Studio Layout -->
   <main class="max-w-6xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
     
@@ -953,7 +970,50 @@
       animateWaveform(0.1);
     }
 
-    window.addEventListener('DOMContentLoaded', loadLiveSettings);
+    async function refreshAquaSentinelBar() {
+      try {
+        const r = await fetch('/api/telephony/aqua-health');
+        const d = await r.json();
+        const pill = document.getElementById('aquaStatusPill');
+        if (pill && d.success) {
+          const ready = d.agentStatus === 'ANSWERING_READY';
+          pill.textContent = ready ? `🛡️ AQuA: ${d.agentStatus} (${d.avgFirstAudioLatencyMs}ms TTFA)` : `⚠️ AQuA: ${d.agentStatus}`;
+        }
+      } catch (_) {}
+    }
+
+    async function runAquaCanaryCheck() {
+      const box = document.getElementById('aquaSelfTuneOutput');
+      if (box) { box.classList.remove('hidden'); box.textContent = 'Running synthetic Gemini 3.8 Live voice handshake canary...'; }
+      try {
+        const r = await fetch('/api/telephony/aqua-canary', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+        const d = await r.json();
+        if (box) {
+          box.textContent = d.success
+            ? `✅ CANARY VERIFIED: ${d.model} (${d.persona}) live handshake opened in ${d.handshakeLatencyMs}ms | Zero-Dead-Air Fallback: ARMED`
+            : `⚠️ CANARY ALERT: ${d.error || d.status} | Zero-Dead-Air Fallback protecting calls`;
+        }
+        refreshAquaSentinelBar();
+      } catch (e) {
+        if (box) box.textContent = 'Canary check error: ' + e.message;
+      }
+    }
+
+    async function runAquaGoldfishSelfTune() {
+      const box = document.getElementById('aquaSelfTuneOutput');
+      if (box) { box.classList.remove('hidden'); box.textContent = 'Clustering AQuA trajectories & running Stateless Goldfish (EGM) cold review...'; }
+      try {
+        const r = await fetch('/api/telephony/aqua-self-tune', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        const d = await r.json();
+        if (box && d.success) {
+          box.textContent = `🐟 GOLDFISH COLD AUDIT (${d.goldfishColdAudit?.passed ? 'PASSED ' + d.goldfishColdAudit.coldConfidenceScore + '%' : 'FLAGGED'}): "${d.candidateDirective}"`;
+        }
+      } catch (e) {
+        if (box) box.textContent = 'Self-tune error: ' + e.message;
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => { loadLiveSettings(); refreshAquaSentinelBar(); });
   </script>
 
   <!-- FULL SCREEN / POPUP VOICE AUDITION STUDIO MODAL -->

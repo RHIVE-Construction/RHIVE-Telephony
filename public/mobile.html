@@ -2017,7 +2017,13 @@
         speechRec.lang = 'en-US';
 
         speechRec.onresult = (event) => {
-          const transcript = event.results[0][0].transcript;
+          const rawTranscript = event.results[0][0].transcript;
+          const transcript = rawTranscript
+            .replace(/\b(?:arhive|archive|rye[\s-]*hive|ry[\s-]*hive|rehive)\b/gi, 'R-HIVE')
+            .replace(/\b(?:owens|owen'?s|owns)\s+(?:corning|cornering)\b/gi, 'Owens Corning')
+            .replace(/\b(?:sure[\s-]*nail|shore[\s-]*nail)\b/gi, 'SureNail')
+            .replace(/\b(?:gentle|genteel)\s+(?:st|street)\b/gi, 'Gentile Street')
+            .replace(/\b(?:too\s*illa|twilla)\b/gi, 'Tooele');
           const input = document.getElementById('honeyWhisperInput');
           if (input) input.value = transcript;
           sendHoneyWhisper(transcript);
