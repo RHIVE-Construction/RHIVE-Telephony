@@ -1,17 +1,19 @@
 /**
  * ============================================================================
- * RHIVE TELEPHONY V5.5 - AVALON-STYLE WASATCH GRID & ROOFING PHONETIC LEXICON
+ * RHIVE TELEPHONY V6.0 - AVALON-STYLE WASATCH GRID & ROOFING PHONETIC LEXICON
  * + GOOGLE ADK MODULAR SPECIALIST SUB-AGENT MANIFESTS
  * ============================================================================
  * Sub-millisecond domain homophone correction for Utah street coordinates,
  * Wasatch Front municipalities, roofing systems, and trade partners, plus
- * zero-drop mid-call specialist sub-agent state handoffs.
+ * dual-layer vocal phonetic ("Are-Hive") -> written brand ("R-HIVE") mapping.
  */
 
 const LEXICON_REPLACEMENTS = [
-  // 1. Brand Phonetics ("Are-Hive" / R-HIVE Construction)
-  { pattern: /\b(?:arhive|archive|r\s+hive|are[\s-]+hive|rye[\s-]*hive|ry[\s-]*hive|re[\s-]*hive)\s+(?:roofing|construction)\b/gi, replacement: 'R-HIVE Construction' },
-  { pattern: /\b(?:arhive|rye[\s-]*hive|ry[\s-]*hive|rehive)\b/gi, replacement: 'R-HIVE' },
+  // 1. Brand Phonetics ("Are-Hive" vocal synthesis -> crisp "R-HIVE" written transcript)
+  { pattern: /\b(?:are[\s-]+hive'?s|r[\s-]+hive'?s|arhive'?s|archive'?s|rive'?s|rye[\s-]*hive'?s|ry[\s-]*hive'?s|re[\s-]*hive'?s)(?=\s+(?:ai\s+roofing|roofing|construction|project|specialist|team|certified))/gi, replacement: "R-HIVE's" },
+  { pattern: /\b(?:arhive|archive|r[\s-]+hive|are[\s-]+hive|rye[\s-]*hive|ry[\s-]*hive|re[\s-]*hive)\s+(?:roofing|construction)\b/gi, replacement: 'R-HIVE Construction' },
+  { pattern: /\b(?:are[\s-]+hive'?s|r-hive's)\b/gi, replacement: "R-HIVE's" },
+  { pattern: /\b(?:are[\s-]+hive|arhive|rye[\s-]*hive|ry[\s-]*hive|re[\s-]*hive|r-hive)\b/gi, replacement: 'R-HIVE' },
 
   // 2. Roofing Materials & Engineering Systems
   { pattern: /\b(?:owens|owen'?s|owns)\s+(?:corning|cornering)\s+duration\s+flex\b/gi, replacement: 'Owens Corning Duration FLEX' },
@@ -45,15 +47,10 @@ const LEXICON_REPLACEMENTS = [
 function normalizeRoofingTranscript(input) {
   if (!input || typeof input !== 'string') return input || '';
   let out = input;
-  const appliedTerms = [];
   for (const rule of LEXICON_REPLACEMENTS) {
     if (rule.pattern.test(out)) {
       rule.pattern.lastIndex = 0;
-      const before = out;
       out = out.replace(rule.pattern, rule.replacement);
-      if (out !== before) {
-        appliedTerms.push(typeof rule.replacement === 'string' ? rule.replacement : 'TPO');
-      }
     }
     rule.pattern.lastIndex = 0;
   }
@@ -89,26 +86,26 @@ const SPECIALIST_SUBAGENTS = {
   intake_greeter: {
     id: 'intake_greeter',
     title: 'Front-Desk Executive Switchboard Specialist',
-    focus: 'Sub-20-word warm greeting, rapid caller intent classification, and zero-friction routing.',
-    directive: 'Keep turns <= 18 words, classify caller intent within 1 turn, and transition seamlessly into estimator, emergency storm, or commercial/AP-AR specialist focus.'
+    focus: 'Sub-20-word warm greeting ("Are-Hive\'s AI Roofing Specialist"), rapid caller intent classification, and zero-friction routing.',
+    directive: 'Keep turns <= 18 words, pronounce brand strictly as "Are-Hive", classify caller intent within 1 turn, and transition seamlessly into estimator, emergency storm, or commercial/AP-AR specialist focus.'
   },
   residential_storm_estimator: {
     id: 'residential_storm_estimator',
     title: 'Residential & Owens Corning Certified Quote Specialist',
-    focus: 'Utah Grid GIS verification, Owens Corning Duration / SureNail 130-MPH wind protection, and route-clustered Google Calendar booking.',
-    directive: 'Verify property address via verify_address (NON_BLOCKING), highlight Owens Corning SureNail 130-MPH wind resistance when relevant, and lock in a route-optimized inspection slot or instant /verify SMS.'
+    focus: 'Utah Grid GIS verification, Owens Corning Duration / SureNail 130-MPH wind protection, and remote aerial quote intake.',
+    directive: 'Verify first name spelling first, read back address digit-by-digit via verify_address (NON_BLOCKING), never ask preferred material, never speak slat-deck dollar figures aloud, and complete MeasureCall intake by voice.'
   },
   emergency_leak_dispatch: {
     id: 'emergency_leak_dispatch',
     title: 'Rapid-Response Leak & Tarping Triage Specialist',
-    focus: 'Immediate reassurance, active interior water intrusion triage, and 3-hour rapid tarping mobilization ($150 per tarp location credited toward repair).',
-    directive: 'Lead with calm urgency, verify exact property address first, state the 3-hour arrival window and $150 tarp mobilization fee credited to the permanent repair, and invoke dispatch_emergency_crew.'
+    focus: 'Immediate reassurance, active interior water intrusion triage, and 3-hour rapid tarping mobilization ($150 credited 100% toward repair or covered by insurance mitigation).',
+    directive: 'Lead with calm urgency, never pitch shingle upgrades on active leaks, verify exact property address first, state insurance mitigation or $150 100%-credited mobilization, and invoke dispatch_emergency_crew.'
   },
   commercial_ap_ar: {
     id: 'commercial_ap_ar',
     title: 'Commercial Flat-Roof & Trade Accounting Coordinator',
     focus: 'TPO/EPDM commercial properties, HOA/GC bids, and supplier/invoice transfers (UNPHC, ABC Supply, Beacon) to Operations & Accounting.',
-    directive: 'Capture caller full name, company, and PO/invoice reference once without repeating questions, update_caller_profile silently, and execute screened whisper transfer_to_specialist.'
+    directive: 'Capture caller full name, company, and PO/invoice reference once without repeating questions, never name-drop executives before answer, update_caller_profile silently, and execute screened whisper transfer_to_specialist.'
   }
 };
 

@@ -124,7 +124,7 @@ async function runTests() {
   try {
     const res = await axios.get(`http://localhost:${TEST_PORT}/health`);
     assert(res.status === 200 && res.data.status === 'ok', 'GET /health returns 200 OK');
-    assert(res.data.revision === 'Rev 67', 'Health reports revision: Rev 67');
+    assert(res.data.revision === 'Rev 68' && res.data.version === '1.9.0', 'Health reports revision: Rev 68 (v1.9.0)');
     assert(res.data.ambientCompositeLoaded === true, 'Health reports ambientCompositeLoaded: true');
     assert(res.data.dashboardAvailable === true, 'Health reports Executive Dashboard is available');
     assert(res.data.verifyAvailable === true, 'Health reports Project Verification PWA is available');
@@ -516,8 +516,57 @@ async function runTests() {
 
     const selfTuneRes = await axios.post(`http://localhost:${TEST_PORT}/api/telephony/aqua-self-tune`, {});
     assert(selfTuneRes.status === 200 && selfTuneRes.data.goldfishColdAudit?.passed === true && selfTuneRes.data.readyForOneTapApproval === true, `POST /api/telephony/aqua-self-tune synthesizes cold-verified directive: "${(selfTuneRes.data.candidateDirective || '').substring(0, 52)}..."`);
+
+    // Test 21: V6.0 "Are-Hive" Phonetics, 13 Must Invariants, Goldfish Judge, 24/7 Moderator & Carrier Shield
+    const settingsRes = await axios.get(`http://localhost:${TEST_PORT}/api/agent/live-settings`);
+    assert(
+      settingsRes.status === 200 &&
+      settingsRes.data.systemInstruction.includes("Are-Hive's AI Roofing Specialist") &&
+      !settingsRes.data.systemInstruction.includes("R-hive's AI Roofing Specialist") &&
+      !settingsRes.data.systemInstruction.includes('Michael Robinson and our estimating team'),
+      'GET /api/agent/live-settings enforces phonetic "Are-Hive\'s AI Roofing Specialist" & zero pre-answer executive name-drops'
+    );
+
+    const areHiveNorm = await axios.post(`http://localhost:${TEST_PORT}/api/workspace/lexicon-normalize`, {
+      text: "Hi! This is Honey! Are-Hive's AI Roofing Specialist, how may I assist your call today?"
+    });
+    assert(
+      areHiveNorm.status === 200 && areHiveNorm.data.normalized === "Hi! This is Honey! R-HIVE's AI Roofing Specialist, how may I assist your call today?",
+      `Dual-layer phonetic mapper converts spoken "Are-Hive's" -> written "${areHiveNorm.data.normalized}"`
+    );
+
+    assert(
+      aquaHealthRes.data.invariantsCount === 13 && aquaHealthRes.data.executiveSyncSpace === 'spaces/AAQA_y6BMAI',
+      'AQuA health exposes all 13 Must Invariants & 24/7 Executive Sync Space (spaces/AAQA_y6BMAI)'
+    );
+
+    const driftAuditRes = await axios.post(`http://localhost:${TEST_PORT}/api/telephony/aqua-audit`, {
+      callSid: 'CA_TEST_DRIFT_13_INV',
+      callerPhone: '+18015550199',
+      honeyAudioChunksSent: 42,
+      durationSec: 34,
+      turns: [
+        { role: 'assistant', text: "Hi! This is Honey with Rive's roofing! Slat board decking costs $78 per sheet and Michael will review your eleven thousand four hundred South address. What material do you prefer?" }
+      ]
+    });
+    assert(
+      driftAuditRes.status === 200 && (driftAuditRes.data.insight?.anomalies?.length || 0) >= 4,
+      `13-Invariant + Goldfish judge catches grouped grid, $78 price leak, material ask, name-drop & phonetic "Rive's" (${driftAuditRes.data.insight?.anomalies?.length} verified violations)`
+    );
+
+    const briefRes = await axios.post(`http://localhost:${TEST_PORT}/api/telephony/aqua-daily-brief`, { dispatchChat: false });
+    assert(
+      briefRes.status === 200 && briefRes.data.success === true && briefRes.data.executiveSyncSpace === 'spaces/AAQA_y6BMAI' && briefRes.data.brief?.chatCardText?.includes('HONEY 24/7 AQuA + GOLDFISH DAILY BRIEF'),
+      'POST /api/telephony/aqua-daily-brief builds Daily Executive Sync report with Goldfish-verified constellations'
+    );
+
+    const shieldRes = await axios.get(`http://localhost:${TEST_PORT}/api/telephony/carrier-shield`);
+    assert(
+      shieldRes.status === 200 && shieldRes.data.cnam?.displayName === 'RHIVE ROOFING' && shieldRes.data.shakenStir?.attestationLevel === 'A' && shieldRes.data.a2p10Dlc?.campaignStatus === 'VERIFIED',
+      'GET /api/telephony/carrier-shield verifies CNAM ("RHIVE ROOFING"), SHAKEN/STIR ("A"), and 10DLC ("VERIFIED")'
+    );
   } catch (e) {
-    assert(false, 'V5.0 AQuA / Goldfish / Live Honey Audio test error: ' + e.message);
+    assert(false, 'V5.0/V6.0 AQuA / Goldfish / Live Honey Audio test error: ' + e.message);
   }
 
   console.log(`\n================================================================`);

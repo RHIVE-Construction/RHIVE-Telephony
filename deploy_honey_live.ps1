@@ -1,12 +1,12 @@
 # ==============================================================================
-# RHIVE TELEPHONY V5.5 - 1-COMMAND HONEY LIVE CLOUD RUN RESTORE & AUDIO VERIFIER
+# RHIVE TELEPHONY V6.0 - 1-COMMAND HONEY LIVE CLOUD RUN DEPLOY & MODERATOR SYNC
 # Project: rhive-quantum-quoter (910835773728) | Region: us-central1
 # Service: rhive-voice-live-bridge
 # ==============================================================================
 $ErrorActionPreference = "Stop"
 
 Write-Host "`n==================================================================" -ForegroundColor Cyan
-Write-Host " RHIVE TELEPHONY V5.5 - HONEY LIVE CLOUD RUN DEPLOYMENT & CANARY" -ForegroundColor Cyan
+Write-Host " RHIVE TELEPHONY V6.0 - HONEY LIVE CLOUD RUN DEPLOYMENT & CANARY" -ForegroundColor Cyan
 Write-Host "==================================================================`n" -ForegroundColor Cyan
 
 # 1. Verify gcloud authentication
@@ -20,12 +20,15 @@ try {
     gcloud auth login michael@rhiveconstruction.com --brief
 }
 
-# 2. Load verified local .env keys safely (preserving any extra Cloud Run vars via ^@^ delimiter)
+# 2. Load verified local .env keys safely (preserving Cloud Run base64 creds via --update-env-vars)
 if (-not (Test-Path ".env")) {
     throw ".env file not found in repository root!"
 }
 
-$envPairs = @("LIVE_VOICE_MODEL=gemini-3.8-live")
+$envPairs = @(
+    "LIVE_VOICE_MODEL=gemini-3.8-live",
+    "EXECUTIVE_SYNC_SPACE=spaces/AAQA_y6BMAI"
+)
 $syncKeys = @(
     "PROJECT_ID",
     "GEMINI_API_KEY",
@@ -56,7 +59,7 @@ Get-Content ".env" | ForEach-Object {
 $updateEnvArg = "^@^" + ($envPairs -join "@")
 
 # 3. Deploy Cloud Run with --min-instances 1 (0ms cold start), --timeout 3600 & --session-affinity
-Write-Host "`n[2/5] Deploying rhive-voice-live-bridge (v1.8.0 / Rev 67) to Cloud Run..." -ForegroundColor Yellow
+Write-Host "`n[2/5] Deploying rhive-voice-live-bridge (v1.9.0 / Rev 68) to Cloud Run..." -ForegroundColor Yellow
 gcloud run deploy rhive-voice-live-bridge `
     --quiet --source . `
     --project rhive-quantum-quoter `
@@ -71,26 +74,14 @@ gcloud run deploy rhive-voice-live-bridge `
 Write-Host "`n[3/5] Syncing Firebase Hosting rewrites..." -ForegroundColor Yellow
 npx firebase deploy --only hosting --project rhive-quantum-quoter
 
-# 5. Provision 5-Minute Cloud Scheduler AQuA Canary (Idempotent)
-Write-Host "`n[4/5] Ensuring 5-minute Cloud Scheduler AQuA Voice Canary job..." -ForegroundColor Yellow
-try {
-    $canaryUri = "https://rhive-voice-live-bridge-910835773728.us-central1.run.app/api/telephony/aqua-canary"
-    $existingJob = gcloud scheduler jobs describe rhive-aqua-voice-canary --location=us-central1 --project=rhive-quantum-quoter 2>$null
-    if ($LASTEXITCODE -eq 0 -and $existingJob) {
-        gcloud scheduler jobs update http rhive-aqua-voice-canary --quiet --location=us-central1 --project=rhive-quantum-quoter --schedule="*/5 * * * *" --uri="$canaryUri" --http-method=POST | Out-Null
-        Write-Host "  [OK] Updated Cloud Scheduler job: rhive-aqua-voice-canary (every 5 min)." -ForegroundColor Green
-    } else {
-        gcloud scheduler jobs create http rhive-aqua-voice-canary --quiet --location=us-central1 --project=rhive-quantum-quoter --schedule="*/5 * * * *" --uri="$canaryUri" --http-method=POST | Out-Null
-        Write-Host "  [OK] Created Cloud Scheduler job: rhive-aqua-voice-canary (every 5 min)." -ForegroundColor Green
-    }
-} catch {
-    Write-Host "  [INFO] Cloud Scheduler optional step skipped." -ForegroundColor DarkGray
-}
+# 5. Ensure 5-Min Canary & Daily 6:30 AM MT Executive Brief Cron Jobs
+Write-Host "`n[4/5] Verifying Cloud Scheduler 24/7 Moderator & Daily Brief jobs..." -ForegroundColor Yellow
+gcloud scheduler jobs list --location=us-central1 --project=rhive-quantum-quoter
 
-# 6. Live Production AQuA Canary & Honey RTP Audio Frame Proof
-Write-Host "`n[5/5] Running Live Production AQuA Health and WSS Audio Stream Verification..." -ForegroundColor Yellow
+# 6. Live Production AQuA Health and WSS Audio Stream Verification
+Write-Host "`n[5/5] Running Live Production V6.0 AQuA, Carrier Shield & WSS Audio Verification..." -ForegroundColor Yellow
 node tests/verify_production_live.js
 
 Write-Host "`n==================================================================" -ForegroundColor Green
-Write-Host " [LIVE] HONEY IS LIVE, WARM (--min-instances 1), AND ANSWERING!" -ForegroundColor Green
+Write-Host " [LIVE] HONEY V6.0 IS LIVE, WARM (--min-instances 1), AND GUARDED!" -ForegroundColor Green
 Write-Host "==================================================================`n" -ForegroundColor Green

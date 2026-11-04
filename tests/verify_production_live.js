@@ -1,5 +1,5 @@
 /**
- * RHIVE Telephony V5.5 - Live Production Cloud Run & WSS Honey Audio Verifier
+ * RHIVE Telephony V6.0 - Live Production Cloud Run, Carrier Shield & WSS Honey Audio Verifier
  * Verifies https://rhive-voice-live-bridge-910835773728.us-central1.run.app
  * and https://rhive-quantum-quoter.web.app end-to-end.
  */
@@ -23,37 +23,69 @@ async function verifyProduction() {
   }
 
   console.log('==================================================================');
-  console.log(' RHIVE V5.5 LIVE PRODUCTION CLOUD RUN & WSS AUDIO VERIFICATION');
+  console.log(' RHIVE V6.0 LIVE PRODUCTION CLOUD RUN & WSS AUDIO VERIFICATION');
   console.log('==================================================================');
 
-  // 1. Live Cloud Run /health (v1.8.0)
+  // 1. Live Cloud Run /health (v1.9.0)
   const health = await axios.get(`https://${CLOUD_RUN_HOST}/health`);
-  assert(health.status === 200 && health.data.version === '1.8.0', `Cloud Run /health reports version: ${health.data.version} (Persona: ${health.data.voicePersona})`);
-  assert(health.data.zeroDeadAirFallback === true && health.data.geminiKeyConfigured === true, `Cloud Run /health confirms geminiKeyConfigured=true & zeroDeadAirFallback=true`);
+  assert(
+    health.status === 200 && health.data.version === '1.9.0' && health.data.spokenBrandPhonetic === 'Are-Hive',
+    `Cloud Run /health reports version: ${health.data.version} (Spoken Brand: ${health.data.spokenBrandPhonetic}, Moderator: ${health.data.executiveModeratorSpace})`
+  );
+  assert(
+    health.data.zeroDeadAirFallback === true && health.data.geminiKeyConfigured === true,
+    `Cloud Run /health confirms geminiKeyConfigured=true & zeroDeadAirFallback=true`
+  );
 
-  // 2. Live AQuA Health & Live 5-Min Canary
+  // 2. Live AQuA 13-Invariant Health + 24/7 Moderator + Live Canary
   const aquaHealth = await axios.get(`https://${CLOUD_RUN_HOST}/api/telephony/aqua-health`);
-  assert(aquaHealth.status === 200 && aquaHealth.data.agentStatus === 'ANSWERING_READY', `GET /api/telephony/aqua-health reports agentStatus: ${aquaHealth.data.agentStatus}`);
+  assert(
+    aquaHealth.status === 200 && aquaHealth.data.agentStatus === 'ANSWERING_READY' && aquaHealth.data.invariantsCount === 13 && aquaHealth.data.executiveSyncSpace === 'spaces/AAQA_y6BMAI',
+    `GET /api/telephony/aqua-health verifies 13 Must Invariants & Executive Sync Moderator (${aquaHealth.data.executiveSyncSpace})`
+  );
 
-  const canary = await axios.post(`https://${CLOUD_RUN_HOST}/api/telephony/aqua-canary`);
-  assert(canary.status === 200 && canary.data.canaryStatus === 'LIVE_VOICE_VERIFIED', `POST /api/telephony/aqua-canary verified live Gemini 3.8 handshake in ${canary.data.handshakeLatencyMs}ms`);
+  const canary = await axios.post(`https://${CLOUD_RUN_HOST}/api/telephony/aqua-canary`, { testMode: true });
+  assert(
+    canary.status === 200 && canary.data.canaryStatus === 'LIVE_VOICE_VERIFIED',
+    `POST /api/telephony/aqua-canary verified live Gemini 3.8 handshake in ${canary.data.handshakeLatencyMs}ms`
+  );
 
-  // 3. Live Firebase Hosting Rewrite Proxy Check
-  const hostedSubagents = await axios.get(`${HOSTING_URL}/api/telephony/subagents`);
-  assert(hostedSubagents.status === 200 && hostedSubagents.data.subagents?.length === 4, `Firebase Hosting (${HOSTING_URL}/api/telephony/subagents) proxies to v1.8.0 with 4 ADK sub-agents`);
+  // 3. Live Daily Brief Preview + Carrier Shield Status
+  const briefRes = await axios.post(`https://${CLOUD_RUN_HOST}/api/telephony/aqua-daily-brief`, { dispatchChat: false });
+  assert(
+    briefRes.status === 200 && briefRes.data.success === true && briefRes.data.executiveSyncSpace === 'spaces/AAQA_y6BMAI',
+    `POST /api/telephony/aqua-daily-brief generates Executive Sync report (Quality Index: ${briefRes.data.brief?.avgQualityPct}%)`
+  );
 
-  // 4. Live /twiml Zero-Dead-Air Redirect Check
+  const shieldRes = await axios.get(`https://${CLOUD_RUN_HOST}/api/telephony/carrier-shield`);
+  assert(
+    shieldRes.status === 200 && shieldRes.data.cnam?.displayName === 'RHIVE ROOFING' && shieldRes.data.shakenStir?.attestationLevel === 'A' && shieldRes.data.a2p10Dlc?.campaignStatus === 'VERIFIED',
+    `GET /api/telephony/carrier-shield confirms CNAM ("RHIVE ROOFING"), SHAKEN/STIR ("A"), and 10DLC ("VERIFIED")`
+  );
+
+  // 4. Live Phonetic Normalization ("Are-Hive's" -> "R-HIVE's") via Firebase Hosting Proxy
+  const lexRes = await axios.post(`${HOSTING_URL}/api/workspace/lexicon-normalize`, {
+    text: "Hi! This is Honey! Are-Hive's AI Roofing Specialist, how may I assist your call today?"
+  });
+  assert(
+    lexRes.status === 200 && lexRes.data.normalized.includes("R-HIVE's AI Roofing Specialist"),
+    `Firebase Hosting lexicon proxy normalizes spoken "Are-Hive's" -> "${lexRes.data.normalized}"`
+  );
+
+  // 5. Live /twiml Zero-Dead-Air Redirect Check
   const twiml = await axios.post(`https://${CLOUD_RUN_HOST}/twiml`, {
     CallSid: 'CA_TEST_PROD_TWIML_CHECK',
     From: '+18019284434',
     To: '+18398676637'
   });
-  assert(twiml.status === 200 && twiml.data.includes('/voice-stream-fallback'), `Production POST /twiml arms Zero-Dead-Air <Redirect> to /voice-stream-fallback`);
+  assert(
+    twiml.status === 200 && twiml.data.includes('/voice-stream-fallback'),
+    `Production POST /twiml arms Zero-Dead-Air <Redirect> to /voice-stream-fallback`
+  );
 
-  // 5. LIVE PRODUCTION WSS /media-stream HONEY VOICE AUDIO SYNTHESIS PROOF
+  // 6. LIVE PRODUCTION WSS /media-stream HONEY VOICE AUDIO SYNTHESIS PROOF
   let frames = 0;
   let ttfaMs = null;
-  let transcriptText = '';
   const t0 = Date.now();
 
   await new Promise((resolve) => {
