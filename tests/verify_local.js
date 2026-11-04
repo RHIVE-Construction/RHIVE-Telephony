@@ -86,7 +86,7 @@ async function runTests() {
   console.log(`\nSpawning local server on port ${TEST_PORT}...`);
   const serverPath = path.join(__dirname, '..', 'server.js');
   serverProc = spawn('node', [serverPath], {
-    env: { ...process.env, PORT: String(TEST_PORT) },
+    env: { ...process.env, PORT: String(TEST_PORT), NODE_ENV: 'test', GOOGLE_CHAT_WEBHOOK_URL: '' },
     cwd: path.join(__dirname, '..'),
     stdio: 'pipe'
   });
@@ -411,6 +411,96 @@ async function runTests() {
     assert(suggestRes.status === 200 && suggestRes.data.firstName === 'Jennifer' && suggestRes.data.appointmentDateTime === 'Monday at 12:20 PM' && suggestRes.data.suggestedSms.startsWith('Hi Jennifer, we are messaging to confirm'), 'GET /api/telephony/calls/:callSid/suggest-sms extracts Jennifer + Monday at 12:20 PM + 1852 East Gentile Street and generates SMS confirmation');
   } catch (e) {
     assert(false, 'V4 Super-App API test error: ' + e.message);
+  }
+
+  // Test 19: V5.0 Zero-Dead-Air TwiML Rescue, Google AQuA Sentinel, Elephant-Goldfish Reviewer & Live Honey Audio Stream Proof
+  try {
+    const twimlRes = await axios.post(`http://localhost:${TEST_PORT}/twiml`, {
+      CallSid: 'CA_TEST_TWIML_V5',
+      From: '+18019284434',
+      To: '+18398676637'
+    });
+    assert(twimlRes.status === 200 && twimlRes.data.includes('/voice-stream-fallback') && twimlRes.data.includes('<Redirect method="POST">'), 'POST /twiml arms Zero-Dead-Air <Redirect> to /voice-stream-fallback after </Connect>');
+
+    const silentRescueRes = await axios.post(`http://localhost:${TEST_PORT}/voice-stream-fallback?callSid=CA_TEST_SILENT_RESCUE&caller=%2B18019284434`);
+    assert(silentRescueRes.status === 200 && silentRescueRes.data.includes('<Gather') && silentRescueRes.data.includes('Google.en-US-Neural2-F'), 'POST /voice-stream-fallback rescues 0-audio-chunk caller immediately with Neural2-F intake (Zero Dead Air)');
+
+    const aquaHealthRes = await axios.get(`http://localhost:${TEST_PORT}/api/telephony/aqua-health`);
+    assert(aquaHealthRes.status === 200 && aquaHealthRes.data.agentStatus === 'ANSWERING_READY' && aquaHealthRes.data.zeroDeadAirTwimlFallbackArmed === true, 'GET /api/telephony/aqua-health reports ANSWERING_READY and zeroDeadAirTwimlFallbackArmed: true');
+
+    const aquaAuditRes = await axios.post(`http://localhost:${TEST_PORT}/api/telephony/aqua-audit`, {
+      callSid: 'CA_TEST_SILENT_AUDIT',
+      callerPhone: '+18019284434',
+      honeyAudioChunksSent: 0,
+      durationSec: 20,
+      geminiCloseReason: 'Simulated expired GEMINI_API_KEY handshake error'
+    });
+    assert(aquaAuditRes.status === 200 && aquaAuditRes.data.insight?.status === 'CRITICAL_SILENT_AGENT', 'POST /api/telephony/aqua-audit detects CRITICAL_SILENT_AGENT on 0-audio-frame calls');
+
+    const egmRes = await axios.post(`http://localhost:${TEST_PORT}/api/telephony/goldfish-review`, {
+      flowName: 'Opening Greeting Audit',
+      ruleOrPrompt: 'Hi, welcome to Ry-hive concierge! <break time="500ms"/> We are so happy to help you today!'
+    });
+    assert(egmRes.status === 200 && egmRes.data.verdict?.passed === false && egmRes.data.verdict?.blindSpots?.length >= 3, `POST /api/telephony/goldfish-review catches banned phrases, phonetic drift & SSML leak (${egmRes.data.verdict?.blindSpots?.length} blind spots caught)`);
+
+    // Live End-to-End Honey Voice Synthesis Verification via /media-stream
+    const liveCallSid = 'CA_TEST_LIVE_HONEY_V5';
+    const liveAudioStats = await new Promise((resolve) => {
+      let mediaFrames = 0;
+      let firstAudioMs = null;
+      const startedAt = Date.now();
+      const ws = new WebSocket(`ws://localhost:${TEST_PORT}/media-stream`);
+      const done = () => {
+        try { ws.close(); } catch (_) {}
+        resolve({ mediaFrames, firstAudioMs });
+      };
+      const timeout = setTimeout(done, 8500);
+
+      ws.on('open', () => {
+        ws.send(JSON.stringify({
+          event: 'start',
+          start: {
+            streamSid: 'MZ_TEST_LIVE_HONEY_V5',
+            callSid: liveCallSid,
+            customParameters: {
+              caller: '+18015550199',
+              callSid: liveCallSid,
+              agentType: 'intake',
+              selection: 'direct_switchboard',
+              selectionLabel: 'direct executive switchboard',
+              ambient: 'none'
+            }
+          }
+        }));
+      });
+
+      ws.on('message', (raw) => {
+        try {
+          const pkt = JSON.parse(raw.toString());
+          if (pkt.event === 'media' && pkt.media && pkt.media.payload) {
+            mediaFrames++;
+            if (firstAudioMs === null) firstAudioMs = Date.now() - startedAt;
+            if (mediaFrames >= 30) {
+              clearTimeout(timeout);
+              ws.send(JSON.stringify({ event: 'stop' }));
+              setTimeout(done, 250);
+            }
+          }
+        } catch (_) {}
+      });
+
+      ws.on('error', () => {
+        clearTimeout(timeout);
+        done();
+      });
+    });
+
+    assert(liveAudioStats.mediaFrames >= 25, `Live Honey /media-stream synthesized ${liveAudioStats.mediaFrames} G.711u RTP audio frames via gemini-3.8-live (TTFA: ${liveAudioStats.firstAudioMs}ms)`);
+
+    const postLiveFallbackRes = await axios.post(`http://localhost:${TEST_PORT}/voice-stream-fallback?callSid=${liveCallSid}&caller=%2B18015550199`);
+    assert(postLiveFallbackRes.status === 200 && postLiveFallbackRes.data.includes('<Hangup/>') && !postLiveFallbackRes.data.includes('<Gather'), 'POST /voice-stream-fallback cleanly hangs up (<Hangup/>) after verified Honey spoken session');
+  } catch (e) {
+    assert(false, 'V5.0 AQuA / Goldfish / Live Honey Audio test error: ' + e.message);
   }
 
   console.log(`\n================================================================`);

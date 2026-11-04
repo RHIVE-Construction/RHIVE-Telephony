@@ -61,7 +61,9 @@ function initFirestore() {
     if (fs.existsSync(cfgPath)) {
       try {
         const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-        if (cfg?.tokens?.access_token) {
+        const expiresAt = Number(cfg?.tokens?.expires_at || 0);
+        const isTokenFresh = !expiresAt || expiresAt > (Date.now() + 60000);
+        if (cfg?.tokens?.access_token && isTokenFresh) {
           const authClient = new OAuth2Client();
           authClient.setCredentials({ access_token: cfg.tokens.access_token });
 
@@ -86,6 +88,7 @@ function initFirestore() {
       }
     }
 
+    if (!process.env.K_SERVICE && !process.env.GOOGLE_APPLICATION_CREDENTIALS && process.platform === 'win32') { isInitializing = false; return null; }
     // 2. Cloud Run & Production Standard: Application Default Credentials (ADC)
     firestoreDb = new Firestore({
       projectId,

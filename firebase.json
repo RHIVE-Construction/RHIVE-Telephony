@@ -159,6 +159,20 @@
         }
       },
       {
+        "source": "/voice-stream-fallback",
+        "run": {
+          "serviceId": "rhive-voice-live-bridge",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/fallback-decision",
+        "run": {
+          "serviceId": "rhive-voice-live-bridge",
+          "region": "us-central1"
+        }
+      },
+      {
         "source": "/transfer-fallback",
         "run": {
           "serviceId": "rhive-voice-live-bridge",
