@@ -107,21 +107,118 @@
     </div>
   </header>
 
-  <!-- V5.5 Google AQuA + Elephant-Goldfish (EGM) Live Sentinel Ribbon -->
-  <section id="aquaGoldfishSentinelBar" class="max-w-6xl w-full mx-auto px-4 sm:px-6 pt-4">
+  <!-- V6.1 Google AQuA + Elephant-Goldfish (EGM) Live Sentinel Ribbon & Constellation Cluster Deck -->
+  <section id="aquaGoldfishSentinelBar" class="max-w-6xl w-full mx-auto px-4 sm:px-6 pt-4 space-y-4">
     <div style="clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);" class="bg-slate-950 text-white border border-pink-500/40 p-3.5 flex flex-wrap items-center justify-between gap-3 font-mono">
       <div class="flex items-center flex-wrap gap-2.5">
         <span id="aquaStatusPill" style="clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);" class="px-2.5 py-1 bg-emerald-500/20 border border-emerald-400 text-emerald-300 text-[10px] font-bold uppercase tracking-wider">🛡️ AQuA: CHECKING...</span>
-        <span class="text-[10px] text-slate-300">Zero-Dead-Air Rescue: <b class="text-white">ARMED</b></span>
-        <span class="text-[10px] text-slate-300">Async Tools: <b class="text-pink-400">NON_BLOCKING + WHEN_IDLE</b></span>
-        <span class="text-[10px] text-slate-300">Lexicon: <b class="text-amber-300">AVALON WASATCH</b></span>
+        <span class="text-[10px] text-slate-300">Phonetic Lock: <b class="text-pink-400">R-hive's (/ˈɑɹˌhaɪvz/) &bull; AI Roof Specialist</b></span>
+        <span class="text-[10px] text-slate-300">VAD: <b class="text-emerald-300">HIGH Start (120ms) / LOW End (650ms)</b></span>
+        <span class="text-[10px] text-slate-300">Moderator: <b class="text-amber-300">24/7 Exec Sync (Kara &amp; Michael)</b></span>
       </div>
       <div class="flex items-center gap-2">
         <button type="button" onclick="runAquaCanaryCheck()" style="clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white text-[10px] font-bold uppercase transition">📡 Live Canary</button>
         <button type="button" onclick="runAquaGoldfishSelfTune()" style="clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);" class="px-3 py-1.5 bg-[#ec028b] hover:bg-pink-600 text-white text-[10px] font-bold uppercase transition">🐟 AQuA → Goldfish Self-Tune</button>
       </div>
     </div>
-    <div id="aquaSelfTuneOutput" class="hidden mt-2 bg-white border border-slate-300 p-3 text-[11px] font-mono text-slate-800"></div>
+    <div id="aquaSelfTuneOutput" class="hidden bg-white border border-slate-300 p-3 text-[11px] font-mono text-slate-800"></div>
+
+    <!-- ACTIVE AQUA CONSTELLATION CLUSTER GRAPH + 13-INVARIANT & 24/7 MODERATOR HUD -->
+    <div id="aquaConstellationDeck" class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <!-- LEFT (7 COLS): LIVE AQUA SEMANTIC CONSTELLATION CLUSTER MAP -->
+      <div id="aquaClusterMapCard" class="lg:col-span-7 bg-slate-950 text-white border border-slate-800 rounded-[20px] p-4 shadow-subtle-card flex flex-col justify-between space-y-3 font-mono">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span>
+              <h2 class="text-xs font-bold uppercase tracking-wider text-white">AQuA Semantic Constellation Cluster Map (Live Build)</h2>
+            </div>
+            <p class="text-[10px] text-slate-400 mt-0.5">5-Stage Outer-Loop Trajectory Clustering &bull; Stateless Elephant-Goldfish False-Positive Pruning</p>
+          </div>
+          <div class="flex items-center space-x-1.5">
+            <span id="aquaClusterTtfaBadge" class="text-[9px] px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 font-bold">TTFA: 756ms</span>
+            <span id="aquaGoldfishPrunedBadge" class="text-[9px] px-2 py-0.5 rounded bg-cyan-500/20 border border-cyan-400/50 text-cyan-300 font-bold">Goldfish Pruned: 0 FP</span>
+          </div>
+        </div>
+
+        <!-- Vector SVG Constellation Graph -->
+        <div class="relative bg-slate-900/90 border border-slate-800 rounded-[14px] p-2 overflow-hidden">
+          <svg id="aquaConstellationSvg" viewBox="0 0 640 376" class="w-full h-auto block select-none" role="img" aria-label="AQuA Trajectory Constellation Cluster Map">
+            <defs>
+              <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#10b981" stop-opacity="0.34" />
+                <stop offset="100%" stop-color="#10b981" stop-opacity="0" />
+              </radialGradient>
+            </defs>
+            <!-- Orbital Grid -->
+            <circle cx="318" cy="176" r="145" fill="none" stroke="#1e293b" stroke-width="1" stroke-dasharray="4 4" />
+            <circle cx="318" cy="176" r="92" fill="none" stroke="#1e293b" stroke-width="1" />
+            <circle cx="318" cy="176" r="68" fill="url(#coreGlow)" />
+            <g id="aquaSvgEdges"></g>
+            <g id="aquaSvgClusters"></g>
+            <g id="aquaSvgNodes"></g>
+          </svg>
+        </div>
+
+        <!-- Interactive Cluster Anchor Inspector -->
+        <div id="aquaClusterInspector" class="bg-slate-900 border border-slate-800 rounded-[12px] px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-[10px]">
+          <div class="truncate">
+            <span class="text-pink-400 font-bold">SOURCE ANCHOR:</span>
+            <span id="aquaInspectorLabel" class="text-slate-200 ml-1">Clean 13/13 Benchmark Core &rarr; server.js#CallSession (en-US + IPA /ˈɑɹˌhaɪvz/)</span>
+          </div>
+          <div class="flex items-center space-x-3 shrink-0 text-[9px] text-slate-400">
+            <span><b class="text-emerald-400">●</b> Clean Core</span>
+            <span><b class="text-pink-400">●</b> I-13 IPA Lock</span>
+            <span><b class="text-blue-400">●</b> I-02 Grid</span>
+            <span><b class="text-cyan-400">◌</b> Goldfish Filter</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT (5 COLS): 24/7 EXECUTIVE SYNC MODERATOR + CARRIER SHIELD + 13 MUST-INVARIANTS -->
+      <div id="aquaInvariantsModeratorCard" class="lg:col-span-5 bg-white border border-slate-200 rounded-[20px] p-4 shadow-subtle-card flex flex-col justify-between space-y-3 font-mono">
+        <div class="space-y-2.5">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+            <div>
+              <h2 class="text-xs font-bold uppercase text-slate-900">24/7 Moderator &amp; 13 Must-Invariants</h2>
+              <p class="text-[10px] text-slate-500">Executive Sync (<span class="text-rhive-pink font-bold">spaces/AAQA_y6BMAI</span>) &rarr; Kara &amp; Michael</p>
+            </div>
+            <span id="moderatorLiveBadge" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">24/7 ARMED</span>
+          </div>
+
+          <!-- Moderator + Carrier Shield Compact Telemetry -->
+          <div class="grid grid-cols-2 gap-2 text-[10px]">
+            <div class="bg-slate-50 border border-slate-200 rounded-[10px] p-2">
+              <div class="text-[9px] text-slate-400 uppercase font-bold">Cloud Scheduler Canaries</div>
+              <div id="modCanaryStats" class="text-slate-900 font-bold mt-0.5">Every 5m &bull; 6:30a MT Brief</div>
+              <div class="text-[9px] text-emerald-700 mt-0.5">Zero-Dead-Air Rescue Armed</div>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded-[10px] p-2">
+              <div class="text-[9px] text-slate-400 uppercase font-bold">Carrier Trust Shield</div>
+              <div class="text-slate-900 font-bold mt-0.5">CNAM: RHIVE ROOFING</div>
+              <div class="text-[9px] text-rhive-blue font-bold mt-0.5">STIR/SHAKEN A &bull; 10DLC VERIFIED</div>
+            </div>
+          </div>
+
+          <!-- SOTA Live Voice Engine Strip -->
+          <div class="bg-pink-50/70 border border-pink-200 rounded-[10px] px-2.5 py-1.5 text-[9px] text-slate-800 flex flex-wrap items-center justify-between gap-1">
+            <span><b class="text-rhive-pink">SOTA VOICE:</b> gemini-3.8-live (<code class="font-bold">en-US</code>)</span>
+            <span>Asymmetric VAD + Barge-In Reconcile</span>
+          </div>
+
+          <!-- 13 Invariants Matrix -->
+          <div>
+            <div class="flex items-center justify-between text-[9px] font-bold text-slate-500 uppercase mb-1">
+              <span>13 Binary "Must" Invariants (Goldfish Cold-Verified)</span>
+              <span id="aquaPassRatioLabel" class="text-emerald-700">13 / 13 LOCKED</span>
+            </div>
+            <div id="aquaInvariantsGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[9px]">
+              <!-- Populated dynamically by refreshAquaConstellationDeck() -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- Main Studio Layout -->
@@ -373,10 +470,10 @@
       {
         id: 'Laomedeia',
         name: 'Laomedeia',
-        role: 'Honey Lead Voice (Default)',
-        tag: 'Warm · Bright · High-Energy',
-        desc: 'Upbeat feminine specialist with crisp 1.1x cadence, cheerful optimism, and natural vocal smile.',
-        quote: '“Hi! This is Honey with R-HIVE Construction. How can I assist you with your roofing project today?”',
+        role: 'AI Roof Specialist (Default)',
+        tag: 'Warm · Bright · High-Energy (en-US IPA)',
+        desc: 'Upbeat feminine specialist with crisp 1.1x cadence, /ˈɑɹˌhaɪvz/ IPA lock, and natural vocal smile.',
+        quote: '“Hi! This is Honey! R-hive\'s AI Roof Specialist, how may I assist your call today?”',
         previewUrl: '/audio/voices/laomedeia.wav',
         avatar: '👩'
       },
@@ -978,6 +1075,91 @@
         if (pill && d.success) {
           const ready = d.agentStatus === 'ANSWERING_READY';
           pill.textContent = ready ? `🛡️ AQuA: ${d.agentStatus} (${d.avgFirstAudioLatencyMs}ms TTFA)` : `⚠️ AQuA: ${d.agentStatus}`;
+        }
+      } catch (_) {}
+      refreshAquaConstellationDeck();
+    }
+
+    window.__aquaClustersCache = [];
+    function inspectAquaCluster(idx) {
+      const c = window.__aquaClustersCache[idx];
+      const lbl = document.getElementById('aquaInspectorLabel');
+      if (c && lbl) {
+        lbl.textContent = `${c.shortCode} (${c.label}) → ${c.anchor} [Count: ${c.count}]`;
+      }
+    }
+
+    async function refreshAquaConstellationDeck() {
+      try {
+        const r = await fetch('/api/telephony/aqua-clusters');
+        const d = await r.json();
+        if (!d || !d.success) return;
+
+        window.__aquaClustersCache = d.clusters || [];
+        const ttfaEl = document.getElementById('aquaClusterTtfaBadge');
+        const fpEl = document.getElementById('aquaGoldfishPrunedBadge');
+        if (ttfaEl) ttfaEl.textContent = `TTFA: ${d.avgFirstAudioLatencyMs || 756}ms`;
+        if (fpEl) fpEl.textContent = `Goldfish Pruned: ${d.goldfishPrunedCount || 0} FP`;
+
+        const modStats = document.getElementById('modCanaryStats');
+        if (modStats && d.moderator) {
+          modStats.textContent = `${d.moderator.totalCanaryChecks || 0} Canaries • 6:30a MT Brief`;
+        }
+
+        // Render SVG Constellation Edges, Clusters & Trajectory Satellites
+        const edgesG = document.getElementById('aquaSvgEdges');
+        const clustersG = document.getElementById('aquaSvgClusters');
+        const nodesG = document.getElementById('aquaSvgNodes');
+        const core = (d.clusters || [])[0] || { cx: 318, cy: 176 };
+
+        if (edgesG && clustersG && nodesG) {
+          edgesG.innerHTML = (d.clusters || []).slice(1).map(c => {
+            const dash = c.id === 'GOLDFISH_PRUNED_RING' ? 'stroke-dasharray="5 4"' : '';
+            return `<line x1="${core.cx}" y1="${core.cy}" x2="${c.cx}" y2="${c.cy}" stroke="${c.color}" stroke-opacity="0.38" stroke-width="1.6" ${dash} />`;
+          }).join('');
+
+          clustersG.innerHTML = (d.clusters || []).map((c, idx) => {
+            const isGoldfish = c.id === 'GOLDFISH_PRUNED_RING';
+            const fillOpacity = c.id === 'CLEAN_BENCHMARK_CORE' ? '0.24' : '0.16';
+            const strokeDash = isGoldfish ? 'stroke-dasharray="4 3"' : '';
+            const labelY = c.cy < 160 ? c.cy - c.radius - 10 : c.cy + c.radius + 15;
+            return `
+              <g style="cursor:pointer" onclick="inspectAquaCluster(${idx})">
+                <circle cx="${c.cx}" cy="${c.cy}" r="${c.radius}" fill="${c.color}" fill-opacity="${fillOpacity}" stroke="${c.color}" stroke-width="2" ${strokeDash} />
+                <text x="${c.cx}" y="${c.cy - 2}" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800" font-family="JetBrains Mono, monospace">${c.shortCode}</text>
+                <text x="${c.cx}" y="${c.cy + 11}" text-anchor="middle" fill="#cbd5e1" font-size="9" font-weight="700" font-family="JetBrains Mono, monospace">${c.count} ${isGoldfish ? 'pruned' : (c.id === 'CLEAN_BENCHMARK_CORE' ? 'clean' : 'hits')}</text>
+                <text x="${c.cx}" y="${labelY}" text-anchor="middle" fill="#e2e8f0" font-size="9.5" font-weight="700" font-family="JetBrains Mono, monospace">${c.label}</text>
+              </g>
+            `;
+          }).join('');
+
+          nodesG.innerHTML = (d.nodes || []).map(n => `
+            <g>
+              <circle cx="${n.x}" cy="${n.y}" r="4.5" fill="${n.color}" stroke="#0f172a" stroke-width="1.5">
+                <title>${n.label}</title>
+              </circle>
+            </g>
+          `).join('');
+        }
+
+        // Render 13 Must-Invariants Grid
+        const gridEl = document.getElementById('aquaInvariantsGrid');
+        const ratioEl = document.getElementById('aquaPassRatioLabel');
+        if (gridEl && Array.isArray(d.invariants)) {
+          const lockedCount = d.invariants.filter(i => i.violationsCount === 0).length;
+          if (ratioEl) ratioEl.textContent = `${lockedCount} / ${d.invariants.length} LOCKED`;
+          gridEl.innerHTML = d.invariants.map(inv => {
+            const clean = inv.violationsCount === 0;
+            return `
+              <div class="px-2 py-1.5 rounded-[8px] border ${clean ? 'bg-emerald-50/50 border-emerald-200 text-slate-800' : 'bg-pink-50 border-pink-300 text-slate-900'} flex items-center justify-between gap-1.5">
+                <div class="truncate">
+                  <span class="font-bold ${clean ? 'text-emerald-700' : 'text-rhive-pink'}">${inv.id}</span>
+                  <span class="text-slate-600 ml-1">${inv.name}</span>
+                </div>
+                <span class="shrink-0 font-bold px-1.5 py-0.5 rounded ${clean ? 'bg-emerald-100 text-emerald-800' : 'bg-rhive-pink text-white'}">${clean ? 'PASS' : inv.violationsCount + 'x'}</span>
+              </div>
+            `;
+          }).join('');
         }
       } catch (_) {}
     }

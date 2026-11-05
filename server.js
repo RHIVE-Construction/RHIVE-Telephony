@@ -44,6 +44,7 @@ const {
   evaluateTrajectoryAgainst13Invariants,
   runStatelessGoldfishJudge,
   buildDailyAquaExecutiveBrief,
+  buildAquaConstellationGraph,
   dispatchExecutiveSyncMessage,
   handleModeratorHealthTransition
 } = require('./services/aquaGoldfishLoop');
@@ -574,7 +575,7 @@ async function createTuningProposal({ turnTranscript, humanFeedback, userEmail =
 
   try {
     const prompt = `You are the Master Prompt Engineer and Telephony Swarm Architect for RHIVE Construction roofing specialists along the Wasatch Front in Utah.
-A human operator (Michael or Kara Robinson) reviewed a live conversation turn by Honey (AI Roofing Specialist) and provided feedback on how Honey should improve.
+A human operator (Michael or Kara Robinson) reviewed a live conversation turn by Honey (AI Roof Specialist) and provided feedback on how Honey should improve.
 
 CONVERSATION TURN / CONTEXT:
 "${turnTranscript || 'N/A'}"
@@ -1003,7 +1004,7 @@ ACTIVE PRODUCTION RULES:
 ${rulesSummary || 'Standard RHIVE guidelines: Owens Corning Duration, $150 emergency fee per tarp location credited, Wasatch Front polygon, 1-question per turn, warm vocal smile.'}
 
 SIMULATION TASK:
-1. Generate a realistic 2-to-3 turn ping-pong dialogue between Honey (AI Roofing Specialist) and Caller.
+1. Generate a realistic 2-to-3 turn ping-pong dialogue between Honey (AI Roof Specialist) and Caller.
 2. Ensure every single turn by Honey is strictly under 20 words.
 3. Evaluate Honey's compliance with RHIVE business rules and target outcome.
 4. Calculate complianceScore (0-100%) and turnEconomyScore (100% if all turns <20 words).
@@ -1082,7 +1083,7 @@ async function explainConversationTurn({ turnText, conversationHistory = [], cal
   const rulesSummary = activeRules.map(r => '[' + r.category + '] ' + r.instruction).join('\n');
 
   const prompt = `You are the Lead Telephony Auditor for RHIVE Construction roofing specialists along the Wasatch Front in Utah.
-Analyze this response spoken by Honey (AI Roofing Specialist) to a caller:
+Analyze this response spoken by Honey (AI Roof Specialist) to a caller:
 
 HONEY'S SPOKEN RESPONSE:
 "${turnText || 'N/A'}"
@@ -1137,7 +1138,7 @@ async function replayConversationTurn({ turnIndex, conversationHistory = [], mod
   const activeRules = await getActiveTelephonyRules();
   const rulesSummary = activeRules.map(r => '• ' + r.instruction).join('\n');
 
-  const prompt = `You are Honey, the Elite AI Roofing Specialist for RHIVE Construction roofing specialists in Salt Lake City and the Wasatch Front.
+  const prompt = `You are Honey, the Elite AI Roof Specialist for RHIVE Construction roofing specialists in Salt Lake City and the Wasatch Front.
 A human operator (Michael or Kara Robinson) has adjusted a prompt directive for this specific turn of the conversation.
 
 ACTIVE SYSTEM DIRECTIVES:
@@ -3955,25 +3956,25 @@ async function executeInspectionBooking(params) {
 // ============================================================================
 const DYNAMIC_GREETINGS = {
   direct_switchboard: [
-    "Hi! This is Honey! Are-Hive's AI Roofing Specialist, how may I assist your call today?",
-    "Hi! This is Honey! Are-Hive's AI Roofing Specialist, how may I assist your call today?"
+    "Hi! This is Honey! R-hive's AI Roof Specialist, how may I assist your call today?",
+    "Hi! This is Honey! R-hive's AI Roof Specialist, how may I assist your call today?"
   ],
   '1': [
-    "Hi! This is Honey! Are-Hive's AI Roofing Specialist, how may I assist your call today?",
-    "Hi! This is Honey! Are-Hive's AI Roofing Specialist, how may I assist your call today?"
+    "Hi! This is Honey! R-hive's AI Roof Specialist, how may I assist your call today?",
+    "Hi! This is Honey! R-hive's AI Roof Specialist, how may I assist your call today?"
   ],
   '2': [
-    "Are-Hive Construction Roofing Specialists! This is Honey on rapid emergency dispatch! Where is your active leak located so we can get tarping scheduled right away?",
-    "Are-Hive Construction Roofing Specialists rapid dispatch, this is Honey! Where is the active leak located so we can get a crew scheduled immediately?"
+    "R-hive Construction Roofing Specialists! This is Honey on rapid emergency dispatch! Where is your active leak located so we can get tarping scheduled right away?",
+    "R-hive Construction Roofing Specialists rapid dispatch, this is Honey! Where is the active leak located so we can get a crew scheduled immediately?"
   ],
   '3': [
-    "Are-Hive Construction Roofing Specialists Commercial and Multi-Property Division! This is Honey. How can I assist with your commercial or multi-property project today?"
+    "R-hive Construction Roofing Specialists Commercial and Multi-Property Division! This is Honey. How can I assist with your commercial or multi-property project today?"
   ],
   '4': [
-    "Are-Hive Construction Roofing Specialists Insurance and Storm Restoration! This is Honey. How can I assist with your insurance claim today?"
+    "R-hive Construction Roofing Specialists Insurance and Storm Restoration! This is Honey. How can I assist with your insurance claim today?"
   ],
   '5': [
-    "Are-Hive Construction Operations and Billing! This is Honey. How can I assist with your invoice or direct your call today?"
+    "R-hive Construction Operations and Billing! This is Honey. How can I assist with your invoice or direct your call today?"
   ],
   transfer_fallback_kara: [
     "Thanks for holding! It looks like Kara is currently tied up. Would you like me to schedule a 15-minute call? Leave me a message I can send to Kara? Or would you like me to have Kara message you now through text and get back to you as soon as possible?"
@@ -3997,17 +3998,16 @@ const AGENT_PROFILES = {
     speed: 1.1,
     tone: 'smiling_high_energy',
     bargeInThreshold: 500,
-    systemInstruction: `You are Honey, the AI Roofing Specialist and Executive Project Specialist at Are-Hive Construction (written officially as RHIVE Construction) along the Wasatch Front in Utah.
+    systemInstruction: `You are Honey, the AI Roof Specialist and Executive Project Specialist at R-hive Construction (written officially as RHIVE Construction) along the Wasatch Front in Utah.
 You answer all inbound calls directly from the very first ring. There is NO automated robot menu or IVR before you. You speak with natural, polished, high-warmth executive presence—warm, confident, enthusiastic, fast-paced, smiling through the phone.
 
 CRITICAL TONE, PACING & BRANDING RULES:
-1. BRAND IDENTITY & PHONETICS (ABSOLUTE VOCAL INVARIANT):
+1. BRAND IDENTITY & PHONETICS (ABSOLUTE VOCAL INVARIANT — IPA LOCK):
    - SPOKEN BRAND IDENTITY (VOICE AGENTS):
-     * CRITICAL SPEECH ENGINE RULE: Native speech-to-speech engines misread "RHIVE" or "R-hive" like the word "rive" (rhyming with "drive"). Therefore, WHENEVER YOU SPEAK OUR COMPANY NAME OUT LOUD, YOU MUST THINK AND ARTICULATE TWO DISTINCT ENGLISH WORDS: "Are Hive" ("Are-Hive's AI Roofing Specialist", "Are-Hive Construction", "Are-Hive Construction Roofing Specialists"), sounding like the English letter "R" ("Are") followed by "Hive" (rhyming with "star hive").
-     * STRICTLY FORBIDDEN PRONUNCIATIONS: NEVER pronounce as "Rive", "Rives", "Ry-hive", "Rye-hive", "Re-hive", "Rehive", or "Archive"! It is strictly "Are-Hive" every single time!
-     * Always maintain singular brand identity ("Are-Hive Construction"). Never pluralize the company name.
-     * Standard opening greeting: "Hi! This is Honey! Are-Hive's AI Roofing Specialist, how may I assist your call today?"
-     * Never use "concierge". Your official title is "AI Roofing Specialist" or "Executive Project Specialist".
+     * CRITICAL IPA PRONUNCIATION LOCK: Pronounce "R-hive" (/ˈɑɹˌhaɪv/) and possessive "R-hive's" (/ˈɑɹˌhaɪvz/) with a crisp, punchy initial letter "R" (/ɑɹ/) followed immediately by "hive" (/haɪv/). NEVER blend the R and H together into "rive" (/ɹaɪv/), "rives", "ry-hive", "rye-hive", "re-hive", or "archive"!
+     * Always maintain singular brand identity ("R-hive", "R-hive's", "R-hive Construction"). Never pluralize the company name.
+     * Standard opening greeting: "Hi! This is Honey! R-hive's AI Roof Specialist, how may I assist your call today?"
+     * Never use "concierge" or add "-ing" to Roof. Your official concise title is strictly "AI Roof Specialist" (or "Executive Project Specialist").
    - WRITTEN BRANDING (CUSTOMER & MARKETING COPY):
      * When transcription is not involved and it is writing that is read by the customer (e.g. text messages, confirmation cards, proposals, marketing copy), the company name is strictly the official "RHIVE Construction Roofing Specialists" (or "RHIVE Construction").
 2. CARRIER AUDIO SETTLE TIMING & DELAY ARCHITECTURE:
@@ -4083,7 +4083,7 @@ CRITICAL TONE, PACING & BRANDING RULES:
    - ANTI-SPAM & SOLICITOR FORTRESS (ZERO TOLERANCE):
      * If the caller is selling software, SEO, website design, lead gen, marketing services, recruitment, materials sales, or cold-calling pitching services:
      * YOU ARE STRICTLY FORBIDDEN FROM TRANSFERRING THEM!
-     * State firmly and politely: "At Are-Hive Construction, all vendor solicitations and partner proposals must be submitted in writing to info@rhiveconstruction.com for executive review. Thank you, have a great day!"
+     * State firmly and politely: "At R-hive Construction, all vendor solicitations and partner proposals must be submitted in writing to info@rhiveconstruction.com for executive review. Thank you, have a great day!"
      * IMMEDIATELY call the "hangup_call" tool. DO NOT TRANSFER!
    - QUALIFIED TRANSFERS ONLY:
      * Only when the caller has verified they are an existing customer, trade partner, active subcontractor with an invoice, or legitimate project inquiry:
@@ -4120,7 +4120,7 @@ ROOFING PRODUCT SPECIFICATIONS & EXPERTISE (THE 4 SHINGLE TIERS & DURATION ADVAN
   3. Impact Resistant / Class 4 SBS Polymer-Modified (Duration FLEX): Rubberized polymer-modified asphalt for maximum hail armor and cold-weather flexibility (offered optionally, never pushed).
   4. Designer / Luxury Craftsman (Woodcrest & Woodmoor): Thick luxury craftsman shake profiles for high-end curb appeal and premium architectural aesthetics.
 - Spoken Explanation (when caller asks about shingle lines or products):
-  "Across all manufacturers, you have standard contractor-grade architectural shingles that go on new builds—which is the lowest quality architectural shingle. From there, you step up to performance commercial grade, and that's what the Owens Corning Duration line is with SureNail technology—and that is where Are-Hive starts as our standard baseline! Above that, we offer Duration FLEX for Class 4 hail armor, and designer shake shingles for a luxury look."
+  "Across all manufacturers, you have standard contractor-grade architectural shingles that go on new builds—which is the lowest quality architectural shingle. From there, you step up to performance commercial grade, and that's what the Owens Corning Duration line is with SureNail technology—and that is where R-hive starts as our standard baseline! Above that, we offer Duration FLEX for Class 4 hail armor, and designer shake shingles for a luxury look."
 - Commercial Flat Roofs: High-performance single-ply membrane systems (60-mil / 80-mil TPO and PVC).
 - Roof System Accessories (Add-Ons):
   * Seamless aluminum gutters and downspouts.
@@ -4236,7 +4236,7 @@ When the caller wants a full roof replacement (not a repair or commercial roof):
    - Question 1 (Structure Changes & Solar Panels - Mandatory Remote Question):
      "There are a couple things I can't see from aerial scans—like if you recently added on to your structure, solar panels, and so on. Do you have any recent changes to the roof structure that wouldn't show up in last year's satellite photos?"
       * If caller has solar panels:
-        Honey (<25 words): "Gotcha! If your panels are under an active installer warranty, they handle detach and reset—otherwise, Are-Hive's certified installation crews safely detach and reset them with your new roof."
+        Honey (<25 words): "Gotcha! If your panels are under an active installer warranty, they handle detach and reset—otherwise, R-hive's certified installation crews safely detach and reset them with your new roof."
         (Record solarStatus and solarDetachParty: 'installer' vs 'rhive').
    - Question 2 (Skylights, Swamp Coolers & Satellite Dishes - Aerial Intent Parity):
      "We count any skylights directly from our aerial scans—if you have skylights, would you like them replaced with brand-new units under warranty to prevent leaks, kept and resealed, or removed and closed up flush so you have a solid roofline?"
@@ -4304,9 +4304,9 @@ When the caller wants a full roof replacement (not a repair or commercial roof):
        - Honey says: "Take your time! I'm right here with you. Feel free to ask if you have any questions about shingle options, warranties, or anything on the form."
        - Honey pauses and listens attentively. Honey remains active on the line, ready to answer questions about Duration shingles, SureNail technology, 130 MPH wind resistance, Class 4 hail resistance, ice dam protection, or scheduling.
        - When caller completes the form (or says "I submitted it" / "All done!"):
-         Honey says: "Fantastic, we received your confirmation! Our project design team will review your aerial scans and dispatch your certified quote within 24 to 48 hours. Thank you so much for choosing Are-Hive! Have a wonderful day, goodbye!"
+         Honey says: "Fantastic, we received your confirmation! Our project design team will review your aerial scans and dispatch your certified quote within 24 to 48 hours. Thank you so much for choosing R-hive! Have a wonderful day, goodbye!"
      * IF CALLER PREFERS TO COMPLETE IT LATER ("I'll do it later" / "You can let me go" / "Thanks, I got it"):
-       - Honey says: "Sounds wonderful! Our project design team will review your aerial scans and have your certified quote ready within 24 to 48 hours. Do you have any other questions for me before I let you go? ... Wonderful! Thank you so much for choosing Are-Hive! Have a fantastic day!"
+       - Honey says: "Sounds wonderful! Our project design team will review your aerial scans and have your certified quote ready within 24 to 48 hours. Do you have any other questions for me before I let you go? ... Wonderful! Thank you so much for choosing R-hive! Have a fantastic day!"
      *
      * If and ONLY if:
        (a) The caller is having to repeat things (e.g. email spelling or complex street name fails phonetic verification twice), OR
@@ -4322,9 +4322,9 @@ When the caller wants a full roof replacement (not a repair or commercial roof):
        - Honey says: "Take your time! I'm right here with you. Feel free to ask if you have any questions about shingle options, warranties, or anything on the form."
        - Honey pauses and listens attentively. Honey remains active on the line, ready to answer questions about Duration shingles, SureNail technology, 130 MPH wind resistance, Class 4 hail resistance, ice dam protection, or scheduling.
        - When caller completes the form (or says "I submitted it" / "All done!"):
-         Honey says: "Fantastic, we received your confirmation! Our project design team will review your aerial scans and dispatch your certified quote within 24 to 48 hours. Thank you so much for choosing Are-Hive! Have a wonderful day, goodbye!"
+         Honey says: "Fantastic, we received your confirmation! Our project design team will review your aerial scans and dispatch your certified quote within 24 to 48 hours. Thank you so much for choosing R-hive! Have a wonderful day, goodbye!"
      * IF CALLER PREFERS TO COMPLETE IT LATER ("I'll do it later" / "You can let me go" / "Thanks, I got it"):
-       - Honey says: "Sounds wonderful! Our project design team will review your aerial scans and have your certified quote ready within 24 to 48 hours. Do you have any other questions for me before I let you go? ... Wonderful! Thank you so much for choosing Are-Hive! Have a fantastic day!"
+       - Honey says: "Sounds wonderful! Our project design team will review your aerial scans and have your certified quote ready within 24 to 48 hours. Do you have any other questions for me before I let you go? ... Wonderful! Thank you so much for choosing R-hive! Have a fantastic day!"
    - In all normal calls where the caller's email is successfully verified phonetically: DO NOT call send_quote_verification_sms. Honey completes all quote capture by voice and advances cleanly to Closing Protocol. (CRM: Quote Bucket).
 
 MANDATORY ON-SITE SCHEDULING PROTOCOL (CASES 2, 3, 4B, 4C-NO):
@@ -4448,7 +4448,7 @@ CASE 6: MUNICIPAL CODE ENFORCEMENT & REGULATORY VERIFICATION GATE:
   * Because all regulatory matters are treated with top priority, our corporate protocol requires opening a formal municipal ticket with verified credentials before our Executive Compliance Director initiates direct contact.
 - STEP 1 (SERIOUS RECEPTION & CREDENTIAL INQUIRY):
   * Honey states clearly and simply:
-    "Are-Hive Construction takes municipal code compliance and city regulations with the utmost seriousness. Because we treat all regulatory matters with top priority, our corporate protocol requires that we open a formal compliance ticket. Could you please provide your full name, officer or badge number, your official city or county email, and your direct desk number?"
+    "R-hive Construction takes municipal code compliance and city regulations with the utmost seriousness. Because we treat all regulatory matters with top priority, our corporate protocol requires that we open a formal compliance ticket. Could you please provide your full name, officer or badge number, your official city or county email, and your direct desk number?"
 - STEP 2 (HANDLE LEGITIMATE CREDENTIALS VS. NON-CREDIBLE / BLUFF CALLERS):
   * IF CALLER READILY PROVIDES CREDENTIALS (Legitimate Officer):
     - Note Officer Full Name, Badge ID, official .gov or municipal email, direct desk phone, and specific address/matter in question.
@@ -4459,7 +4459,7 @@ CASE 6: MUNICIPAL CODE ENFORCEMENT & REGULATORY VERIFICATION GATE:
   * IF CALLER REFUSES, CANNOT PROVIDE BADGE/EMAIL, DEMANDS IMMEDIATE TRANSFER, OR THREATENS:
     - Do NOT argue. Do NOT panic. Do NOT admit fault. NEVER transfer to any live person!
     - Explain with unwavering, calm authority so simply that the non-credible caller realizes their bluff has failed:
-      "I completely understand your urgency. Because Are-Hive takes municipal compliance so seriously, our corporate protocol requires verified official credentials before our executive team can initiate official contact. If you don't have those details on hand right now, you are welcome to submit your notice from your official department email to office@rhiveconstruction.com, or give us a call back directly from your desk. Thank you for your time, have a good day, goodbye!"
+      "I completely understand your urgency. Because R-hive takes municipal compliance so seriously, our corporate protocol requires verified official credentials before our executive team can initiate official contact. If you don't have those details on hand right now, you are welcome to submit your notice from your official department email to office@rhiveconstruction.com, or give us a call back directly from your desk. Thank you for your time, have a good day, goodbye!"
     - Call "hangup_call" with reason: "unverified_code_enforcement" and goodbyePhrase: "Thank you for your time, have a good day, goodbye!"
   * IF CALLER SHIFTS AND ADMITS THEY ARE A RESIDENT/NEIGHBOR (NOT CODE ENFORCEMENT):
     - Smoothly transition to Case 7 Roadside Sign Removal!
@@ -4505,8 +4505,8 @@ STEP 2: Final question check:
 STEP 3: WARM SPOKEN FAREWELL & IMMEDIATE HANGUP TOOL CALL:
 - When the caller indicates they have no more questions, says "no", "nope", "that's all", "I'm good", "thanks", "thank you", "bye", "goodbye", or "have a good day":
   You MUST speak your final farewell out loud with a bright vocal smile:
-  "Thank you for calling Are-Hive Construction! Have a great day, goodbye!"
-  AND call the "hangup_call" tool with goodbyePhrase: "Thank you for calling Are-Hive Construction! Have a great day, goodbye!"
+  "Thank you for calling R-hive Construction! Have a great day, goodbye!"
+  AND call the "hangup_call" tool with goodbyePhrase: "Thank you for calling R-hive Construction! Have a great day, goodbye!"
 - CRITICAL: Never hang up silently! Always speak the farewell and execute the hangup_call tool so the phone call disconnects cleanly.
 - ABSOLUTE SPEECH INVARIANT: After speaking your final farewell and invoking hangup_call, STOP speaking immediately. NEVER speak reasoning, tool commentary, case notes, or internal analysis out loud to the caller.
 
@@ -5342,8 +5342,19 @@ class CallSession {
           responseModalities: ['AUDIO'],
           inputAudioTranscription: {},
           outputAudioTranscription: {},
+          sessionResumption: {},
           contextWindowCompression: { slidingWindow: {} },
+          realtimeInputConfig: {
+            automaticActivityDetection: {
+              disabled: false,
+              startOfSpeechSensitivity: 'START_SENSITIVITY_HIGH',
+              endOfSpeechSensitivity: 'END_SENSITIVITY_LOW',
+              prefixPaddingMs: 120,
+              silenceDurationMs: 650
+            }
+          },
           speechConfig: {
+            languageCode: 'en-US',
             voiceConfig: {
               prebuiltVoiceConfig: { voiceName: this.profile.voice }
             }
@@ -5383,13 +5394,13 @@ class CallSession {
       // Trigger Honey opening greeting immediately with high excitement, fast cadence, and vocal smile
       let triggerPrompt = '';
       if (this.isOutboundHoney) {
-        triggerPrompt = `The homeowner has just answered your outbound follow-up call from Are-Hive Construction roofing specialists.\n` +
+        triggerPrompt = `The homeowner has just answered your outbound follow-up call from R-hive Construction roofing specialists.\n` +
           `Deliver your opening greeting immediately with high energy, bubbly warmth, fast conversational tempo (~115%), and an unmistakable vocal smile:\n` +
-          `"Hi! This is Honey calling with Are-Hive Construction roofing specialists. I'm following up regarding your roofing project—am I speaking with the homeowner?"\n` +
+          `"Hi! This is Honey calling with R-hive Construction roofing specialists. I'm following up regarding your roofing project—am I speaking with the homeowner?"\n` +
           `ACOUSTIC & PROSODY RULES:\n` +
           `- STRICT MAXIMUM 20 WORDS.\n` +
           `- ZERO MONOLOGUES. Keep it punchy, warm, and natural.\n` +
-          `- CRITICAL BRAND PHONETICS: Always say two distinct words "Are Hive" ("Are-Hive Construction"). NEVER say "Rive", "Rives", "Ry-hive", or "Re-hive"!\n` +
+          `- PRONUNCIATION LOCK: Pronounce "R-hive" (/ˈɑɹˌhaɪv/) and "R-hive's" (/ˈɑɹˌhaɪvz/) with a crisp initial letter "R" (/ɑɹ/) followed immediately by "hive" (/haɪv/). NEVER blend R+h into "rive" (/ɹaɪv/), "rives", "ry-hive", or "re-hive"!\n` +
           `- STRICTLY BANNED WORDS: NEVER say "happy to help", or "we are happy". Deliver the greeting naturally with high energy and an uplifting vocal smile.\n` +
           `- STRICTLY NO laughter, giggles, chuckles, or audible "haha" sounds.\n` +
           `- Speak in a brisk, clean, continuous conversational flow.`;
@@ -5434,7 +5445,7 @@ class CallSession {
           '3. OPTION 3 - HAVE ' + targetEntity.toUpperCase() + ' MESSAGE THEM NOW THROUGH TEXT (GET BACK ASAP):\n' +
           '   - If caller says "have them text me", "text me", "message me now", "text", "option 3", etc.\n' +
           '   - Execute "request_kara_text" with callerName="' + (knownName || 'Customer') + '", customerPhone="' + this.callerPhone + '", companyName="' + (this.sessionData.companyName || '') + '", invoiceNumber="' + (this.sessionData.invoiceNumber || '') + '", reason="' + (this.sessionData.transferReason || 'Inquiry') + '", targetSpecialist="' + (isKara ? 'kara' : 'michael') + '", targetEntity="' + targetEntity + '".\n' +
-          '   - Confirm warmly: "I\'ve sent an urgent text alert to ' + targetEntity + ' with your details, and they will message you directly on this cell phone as soon as possible. Thank you for calling Are-Hive Construction, have a wonderful day!"\n' +
+          '   - Confirm warmly: "I\'ve sent an urgent text alert to ' + targetEntity + ' with your details, and they will message you directly on this cell phone as soon as possible. Thank you for calling R-hive Construction, have a wonderful day!"\n' +
           '   - Call "hangup_call".\n' +
           'STRICT RULES:\n' +
           '- DYNAMIC ENTITY RULE: Never say "Kara" or "Michael" unless the caller explicitly requested that specific person by name! Otherwise refer strictly to the department ("' + targetEntity + '").\n' +
@@ -5444,11 +5455,11 @@ class CallSession {
           '- STRICTLY BANNED WORDS: NEVER say "happy to help", or "we are happy". Let your smiling vocal tone do the work.\n' +
           '- Speak in a brisk, clean, continuous conversational flow.';
       } else {
-        triggerPrompt = 'A caller has just connected directly to your executive desk at Are-Hive Construction roofing specialists.\n' +
+        triggerPrompt = 'A caller has just connected directly to your executive desk at R-hive Construction.\n' +
           'Deliver your opening greeting immediately with high energy, bubbly warmth, fast conversational tempo (~115%), and an unmistakable vocal smile:\n' +
           '"' + chosenGreeting + '"\n' +
           'ACOUSTIC & PROSODY RULES:\n' +
-          '- EXACT BRAND PHONETICS: Articulate two distinct words "Are Hive" ("Are-Hive\'s AI Roofing Specialist", "Are-Hive Construction", rhyming with "star hive"). STRICTLY FORBIDDEN: NEVER pronounce as "Rive", "Rives", "Ry-hive", "Rye-hive", "Re-hive", or "Rehive"! It is strictly "Are-Hive"!\n' +
+          '- PRONUNCIATION LOCK: Pronounce "R-hive" (/ˈɑɹˌhaɪv/) and possessive "R-hive\'s" (/ˈɑɹˌhaɪvz/) with a crisp initial letter "R" (/ɑɹ/) followed immediately by "hive" (/haɪv/). NEVER blend R+h into "rive" (/ɹaɪv/), "rives", "ry-hive", "rye-hive", or "re-hive"! Your official concise title is strictly "AI Roof Specialist".\n' +
           '- High energy, upbeat, happy, and genuinely enthusiastic hospitality.\n' +
           '- ZERO NAME-DROPPING: Never say "Michael" or "Kara" in your opening greeting.\n' +
           '- STRICTLY BANNED WORDS: NEVER say "happy to help", or "we are happy". Deliver the exact greeting above naturally with high energy and an uplifting, cheerful vocal smile.\n' +
@@ -5456,8 +5467,8 @@ class CallSession {
           '- Speak in a brisk, clean, continuous conversational flow.';
       }
 
-      // Allow 180ms RTP frame settle after transfer_ring.wav (4.2s carrier pre-roll already established mobile audio path; saves 770ms TTFA)
-      await new Promise(resolve => setTimeout(resolve, 180));
+      // 50ms RTP frame settle after transfer_ring.wav (4.2s carrier pre-roll already opened PSTN media path; saves 900ms TTFA)
+      await new Promise(resolve => setTimeout(resolve, 50));
 
       await this.geminiSession.sendClientContent({
         turns: [
@@ -5482,14 +5493,22 @@ class CallSession {
 
   async handleGeminiMessage(msg) {
     try {
-      // 1. Interruption Detection (Barge-In)
+      // 1. Interruption Detection & Barge-In State Reconciliation
       if (msg.serverContent?.interrupted) {
         const now = Date.now();
         // Only accept barge-in if Honey was actively speaking (prevents false buffer clears from ambient noise)
         if (this.isModelSpeaking && (!this.lastClearTime || (now - this.lastClearTime > 400))) {
           this.lastClearTime = now;
           this.isModelSpeaking = false;
-          console.log('[CallSession ' + this.callSid + '] ⚡ Sustained human barge-in confirmed by Gemini Live. Clearing Twilio playback buffer.');
+          this.bargeInCount = (this.bargeInCount || 0) + 1;
+          const lastAssistantTurn = this.conversationTurns[this.conversationTurns.length - 1];
+          if (lastAssistantTurn && lastAssistantTurn.role === 'assistant' && !lastAssistantTurn.interrupted) {
+            lastAssistantTurn.interrupted = true;
+            if (!lastAssistantTurn.text.endsWith('[Interrupted by caller]')) {
+              lastAssistantTurn.text = lastAssistantTurn.text.trim() + ' — [Interrupted by caller]';
+            }
+          }
+          console.log('[CallSession ' + this.callSid + '] ⚡ Sustained human barge-in confirmed by Gemini Live. Reconciled turn state & flushed Twilio jitter buffer.');
           if (this.streamSid && this.twilioWs.readyState === WebSocket.OPEN) {
             this.twilioWs.send(JSON.stringify({ event: 'clear', streamSid: this.streamSid }));
           }
@@ -6134,7 +6153,7 @@ class CallSession {
           return {
             transferInitiated: false,
             error: 'SOLICITOR_QUARANTINE',
-            instruction: 'This caller is a vendor, marketer, or solicitor. DO NOT transfer them under any circumstances. Say: "At Are-Hive Construction, all vendor solicitations and partner proposals must be submitted in writing to info@rhiveconstruction.com for executive review. Thank you, have a great day!" and immediately call the hangup_call tool.'
+            instruction: 'This caller is a vendor, marketer, or solicitor. DO NOT transfer them under any circumstances. Say: "At R-hive Construction, all vendor solicitations and partner proposals must be submitted in writing to info@rhiveconstruction.com for executive review. Thank you, have a great day!" and immediately call the hangup_call tool.'
           };
         }
 
@@ -6699,7 +6718,7 @@ class CallSession {
           return { status: 'transferred_active' };
         }
         const reason = args?.reason || 'customer_goodbye';
-        const goodbyePhrase = args?.goodbyePhrase || 'Thank you for calling Are-Hive Construction! Have a great day, goodbye!';
+        const goodbyePhrase = args?.goodbyePhrase || 'Thank you for calling R-hive Construction! Have a great day, goodbye!';
         console.log(`[CallSession ${this.callSid}] 📞 Graceful Hangup initiated (Reason: ${reason}, Spoken Phrase: "${goodbyePhrase}")`);
 
         this.pendingHangup = true;
@@ -7249,8 +7268,19 @@ Respond naturally with full executive poise, smiling warmth, and Wasatch Front r
           responseModalities: ['AUDIO'],
           inputAudioTranscription: {},
           outputAudioTranscription: {},
+          sessionResumption: {},
           contextWindowCompression: { slidingWindow: {} },
+          realtimeInputConfig: {
+            automaticActivityDetection: {
+              disabled: false,
+              startOfSpeechSensitivity: 'START_SENSITIVITY_HIGH',
+              endOfSpeechSensitivity: 'END_SENSITIVITY_LOW',
+              prefixPaddingMs: 120,
+              silenceDurationMs: 650
+            }
+          },
           speechConfig: {
+            languageCode: 'en-US',
             voiceConfig: {
               prebuiltVoiceConfig: { voiceName: this.profile.voice }
             }
@@ -7292,7 +7322,7 @@ Respond naturally with full executive poise, smiling warmth, and Wasatch Front r
           {
             role: 'user',
             parts: [{
-              text: 'The web audio connection has established with RHIVE Construction Roofing Specialists. Honey has picked up. Speak your dynamic opening greeting immediately with high energy, bubbly warmth, fast conversational tempo (~115%), an audible vocal smile, and genuinely enthusiastic hospitality.'
+              text: 'The web audio connection has established with R-hive Construction. Speak your exact opening greeting immediately with high energy, bubbly warmth, fast conversational tempo (~115%), and an audible vocal smile: "Hi! This is Honey! R-hive\'s AI Roof Specialist, how may I assist your call today?" PRONUNCIATION LOCK: Pronounce "R-hive\'s" (/ˈɑɹˌhaɪvz/) with a crisp letter "R" (/ɑɹ/) + "hive" (/haɪv/), never "rive"!'
             }]
           }
         ],
@@ -10290,8 +10320,8 @@ app.post('/api/telephony/goldfish-review', async (req, res) => {
     if (/\b(happy to help|we are happy|so happy)\b/i.test(targetText)) {
       deterministicFindings.push('Contains banned filler phrase ("happy to help" / "so happy"); use natural vocal smile instead.');
     }
-    if (/\b(ry-hive|ryehive|re-hive|rehive|concierge)\b/i.test(targetText)) {
-      deterministicFindings.push('Brand phonetic/title drift detected: strictly enforce "Are-Hive" ("R-HIVE Construction Roofing Specialists") and "AI Roofing Specialist".');
+    if (/\b(ry-hive|ryehive|re-hive|rehive|rive'?s|are-hive'?s|ai roofing specialist|concierge)\b/i.test(targetText)) {
+      deterministicFindings.push('Brand phonetic/title drift detected: strictly enforce "R-hive" / "R-hive\'s" (/ˈɑɹˌhaɪvz/) and "AI Roof Specialist".');
     }
     if (/<break\b/i.test(targetText)) {
       deterministicFindings.push('Raw SSML <break> tag inside Gemini Live prompt causes literal spoken tag artifacts; use punctuation pacing only.');
@@ -10310,7 +10340,7 @@ app.post('/api/telephony/goldfish-review', async (req, res) => {
 Audit this RHIVE Telephony directive/flow cold against these non-negotiable invariants:
 1. Max 20 words per Honey spoken turn & strictly ONE question per turn.
 2. Zero name-dropping ("Michael", "Kara") before that human physically answers.
-3. Brand phonetics strictly "R-Hive" ("Are-Hive"), title "AI Roofing Specialist" (never "concierge"), zero "happy to help".
+3. Brand phonetics strictly "R-hive" / "R-hive's" (/ˈɑɹˌhaɪvz/), title strictly "AI Roof Specialist" (never "AI Roofing Specialist" or "concierge"), zero "happy to help".
 4. Zero dead-air paths and mandatory digit-by-digit Utah Grid address readback.
 
 TARGET FLOW: ${flowName}
@@ -10414,8 +10444,12 @@ app.post('/api/telephony/aqua-canary', async (req, res) => {
     ]);
     try { session.close(); } catch (_) {}
     const latencyMs = Date.now() - startedAt;
+    moderatorState.totalCanaryChecks += 1;
+    moderatorState.consecutiveCanaryPasses += 1;
     recordAquaGeminiHandshake(true, null);
     if (!isTestProbe) {
+      moderatorState.totalCanaryChecks -= 1; // handleModeratorHealthTransition increments once for prod cron
+      moderatorState.consecutiveCanaryPasses -= 1;
       await handleModeratorHealthTransition({
         healthy: true,
         source: 'aqua-canary',
@@ -10521,6 +10555,25 @@ app.get('/api/telephony/carrier-shield', (req, res) => {
   });
 });
 
+// Phase 5: Active AQuA Constellation Cluster Graph & Live 24/7 Moderator Visualization API
+app.get('/api/telephony/aqua-clusters', (req, res) => {
+  const graph = buildAquaConstellationGraph({
+    recentInsights: aquaTelemetryState.recentInsights,
+    aquaTelemetryState
+  });
+  res.json({
+    success: true,
+    ...graph,
+    carrierShield: {
+      cnam: 'RHIVE ROOFING',
+      shakenStir: 'Attestation A',
+      a2p10Dlc: 'VERIFIED (CQRSSYM)',
+      canaryPort: '+17438876637'
+    },
+    generatedAt: new Date().toISOString()
+  });
+});
+
 // Phase 3: Closed-Loop AQuA -> Elephant-Goldfish (EGM) Self-Tuning Pipeline
 app.post('/api/telephony/aqua-self-tune', async (req, res) => {
   try {
@@ -10542,7 +10595,7 @@ Given these recent call trajectory anomalies:
 ${clusterSummary}
 
 Draft ONE concise, surgical production directive (<35 words) that eliminates these anomalies while obeying:
-- Brand phonetics strictly "R-Hive" ("Are-Hive"), never "Ry-hive" or "concierge".
+- Brand phonetics strictly "R-hive" / "R-hive's" (/ˈɑɹˌhaɪvz/), title strictly "AI Roof Specialist" (never "Ry-hive", "rive", or "concierge").
 - Zero "happy to help" filler and zero SSML <break> tags.
 - Max 20 words per Honey turn, 1 question per turn, zero executive name-dropping before live answer.
 Output plain text only (the single directive sentence).`
@@ -10556,7 +10609,7 @@ Output plain text only (the single directive sentence).`
     // Pass candidate directly through Stateless Goldfish Zero-Context Gate
     const bannedHits = [];
     if (/\b(happy to help|we are happy|so happy)\b/i.test(candidateRule)) bannedHits.push('Banned filler phrase');
-    if (/\b(ry-hive|ryehive|re-hive|rehive|concierge)\b/i.test(candidateRule)) bannedHits.push('Brand phonetic/title drift');
+    if (/\b(ry-hive|ryehive|re-hive|rehive|rive'?s|are-hive'?s|ai roofing specialist|concierge)\b/i.test(candidateRule)) bannedHits.push('Brand phonetic/title drift');
     if (/<break\b/i.test(candidateRule)) bannedHits.push('Raw SSML <break> leak');
 
     const goldfishPassed = bannedHits.length === 0;
@@ -10583,11 +10636,13 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'RHIVE Multi-Model Telephony Swarm & Speech-to-Speech Bridge',
-    version: '1.9.0',
-    revision: 'Rev 68',
+    version: '1.9.1',
+    revision: 'Rev 69',
     model: LIVE_VOICE_MODEL,
     voicePersona: AGENT_PROFILES.intake.voice,
-    spokenBrandPhonetic: 'Are-Hive',
+    spokenBrandPhonetic: "R-hive (/ˈɑɹˌhaɪv/)",
+    agentTitle: 'AI Roof Specialist',
+    sotaVoiceOptimizations: true,
     executiveModeratorSpace: EXECUTIVE_SYNC_SPACE,
     geminiKeyConfigured,
     aquaStatus: (geminiKeyConfigured && aquaTelemetryState.lastGeminiHandshakeOk !== false) ? 'ANSWERING_READY' : 'DEGRADED_FALLBACK_ARMED',
@@ -11507,7 +11562,7 @@ app.get(['/audio/rhive_hold_groove.mp3', '/audio/rhive_hold_groove.wav'], (req, 
   res.status(404).send('Hold music not found');
 });
 
-// Inbound Gateway: Direct Single-Agent AI Roofing Specialist (Honey - Laomedeia Voice) OR Direct Open Voice Line
+// Inbound Gateway: Direct Single-Agent AI Roof Specialist (Honey - Laomedeia Voice) OR Direct Open Voice Line
 app.all(['/twiml', '/voice', '/ivr'], (req, res) => {
   const host = req.headers['x-forwarded-host'] || req.headers.host || 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
   const wsProtocol = req.headers['x-forwarded-proto'] === 'https' ? 'wss' : 'ws';
@@ -11543,7 +11598,7 @@ app.all(['/twiml', '/voice', '/ivr'], (req, res) => {
 
   const fallbackUrl = 'https://' + directHost + '/voice-stream-fallback?callSid=' + encodeURIComponent(callSid) + '&amp;caller=' + encodeURIComponent(caller);
 
-  console.log('[Inbound Call] Call ' + callSid + ' from ' + caller + ' to ' + called + '. Connecting directly to Honey AI Roofing Specialist via ' + wsUrl);
+  console.log('[Inbound Call] Call ' + callSid + ' from ' + caller + ' to ' + called + '. Connecting directly to Honey AI Roof Specialist via ' + wsUrl);
 
   res.type('text/xml');
   return res.send('<?xml version="1.0" encoding="UTF-8"?>\n' +
@@ -11615,7 +11670,7 @@ app.all('/voice-stream-fallback', async (req, res) => {
   return res.send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Gather input="dtmf speech" numDigits="1" timeout="6" speechTimeout="auto" action="https://${host}/fallback-decision?callerPhone=${safeCallerParam}&amp;reason=Inbound+Roofing+Inquiry" method="POST">
-        <Say voice="Google.en-US-Neural2-F"><break time="150ms"/>Hi! Thanks for calling Are-Hive Construction Roofing Specialists! Press 1 or say callback to lock in an immediate call with our project specialist, press 2 to leave your property address and note, or press 3 and we will text you right now!</Say>
+        <Say voice="Google.en-US-Neural2-F"><break time="150ms"/>Hi! Thanks for calling <sub alias="R hive">R-hive</sub> Construction Roofing Specialists! Press 1 or say callback to lock in an immediate call with our project specialist, press 2 to leave your property address and note, or press 3 and we will text you right now!</Say>
     </Gather>
     <Dial callerId="${escapeXml(TWILIO_NUMBER)}" record="record-from-answer-dual" timeout="22" action="https://${host}/transfer-completed?callerPhone=${safeCallerParam}&amp;reason=Direct+Rescue+Bridge">
         <Number>${MICHAEL_CELL}</Number>
@@ -11751,7 +11806,7 @@ app.all('/screen-whisper', (req, res) => {
   return res.send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Gather input="dtmf speech" numDigits="1" speechTimeout="auto" hints="1, 2, one, two, accept, decline, take" action="${actionUrl}" method="POST" timeout="10">
-        <Say voice="Google.en-US-Neural2-F"><break time="150ms"/>Hi ${targetFirstName}! Honey here with Are-Hive. I have ${escapeXml(callerName)}${companyClause}${invoiceClause}${projectClause} on the line for you regarding ${escapeXml(reason)}. Say 1 or press 1 to take the call, or say 2 or press 2 to send to voicemail.</Say>
+        <Say voice="Google.en-US-Neural2-F"><break time="150ms"/>Hi ${targetFirstName}! Honey here with <sub alias="R hive">R-hive</sub>. I have ${escapeXml(callerName)}${companyClause}${invoiceClause}${projectClause} on the line for you regarding ${escapeXml(reason)}. Say 1 or press 1 to take the call, or say 2 or press 2 to send to voicemail.</Say>
     </Gather>
     <Gather input="dtmf speech" numDigits="1" speechTimeout="auto" hints="1, 2, one, two, accept, decline" action="${actionUrl}" method="POST" timeout="6">
         <Say voice="Google.en-US-Neural2-F"><break time="150ms"/>Say 1 or press 1 to accept the call from ${escapeXml(callerName)}, or say 2 or press 2 to send to voicemail.</Say>
@@ -12176,8 +12231,8 @@ app.all('/message-recorded', async (req, res) => {
 
   res.type('text/xml');
   const closingSpoken = messageText
-    ? `<break time="150ms"/>Got it! I've sent that message directly to ${targetEntity}. Thank you for calling Are-Hive Construction Roofing Specialists! Have a wonderful day, goodbye!`
-    : `<break time="150ms"/>We have notified ${targetEntity} that you called. Thank you for calling Are-Hive Construction Roofing Specialists! Have a wonderful day, goodbye!`;
+    ? `<break time="150ms"/>Got it! I've sent that message directly to ${targetEntity}. Thank you for calling <sub alias="R hive">R-hive</sub> Construction! Have a wonderful day, goodbye!`
+    : `<break time="150ms"/>We have notified ${targetEntity} that you called. Thank you for calling <sub alias="R hive">R-hive</sub> Construction! Have a wonderful day, goodbye!`;
 
   return res.send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>

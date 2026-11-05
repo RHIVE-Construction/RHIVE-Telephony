@@ -4,7 +4,7 @@
 **Target Environment:** Google Cloud Run (`rhive-voice-live-bridge`)  
 **Live Telephony Endpoint:** `+1 (839) 867-6637` (+1 839-86-ROOFS) *(All calls to RHIVE Main are forwarded here via JustCall for Honey to answer directly)*  
 **Telephony Engine:** Google Gemini 3.8 Live Multimodal Speech-to-Speech (`gemini-3.8-live` & `gemini-3.8-live-extended-thinking`)  
-**Assigned Swarm Role:** Honey (AI Roofing Specialist) & Emergency Dispatch / Insurance Restoration Swarm  
+**Assigned Swarm Role:** Honey (AI Roof Specialist) & Emergency Dispatch / Insurance Restoration Swarm  
 **Singular Spoken Brand:** Strictly `"R-hive Construction roofing specialists!"`  
 
 ---
@@ -15,7 +15,7 @@ Flow 2 unifies all urgent distress calls, active water intrusions, and insurance
 
 ```mermaid
 flowchart TD
-    Inbound["Caller Inbound: Active Leak or Storm/Hail Distress"] --> HoneyGreet["Honey Ring-1 Direct Greeting (Empathetic Triage)<br/>'Hi! This is Honey! R-hive's AI Roofing Specialist, how may I assist your call today?'"]
+    Inbound["Caller Inbound: Active Leak or Storm/Hail Distress"] --> HoneyGreet["Honey Ring-1 Direct Greeting (Empathetic Triage)<br/>'Hi! This is Honey! R-hive's AI Roof Specialist, how may I assist your call today?'"]
     
     HoneyGreet --> NameVerify["First Name Spelling Verification Gate:<br/>Honey: 'Hi Elena! Is that spelled E-L-E-N-A?'<br/>Honey PAUSES & WAITS for verbal confirmation right there"]
     
@@ -96,7 +96,7 @@ flowchart TD
 ### Turn-by-Turn Logic (Live Validated Flow)
 
 #### Turn 0: Reception & First Name Spelling Verification
-* **Honey:** *"Hi! This is Honey! R-hive's AI Roofing Specialist, how may I assist your call today?"*
+* **Honey:** *"Hi! This is Honey! R-hive's AI Roof Specialist, how may I assist your call today?"*
 * **Caller:** *"Hi Honey, this is Elena Vance. We have an active water leak dripping through our kitchen ceiling at 4500 South 700 East in Salt Lake City."*
 * **Honey (<20 Words):**
   > *"Hi Elena! Is that spelled E-L-E-N-A?"*

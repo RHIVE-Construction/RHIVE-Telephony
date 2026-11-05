@@ -1,19 +1,20 @@
 /**
  * ============================================================================
- * RHIVE TELEPHONY V6.0 - AVALON-STYLE WASATCH GRID & ROOFING PHONETIC LEXICON
+ * RHIVE TELEPHONY V6.1 - AVALON-STYLE WASATCH GRID & ROOFING PHONETIC LEXICON
  * + GOOGLE ADK MODULAR SPECIALIST SUB-AGENT MANIFESTS
  * ============================================================================
  * Sub-millisecond domain homophone correction for Utah street coordinates,
  * Wasatch Front municipalities, roofing systems, and trade partners, plus
- * dual-layer vocal phonetic ("Are-Hive") -> written brand ("R-HIVE") mapping.
+ * IPA-anchored vocal token ("R-hive" / "R-hive's" /ˈɑɹˌhaɪvz/) -> written brand ("R-HIVE") mapping.
  */
 
 const LEXICON_REPLACEMENTS = [
-  // 1. Brand Phonetics ("Are-Hive" vocal synthesis -> crisp "R-HIVE" written transcript)
-  { pattern: /\b(?:are[\s-]+hive'?s|r[\s-]+hive'?s|arhive'?s|archive'?s|rive'?s|rye[\s-]*hive'?s|ry[\s-]*hive'?s|re[\s-]*hive'?s)(?=\s+(?:ai\s+roofing|roofing|construction|project|specialist|team|certified))/gi, replacement: "R-HIVE's" },
+  // 1. Brand Phonetics ("R-hive" / "R-hive's" vocal token -> crisp "R-HIVE" written transcript)
+  { pattern: /\b(?:r[\s-]+hive'?s|are[\s-]+hive'?s|arhive'?s|archive'?s|rive'?s|rye[\s-]*hive'?s|ry[\s-]*hive'?s|re[\s-]*hive'?s)(?=\s+(?:ai\s+roof(?:ing)?|roof(?:ing)?|construction|project|specialist|team|certified))/gi, replacement: "R-HIVE's" },
+  { pattern: /\bai\s+roofing\s+specialist\b/gi, replacement: 'AI Roof Specialist' },
   { pattern: /\b(?:arhive|archive|r[\s-]+hive|are[\s-]+hive|rye[\s-]*hive|ry[\s-]*hive|re[\s-]*hive)\s+(?:roofing|construction)\b/gi, replacement: 'R-HIVE Construction' },
-  { pattern: /\b(?:are[\s-]+hive'?s|r-hive's)\b/gi, replacement: "R-HIVE's" },
-  { pattern: /\b(?:are[\s-]+hive|arhive|rye[\s-]*hive|ry[\s-]*hive|re[\s-]*hive|r-hive)\b/gi, replacement: 'R-HIVE' },
+  { pattern: /\b(?:r-hive's|are[\s-]+hive'?s)\b/gi, replacement: "R-HIVE's" },
+  { pattern: /\b(?:r-hive|are[\s-]+hive|arhive|rye[\s-]*hive|ry[\s-]*hive|re[\s-]*hive)\b/gi, replacement: 'R-HIVE' },
 
   // 2. Roofing Materials & Engineering Systems
   { pattern: /\b(?:owens|owen'?s|owns)\s+(?:corning|cornering)\s+duration\s+flex\b/gi, replacement: 'Owens Corning Duration FLEX' },
@@ -85,9 +86,9 @@ function normalizeRoofingWithReport(input) {
 const SPECIALIST_SUBAGENTS = {
   intake_greeter: {
     id: 'intake_greeter',
-    title: 'Front-Desk Executive Switchboard Specialist',
-    focus: 'Sub-20-word warm greeting ("Are-Hive\'s AI Roofing Specialist"), rapid caller intent classification, and zero-friction routing.',
-    directive: 'Keep turns <= 18 words, pronounce brand strictly as "Are-Hive", classify caller intent within 1 turn, and transition seamlessly into estimator, emergency storm, or commercial/AP-AR specialist focus.'
+    title: 'Front-Desk AI Roof Specialist',
+    focus: 'Sub-20-word warm greeting ("R-hive\'s AI Roof Specialist" /ˈɑɹˌhaɪvz/), rapid caller intent classification, and zero-friction routing.',
+    directive: 'Keep turns <= 18 words, pronounce "R-hive" (/ˈɑɹˌhaɪv/) and "R-hive\'s" (/ˈɑɹˌhaɪvz/) crisply (never "rive"), use official title "AI Roof Specialist", classify caller intent within 1 turn, and transition seamlessly into estimator, emergency storm, or commercial/AP-AR specialist focus.'
   },
   residential_storm_estimator: {
     id: 'residential_storm_estimator',

@@ -4,7 +4,7 @@
 **Target Environment:** Google Cloud Run (`rhive-voice-live-bridge`)  
 **Live Telephony Endpoint:** `+1 (839) 867-6637` (+1 839-86-ROOFS) *(All calls to RHIVE Main are forwarded here for Honey to answer directly)*  
 **Live Executive Dashboard:** [https://rhive-voice-live-bridge-910835773728.us-central1.run.app/](https://rhive-voice-live-bridge-910835773728.us-central1.run.app/)  
-**Assigned Swarm Role:** Honey (AI Roofing Specialist & Anti-Spam Sentry)  
+**Assigned Swarm Role:** Honey (AI Roof Specialist & Anti-Spam Sentry)  
 
 ---
 

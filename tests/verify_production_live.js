@@ -26,11 +26,11 @@ async function verifyProduction() {
   console.log(' RHIVE V6.0 LIVE PRODUCTION CLOUD RUN & WSS AUDIO VERIFICATION');
   console.log('==================================================================');
 
-  // 1. Live Cloud Run /health (v1.9.0)
+  // 1. Live Cloud Run /health (v1.9.1)
   const health = await axios.get(`https://${CLOUD_RUN_HOST}/health`);
   assert(
-    health.status === 200 && health.data.version === '1.9.0' && health.data.spokenBrandPhonetic === 'Are-Hive',
-    `Cloud Run /health reports version: ${health.data.version} (Spoken Brand: ${health.data.spokenBrandPhonetic}, Moderator: ${health.data.executiveModeratorSpace})`
+    health.status === 200 && health.data.version === '1.9.1' && health.data.spokenBrandPhonetic === 'R-hive (/ˈɑɹˌhaɪv/)' && health.data.agentTitle === 'AI Roof Specialist',
+    `Cloud Run /health reports version: ${health.data.version} (Spoken Brand: ${health.data.spokenBrandPhonetic}, Title: ${health.data.agentTitle})`
   );
   assert(
     health.data.zeroDeadAirFallback === true && health.data.geminiKeyConfigured === true,
@@ -63,13 +63,19 @@ async function verifyProduction() {
     `GET /api/telephony/carrier-shield confirms CNAM ("RHIVE ROOFING"), SHAKEN/STIR ("A"), and 10DLC ("VERIFIED")`
   );
 
-  // 4. Live Phonetic Normalization ("Are-Hive's" -> "R-HIVE's") via Firebase Hosting Proxy
+  // 4. Live Phonetic Normalization ("R-hive's AI Roof Specialist" -> "R-HIVE's AI Roof Specialist") & Active AQuA Clusters
   const lexRes = await axios.post(`${HOSTING_URL}/api/workspace/lexicon-normalize`, {
-    text: "Hi! This is Honey! Are-Hive's AI Roofing Specialist, how may I assist your call today?"
+    text: "Hi! This is Honey! R-hive's AI Roof Specialist, how may I assist your call today?"
   });
   assert(
-    lexRes.status === 200 && lexRes.data.normalized.includes("R-HIVE's AI Roofing Specialist"),
-    `Firebase Hosting lexicon proxy normalizes spoken "Are-Hive's" -> "${lexRes.data.normalized}"`
+    lexRes.status === 200 && lexRes.data.normalized.includes("R-HIVE's AI Roof Specialist"),
+    `Firebase Hosting lexicon proxy normalizes spoken "R-hive's AI Roof Specialist" -> "${lexRes.data.normalized}"`
+  );
+
+  const clustersRes = await axios.get(`https://${CLOUD_RUN_HOST}/api/telephony/aqua-clusters`);
+  assert(
+    clustersRes.status === 200 && Array.isArray(clustersRes.data.clusters) && clustersRes.data.clusters.length === 6 && clustersRes.data.sotaVoiceOptimizations?.languageCode === 'en-US',
+    `GET /api/telephony/aqua-clusters returns 6 live semantic clusters & en-US SOTA voice telemetry`
   );
 
   // 5. Live /twiml Zero-Dead-Air Redirect Check

@@ -1,7 +1,7 @@
 # R-hive Construction Roofing Specialist: Master Customer Telephony Flowchart & Script Matrix (Revision 67)
 **System Target Line:** +1 (839) 867-6637 (`839-86-ROOFS`) *(All calls to RHIVE Main are forwarded here via JustCall for Honey to answer directly)*  
 **Engine:** Google Gemini 3.8 Live Multimodal Speech-to-Speech (`gemini-3.8-live` & `gemini-3.8-live-extended-thinking`)  
-**Acoustic Profile:** Leda (Honey AI Roofing Specialist & Executive Project Specialist) | **Tone:** High warmth, radiant vocal smile  
+**Acoustic Profile:** Leda (Honey AI Roof Specialist & Executive Project Specialist) | **Tone:** High warmth, radiant vocal smile  
 **Architecture:** Zero-IVR Ring 1 Direct Answer (Pure Voice, Zero Robotic Menus)  
 
 ---
@@ -13,7 +13,7 @@
 
 ```mermaid
 flowchart TD
-    Dial["Caller Dials Office Line / Forwarded from RHIVE Main via JustCall"] --> Ring1["Honey Ring-1 Direct Answer (Zero IVR Menus / Pure Voice)<br/>150ms Settle Delay + Radiant Vocal Smile<br/>'Hi! This is Honey! R-hive's AI Roofing Specialist, how may I assist your call today?'"]
+    Dial["Caller Dials Office Line / Forwarded from RHIVE Main via JustCall"] --> Ring1["Honey Ring-1 Direct Answer (Zero IVR Menus / Pure Voice)<br/>150ms Settle Delay + Radiant Vocal Smile<br/>'Hi! This is Honey! R-hive's AI Roof Specialist, how may I assist your call today?'"]
 
     %% Name Verification Gate
     Ring1 --> NameCapture["Caller States Name"]
@@ -92,7 +92,7 @@ flowchart TD
 
 | Turn | Intent / Trigger | Honey Spoken Output (Strict Acoustic Standard) | Backend State & Tool Execution |
 | :--- | :--- | :--- | :--- |
-| **0** | Inbound Call Connect | *(Carrier settle 150ms)*<br/>`"Hi! This is Honey! R-hive's AI Roofing Specialist, how may I assist your call today?"` | CallSession initialized; ambient audio loaded; JustCall CDR synced. |
+| **0** | Inbound Call Connect | *(Carrier settle 150ms)*<br/>`"Hi! This is Honey! R-hive's AI Roof Specialist, how may I assist your call today?"` | CallSession initialized; ambient audio loaded; JustCall CDR synced. |
 | **0B**| First Name Stated | `"Awesome! Is that spelled [S-A-R-A-H]?"`<br/>*(Honey pauses and waits for verbal confirmation right there)* | `update_caller_profile` called; first name spelling confirmed. |
 | **1** | Address Stated | `verify_address` geocodes address; Honey reads back:<br/>`"I have [Address], [City], Utah [Zip]—does that match your property?"` | `verify_address` called; Google Solar pitch matrix & parcel data queried. |
 | **2** | Audio Confirmation | Caller confirms; Honey derives shorthand:<br/>`"Perfect! For the [propertyName], are you looking for a certified quote on an aging roof..."` | `addressConfirmed = true`; `propertyName` adopted. |

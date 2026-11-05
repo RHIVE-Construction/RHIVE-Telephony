@@ -3,7 +3,7 @@
 **Swarm Revision:** Revision 67 Production Release  
 **Target Environment:** Google Cloud Run (`rhive-voice-live-bridge`)  
 **Live Telephony Endpoint:** `+1 (839) 867-6637` (+1 839-86-ROOFS) *(All calls to RHIVE Main are forwarded here via JustCall for Honey to answer directly)*  
-**Assigned Swarm Roles:** Honey (AI Roofing Specialist), Kara Robinson (VP Operations), Michael Robinson (General Contractor)  
+**Assigned Swarm Roles:** Honey (AI Roof Specialist), Kara Robinson (VP Operations), Michael Robinson (General Contractor)  
 **Core Voice Engine:** Google Gemini 3.8 Live (`gemini-3.8-live` & `gemini-3.8-live-extended-thinking`)  
 
 ---
@@ -17,7 +17,7 @@ The RHIVE telephony swarm operates on a unified, high-speed multimodal pipeline 
 │                   RHIVE INBOUND TELEPHONY ROUTING MATRIX                    │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ Inbound Call -> Forwarded via JustCall -> Ring-1 Direct Answer (No IVR)      │
-│ Honey Greeting: "Hi! This is Honey! R-hive's AI Roofing Specialist,         │
+│ Honey Greeting: "Hi! This is Honey! R-hive's AI Roof Specialist,         │
 │                  how may I assist your call today?"                         │
 │                  (+150ms carrier settle pause + radiant vocal smile)        │
 ├─────────────────────────────────────────────────────────────────────────────┤

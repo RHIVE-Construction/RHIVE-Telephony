@@ -124,7 +124,8 @@ async function runTests() {
   try {
     const res = await axios.get(`http://localhost:${TEST_PORT}/health`);
     assert(res.status === 200 && res.data.status === 'ok', 'GET /health returns 200 OK');
-    assert(res.data.revision === 'Rev 68' && res.data.version === '1.9.0', 'Health reports revision: Rev 68 (v1.9.0)');
+    assert(res.data.revision === 'Rev 69' && res.data.version === '1.9.1', 'Health reports revision: Rev 69 (v1.9.1)');
+    assert(res.data.spokenBrandPhonetic === 'R-hive (/ˈɑɹˌhaɪv/)' && res.data.agentTitle === 'AI Roof Specialist' && res.data.sotaVoiceOptimizations === true, 'Health confirms R-hive IPA lock, AI Roof Specialist title & SOTA voice optimizations');
     assert(res.data.ambientCompositeLoaded === true, 'Health reports ambientCompositeLoaded: true');
     assert(res.data.dashboardAvailable === true, 'Health reports Executive Dashboard is available');
     assert(res.data.verifyAvailable === true, 'Health reports Project Verification PWA is available');
@@ -517,22 +518,38 @@ async function runTests() {
     const selfTuneRes = await axios.post(`http://localhost:${TEST_PORT}/api/telephony/aqua-self-tune`, {});
     assert(selfTuneRes.status === 200 && selfTuneRes.data.goldfishColdAudit?.passed === true && selfTuneRes.data.readyForOneTapApproval === true, `POST /api/telephony/aqua-self-tune synthesizes cold-verified directive: "${(selfTuneRes.data.candidateDirective || '').substring(0, 52)}..."`);
 
-    // Test 21: V6.0 "Are-Hive" Phonetics, 13 Must Invariants, Goldfish Judge, 24/7 Moderator & Carrier Shield
+    // Test 21: V6.1 "R-hive's" IPA (/ˈɑɹˌhaɪvz/), "AI Roof Specialist", SOTA Live Voice, AQuA Clusters & 24/7 Moderator
+    assert(aiHtml.includes('aquaConstellationDeck') && aiHtml.includes('aquaClusterMapCard') && aiHtml.includes('aquaInvariantsModeratorCard'), 'ai.html embeds Active AQuA Constellation Cluster Graph & 24/7 Moderator HUD');
+
     const settingsRes = await axios.get(`http://localhost:${TEST_PORT}/api/agent/live-settings`);
     assert(
       settingsRes.status === 200 &&
-      settingsRes.data.systemInstruction.includes("Are-Hive's AI Roofing Specialist") &&
-      !settingsRes.data.systemInstruction.includes("R-hive's AI Roofing Specialist") &&
+      settingsRes.data.systemInstruction.includes("R-hive's AI Roof Specialist") &&
+      settingsRes.data.systemInstruction.includes('/ˈɑɹˌhaɪvz/') &&
+      !settingsRes.data.systemInstruction.includes("Are-Hive") &&
+      !settingsRes.data.systemInstruction.includes("AI Roofing Specialist") &&
       !settingsRes.data.systemInstruction.includes('Michael Robinson and our estimating team'),
-      'GET /api/agent/live-settings enforces phonetic "Are-Hive\'s AI Roofing Specialist" & zero pre-answer executive name-drops'
+      'GET /api/agent/live-settings enforces "R-hive\'s AI Roof Specialist" + IPA (/ˈɑɹˌhaɪvz/) & zero pre-answer executive name-drops'
     );
 
-    const areHiveNorm = await axios.post(`http://localhost:${TEST_PORT}/api/workspace/lexicon-normalize`, {
-      text: "Hi! This is Honey! Are-Hive's AI Roofing Specialist, how may I assist your call today?"
+    const rHiveNorm = await axios.post(`http://localhost:${TEST_PORT}/api/workspace/lexicon-normalize`, {
+      text: "Hi! This is Honey! R-hive's AI Roof Specialist, how may I assist your call today?"
     });
     assert(
-      areHiveNorm.status === 200 && areHiveNorm.data.normalized === "Hi! This is Honey! R-HIVE's AI Roofing Specialist, how may I assist your call today?",
-      `Dual-layer phonetic mapper converts spoken "Are-Hive's" -> written "${areHiveNorm.data.normalized}"`
+      rHiveNorm.status === 200 && rHiveNorm.data.normalized === "Hi! This is Honey! R-HIVE's AI Roof Specialist, how may I assist your call today?",
+      `Dual-layer phonetic mapper converts spoken "R-hive's AI Roof Specialist" -> written "${rHiveNorm.data.normalized}"`
+    );
+
+    const clustersRes = await axios.get(`http://localhost:${TEST_PORT}/api/telephony/aqua-clusters`);
+    assert(
+      clustersRes.status === 200 &&
+      clustersRes.data.success === true &&
+      Array.isArray(clustersRes.data.clusters) &&
+      clustersRes.data.clusters.length === 6 &&
+      clustersRes.data.sotaVoiceOptimizations?.languageCode === 'en-US' &&
+      clustersRes.data.sotaVoiceOptimizations?.startOfSpeechSensitivity === 'START_SENSITIVITY_HIGH' &&
+      clustersRes.data.sotaVoiceOptimizations?.endOfSpeechSensitivity === 'END_SENSITIVITY_LOW',
+      'GET /api/telephony/aqua-clusters serves 6 live semantic clusters & SOTA asymmetric VAD voice config'
     );
 
     assert(
