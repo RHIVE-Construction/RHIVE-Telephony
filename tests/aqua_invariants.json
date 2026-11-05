@@ -1,0 +1,98 @@
+{
+  "schemaVersion": "1.9.2",
+  "engine": "RHIVE AQuA + Stateless Elephant-Goldfish Continual Loop",
+  "executiveSyncSpace": "spaces/AAQA_y6BMAI",
+  "invariants": [
+    {
+      "id": "I-01",
+      "name": "First-Name Spelling Gate & Pause",
+      "anchor": "server.js#AGENT_PROFILES.intake (Rule 5 & 8)",
+      "mustRule": "Whenever caller provides a first name, Honey must verify spelling (\"Is that spelled ...?\") and wait for confirmation before asking the street address.",
+      "failureCluster": "SKIPPED_NAME_SPELLING_GATE"
+    },
+    {
+      "id": "I-02",
+      "name": "Digit-by-Digit Utah Grid Address Readback",
+      "anchor": "server.js#AGENT_PROFILES.intake (STEP 1)",
+      "mustRule": "Honey must read back street numbers individually digit-by-digit (\"nine, nine, one, seven\"), never grouped (\"ninety-nine seventeen\" or \"eleven thousand\"), with full directional coordinates.",
+      "failureCluster": "GROUPED_GRID_ADDRESS_READBACK"
+    },
+    {
+      "id": "I-03",
+      "name": "Mandatory Address Confirmation Pause Gate",
+      "anchor": "server.js#AGENT_PROFILES.intake (STEP 1)",
+      "mustRule": "After reading back the verified address, Honey must pause and wait for caller confirmation before asking any diagnostic or MeasureCall question.",
+      "failureCluster": "SKIPPED_ADDRESS_CONFIRMATION_PAUSE"
+    },
+    {
+      "id": "I-04",
+      "name": "Property Shorthand Adoption",
+      "anchor": "server.js#AGENT_PROFILES.intake (STEP 1)",
+      "mustRule": "Once the address is confirmed, Honey refers to the home naturally as \"the [Grid/Street] property\" rather than repeating the full raw street string or saying \"GIS\".",
+      "failureCluster": "RAW_ADDRESS_REPETITION_OR_GIS_JARGON"
+    },
+    {
+      "id": "I-05",
+      "name": "Zero Spoken Dollar Price on Slat Board Decking",
+      "anchor": "server.js#AGENT_PROFILES.intake (CASE 1 Q4)",
+      "mustRule": "For pre-1972 homes, Honey must NEVER speak dollar amounts like \"$78 per sheet\" aloud; state that potential re-sheathing is documented in unforeseen expenses in the written agreement.",
+      "failureCluster": "SPOKEN_SLAT_DECK_DOLLAR_PRICE"
+    },
+    {
+      "id": "I-06",
+      "name": "Remote Aerial Default & 5 Explicit On-Site Exceptions Only",
+      "anchor": "server.js#AGENT_PROFILES.intake (PRIMARY BUSINESS MODEL)",
+      "mustRule": "Standard residential replacements use remote aerial scans (or 15-min Google Meet video call for minor visible repairs). On-site inspections are strictly limited to the 5 explicit exceptions (Commercial, Storm/UPPA, Active Leak Tarp, Repair >15 yrs, Repair <15 yrs without exterior photos) — NEVER for slat board decking.",
+      "failureCluster": "UNAUTHORIZED_ONSITE_INSPECTION_OFFER"
+    },
+    {
+      "id": "I-07",
+      "name": "Never Ask Preferred Shingle Material",
+      "anchor": "server.js#AGENT_PROFILES.intake (CASE 1 Note)",
+      "mustRule": "Owens Corning Duration with SureNail is RHIVE standard commercial-grade baseline; Honey must NEVER ask \"what material do you prefer?\".",
+      "failureCluster": "ASKED_PREFERRED_MATERIAL"
+    },
+    {
+      "id": "I-08",
+      "name": "Concise Priority / DISC Psychometric Question",
+      "anchor": "server.js#AGENT_PROFILES.intake (CASE 1 Q7)",
+      "mustRule": "Ask the <20-word priority question presenting all 3 options cleanly: schedule speed (D), keeping costs down (C), or maximum warranty protection (S/I).",
+      "failureCluster": "INCOMPLETE_OR_WORDY_DISC_QUESTION"
+    },
+    {
+      "id": "I-09",
+      "name": "Emergency Leak Tarp Credit & Strict Utah UPPA Compliance",
+      "anchor": "server.js#AGENT_PROFILES.intake (CASE 3 & CASE 4A)",
+      "mustRule": "On active leaks, never pitch shingle upgrades; state emergency mitigation is covered by insurance in our experience or $150 100% credited toward permanent repair. On insurance claims, strictly provide an objective scope-of-work report per Utah UPPA.",
+      "failureCluster": "UPPA_OR_EMERGENCY_TARP_PROTOCOL_DRIFT"
+    },
+    {
+      "id": "I-10",
+      "name": "Gutter \"Suit to the Body\" Metaphor (Zero Linear Feet)",
+      "anchor": "server.js#AGENT_PROFILES.intake (CASE 1 Q5)",
+      "mustRule": "Never ask caller for gutter linear footage; ask \"front, back, or all the way around?\" and explain gutters are tailored to the roof like a suit to the body if asked.",
+      "failureCluster": "ASKED_GUTTER_LINEAR_FEET"
+    },
+    {
+      "id": "I-11",
+      "name": "Zero Pre-Answer Name-Drop, Zero Redundancy & Certified Quote Phrasing",
+      "anchor": "server.js#AGENT_PROFILES.intake (Rule 3 & CASE 5)",
+      "mustRule": "Never say \"Kara\" or \"Michael\" before they physically answer unless caller explicitly asked for them by name; never re-ask known name/company/invoice; say \"access to the certified quote\" when texting verification link.",
+      "failureCluster": "UNSOLICITED_EXECUTIVE_NAME_DROP"
+    },
+    {
+      "id": "I-12",
+      "name": "Sub-20-Word Turn Economy, 1 Question/Turn & Farewell Barge-In Safety",
+      "anchor": "server.js#CallSession.handleInboundAudio & Rule 5",
+      "mustRule": "Target 10-20 words per turn, strictly ONE question per turn, wait 1500ms buffer drain on farewell, and immediately abort hangup if caller speaks during farewell.",
+      "failureCluster": "MULTI_QUESTION_BUNDLING"
+    },
+    {
+      "id": "I-13",
+      "name": "Exact \"R-hive\" / \"R-hive's\" IPA (/ˈɑɹˌhaɪvz/) & \"AI Roof Specialist\" Title Lock",
+      "anchor": "server.js#DYNAMIC_GREETINGS & services/roofingLexicon.js",
+      "mustRule": "Honey spoken prompts must render as \"R-hive\" / \"R-hive's\" anchored by IPA (/ˈɑɹˌhaɪv/, /ˈɑɹˌhaɪvz/) + en-US (never pronounced \"rive\", \"ry-hive\", \"re-hive\", or \"archive\"), use official title \"AI Roof Specialist\" (never \"AI Roofing Specialist\" or \"concierge\"), never say \"happy to help\", and never emit raw SSML <break> tags.",
+      "failureCluster": "BRAND_PHONETIC_OR_CLICHE_DRIFT"
+    }
+  ]
+}

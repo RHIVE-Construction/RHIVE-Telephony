@@ -9,12 +9,12 @@
  */
 
 const LEXICON_REPLACEMENTS = [
-  // 1. Brand Phonetics ("R-hive" / "R-hive's" vocal token -> crisp "R-HIVE" written transcript)
-  { pattern: /\b(?:r[\s-]+hive'?s|are[\s-]+hive'?s|arhive'?s|archive'?s|rive'?s|rye[\s-]*hive'?s|ry[\s-]*hive'?s|re[\s-]*hive'?s)(?=\s+(?:ai\s+roof(?:ing)?|roof(?:ing)?|construction|project|specialist|team|certified))/gi, replacement: "R-HIVE's" },
+  // 1. Brand Phonetics ("R-hive" / "R-hive's" & G2P wire "Ar-hive" / "Ar-hive's" -> crisp "R-HIVE" written transcript)
+  { pattern: /\b(?:r[\s-]+hive'?s|ar[\s-]+hive'?s|are[\s-]+hive'?s|arhive'?s|archive'?s|rive'?s|rye[\s-]*hive'?s|ry[\s-]*hive'?s|re[\s-]*hive'?s)(?=\s+(?:ai\s+roof(?:ing)?|roof(?:ing)?|construction|project|specialist|team|certified))/gi, replacement: "R-HIVE's" },
   { pattern: /\bai\s+roofing\s+specialist\b/gi, replacement: 'AI Roof Specialist' },
-  { pattern: /\b(?:arhive|archive|r[\s-]+hive|are[\s-]+hive|rye[\s-]*hive|ry[\s-]*hive|re[\s-]*hive)\s+(?:roofing|construction)\b/gi, replacement: 'R-HIVE Construction' },
-  { pattern: /\b(?:r-hive's|are[\s-]+hive'?s)\b/gi, replacement: "R-HIVE's" },
-  { pattern: /\b(?:r-hive|are[\s-]+hive|arhive|rye[\s-]*hive|ry[\s-]*hive|re[\s-]*hive)\b/gi, replacement: 'R-HIVE' },
+  { pattern: /\b(?:arhive|archive|r[\s-]+hive|ar[\s-]+hive|are[\s-]+hive|rye[\s-]*hive|ry[\s-]*hive|re[\s-]*hive)\s+(?:roofing|construction)\b/gi, replacement: 'R-HIVE Construction' },
+  { pattern: /\b(?:r-hive's|ar[\s-]+hive'?s|are[\s-]+hive'?s)\b/gi, replacement: "R-HIVE's" },
+  { pattern: /\b(?:r-hive|ar[\s-]+hive|are[\s-]+hive|arhive|rye[\s-]*hive|ry[\s-]*hive|re[\s-]*hive)\b/gi, replacement: 'R-HIVE' },
 
   // 2. Roofing Materials & Engineering Systems
   { pattern: /\b(?:owens|owen'?s|owns)\s+(?:corning|cornering)\s+duration\s+flex\b/gi, replacement: 'Owens Corning Duration FLEX' },
@@ -121,9 +121,25 @@ const NON_BLOCKING_TOOL_SCHEDULING = {
   send_ballpark_sms: 'WHEN_IDLE'
 };
 
+/**
+ * Acoustic Wire Adapter (Grapheme-to-Phoneme Lock for Gemini 3.8 Live Native Audio):
+ * Canonical UI/prompts stay "R-hive" / "R-hive's", while at the exact WebSocket wire
+ * boundary into `gemini-3.8-live` (`Laomedeia`), bare `R-h` without a preceding vowel
+ * letter triggers BPE onset merging (`/ɹaɪvz/` = "rives"). Injecting the minimal 2-char
+ * closed vowel `Ar-hive` / `Ar-hive's` (without the silent `-e` drag of `Are`) forces
+ * 100% deterministic 2-syllable `/ˈɑɹˌhaɪvz/` ("R-hive's") articulation on 8kHz PSTN.
+ */
+function applyG2pBrandLock(text) {
+  if (!text || typeof text !== 'string') return text || '';
+  return text
+    .replace(/\b(?:RHIVE's|R-hive's|R-Hive's|Rhive's)\b/g, "Ar-hive's")
+    .replace(/\b(?:RHIVE|R-hive|R-Hive|Rhive)\b(?!@|\.[a-z])/g, 'Ar-hive');
+}
+
 module.exports = {
   normalizeRoofingTranscript,
   normalizeRoofingWithReport,
+  applyG2pBrandLock,
   SPECIALIST_SUBAGENTS,
   NON_BLOCKING_TOOL_SCHEDULING
 };

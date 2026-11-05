@@ -64,25 +64,27 @@ async function run() {
   const phoneSid = phoneObj.sid;
   console.log(`[OK] Found Twilio Phone SID: ${phoneSid} (${phoneObj.friendly_name})`);
 
-  // 2. Check / Update Voice & SMS Webhooks
+  // 2. Check / Update Voice & SMS Webhooks (including Zero-Dead-Air VoiceFallbackUrl & SmsFallbackUrl)
   if (!verifyOnly) {
     const whBody = new URLSearchParams({
       VoiceUrl: `${CLOUD_RUN_BASE}/twiml`,
       VoiceMethod: 'POST',
-      VoiceFallbackUrl: `${CLOUD_RUN_BASE}/twiml`,
+      VoiceFallbackUrl: `${CLOUD_RUN_BASE}/voice-stream-fallback`,
       VoiceFallbackMethod: 'POST',
       StatusCallback: `${CLOUD_RUN_BASE}/status-callback`,
       StatusCallbackMethod: 'POST',
       SmsUrl: `${CLOUD_RUN_BASE}/incoming-sms`,
-      SmsMethod: 'POST'
+      SmsMethod: 'POST',
+      SmsFallbackUrl: `${CLOUD_RUN_BASE}/incoming-sms`,
+      SmsFallbackMethod: 'POST'
     });
     const whRes = await twilioJson(
       `https://api.twilio.com/2010-04-01/Accounts/${ACCOUNT_SID}/IncomingPhoneNumbers/${phoneSid}.json`,
       { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: whBody }
     );
-    console.log(`[Webhooks] Updated (${whRes.status}): VoiceUrl=${whRes.data.voice_url}`);
+    console.log(`[Webhooks] Updated (${whRes.status}): VoiceUrl=${whRes.data.voice_url} | VoiceFallbackUrl=${whRes.data.voice_fallback_url} | SmsUrl=${whRes.data.sms_url}`);
   } else {
-    console.log(`[Webhooks] VoiceUrl=${phoneObj.voice_url} | SmsUrl=${phoneObj.sms_url}`);
+    console.log(`[Webhooks] VoiceUrl=${phoneObj.voice_url} | VoiceFallbackUrl=${phoneObj.voice_fallback_url} | SmsUrl=${phoneObj.sms_url} | StatusCallback=${phoneObj.status_callback}`);
   }
 
   // 3. Check / Attach A2P 10DLC Messaging Service

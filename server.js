@@ -33,7 +33,7 @@ const { GoogleGenAI } = require('@google/genai');
 const { google } = require('googleapis');
 const googleAuthClient = new (require('google-auth-library').OAuth2Client)();
 const { fetchGoogleContacts, lookupContactByPhone: lookupGoogleContact } = require('./services/googleContacts');
-const { normalizeRoofingTranscript, normalizeRoofingWithReport, SPECIALIST_SUBAGENTS, NON_BLOCKING_TOOL_SCHEDULING } = require('./services/roofingLexicon');
+const { normalizeRoofingTranscript, normalizeRoofingWithReport, applyG2pBrandLock, SPECIALIST_SUBAGENTS, NON_BLOCKING_TOOL_SCHEDULING } = require('./services/roofingLexicon');
 const {
   EXECUTIVE_SYNC_SPACE,
   KARA_USER_MENTION,
@@ -1758,8 +1758,21 @@ function registerVerificationTimer({ phone, cleanPhone, callerName, propertyAddr
   }).catch(e => console.warn('[Firestore verification_requests Error]', e.message));
 }
 
+function isSyntheticCallSid(callSid) {
+  if (!callSid) return true;
+  const s = String(callSid);
+  return (
+    s.startsWith('TEST_') ||
+    s.startsWith('SIM_') ||
+    s.startsWith('CA_TEST_') ||
+    s.startsWith('CA_PROD_CANARY_') ||
+    s.startsWith('CA_AQUA_') ||
+    s.includes('CANARY_TEST')
+  );
+}
+
 async function startCallRecording(callSid) {
-  if (!callSid || callSid.startsWith('TEST_') || callSid.startsWith('SIM_')) return null;
+  if (isSyntheticCallSid(callSid)) return null;
   try {
     const authHeader = 'Basic ' + Buffer.from(TWILIO_API_KEY_SID + ':' + TWILIO_API_SECRET).toString('base64');
     const postData = querystring.stringify({
@@ -5360,7 +5373,7 @@ class CallSession {
             }
           },
           systemInstruction: {
-            parts: [{ text: dynamicInstruction }]
+            parts: [{ text: applyG2pBrandLock(dynamicInstruction) }]
           },
           tools: effectiveTools
         },
@@ -5400,7 +5413,7 @@ class CallSession {
           `ACOUSTIC & PROSODY RULES:\n` +
           `- STRICT MAXIMUM 20 WORDS.\n` +
           `- ZERO MONOLOGUES. Keep it punchy, warm, and natural.\n` +
-          `- PRONUNCIATION LOCK: Pronounce "R-hive" (/ˈɑɹˌhaɪv/) and "R-hive's" (/ˈɑɹˌhaɪvz/) with a crisp initial letter "R" (/ɑɹ/) followed immediately by "hive" (/haɪv/). NEVER blend R+h into "rive" (/ɹaɪv/), "rives", "ry-hive", or "re-hive"!\n` +
+          `- PRONUNCIATION LOCK: Pronounce "Ar-hive" (/ˈɑɹˌhaɪv/) and "Ar-hive's" (/ˈɑɹˌhaɪvz/) crisply as the letter R + hive's.\n` +
           `- STRICTLY BANNED WORDS: NEVER say "happy to help", or "we are happy". Deliver the greeting naturally with high energy and an uplifting vocal smile.\n` +
           `- STRICTLY NO laughter, giggles, chuckles, or audible "haha" sounds.\n` +
           `- Speak in a brisk, clean, continuous conversational flow.`;
@@ -5459,7 +5472,7 @@ class CallSession {
           'Deliver your opening greeting immediately with high energy, bubbly warmth, fast conversational tempo (~115%), and an unmistakable vocal smile:\n' +
           '"' + chosenGreeting + '"\n' +
           'ACOUSTIC & PROSODY RULES:\n' +
-          '- PRONUNCIATION LOCK: Pronounce "R-hive" (/ˈɑɹˌhaɪv/) and possessive "R-hive\'s" (/ˈɑɹˌhaɪvz/) with a crisp initial letter "R" (/ɑɹ/) followed immediately by "hive" (/haɪv/). NEVER blend R+h into "rive" (/ɹaɪv/), "rives", "ry-hive", "rye-hive", or "re-hive"! Your official concise title is strictly "AI Roof Specialist".\n' +
+          '- PRONUNCIATION LOCK: Pronounce "Ar-hive" (/ˈɑɹˌhaɪv/) and possessive "Ar-hive\'s" (/ˈɑɹˌhaɪvz/) crisply as the letter R + hive\'s. Your official concise title is strictly "AI Roof Specialist".\n' +
           '- High energy, upbeat, happy, and genuinely enthusiastic hospitality.\n' +
           '- ZERO NAME-DROPPING: Never say "Michael" or "Kara" in your opening greeting.\n' +
           '- STRICTLY BANNED WORDS: NEVER say "happy to help", or "we are happy". Deliver the exact greeting above naturally with high energy and an uplifting, cheerful vocal smile.\n' +
@@ -5474,7 +5487,7 @@ class CallSession {
         turns: [
           {
             role: 'user',
-            parts: [{ text: triggerPrompt }]
+            parts: [{ text: applyG2pBrandLock(triggerPrompt) }]
           }
         ],
         turnComplete: true
@@ -6912,20 +6925,20 @@ class CallSession {
         }
       }
 
-      // Update Firestore with final traversed journeyNodes
+      // Update Firestore with final traversed journeyNodes (upsert safely & skip synthetic test/canary SIDs)
       const db = initFirestore();
-      if (db) {
-        db.collection('call_logs').doc(this.callSid).update({
+      if (db && !isSyntheticCallSid(this.callSid)) {
+        db.collection('call_logs').doc(this.callSid).set({
           journeyNodes: this.journeyNodes || [],
           callStatus: 'completed',
           updatedAt: new Date().toISOString()
-        }).catch(e => console.warn('[Firestore call_logs journey update note]', e.message));
+        }, { merge: true }).catch(e => console.warn('[Firestore call_logs journey upsert note]', e.message));
 
-        db.collection('telephony_calls').doc(this.callSid).update({
+        db.collection('telephony_calls').doc(this.callSid).set({
           journeyNodes: this.journeyNodes || [],
           callStatus: 'completed',
           updatedAt: new Date().toISOString()
-        }).catch(e => console.warn('[Firestore telephony_calls journey update note]', e.message));
+        }, { merge: true }).catch(e => console.warn('[Firestore telephony_calls journey upsert note]', e.message));
       }
     }
 
@@ -6933,7 +6946,7 @@ class CallSession {
     if (this.callSid && this.callerPhone) {
       if (this.sessionData?.isTransfer) {
         console.log(`[CallSession ${this.callSid}] 📞 Call was transferred to ${this.sessionData.targetSpecialist}. Deferring Google Chat notification and full dossier until the transferred PSTN leg completes.`);
-      } else if (process.env.NODE_ENV !== 'test' && !String(this.callSid).includes('TEST')) {
+      } else if (process.env.NODE_ENV !== 'test' && !isSyntheticCallSid(this.callSid) && !String(this.callSid).includes('TEST')) {
         archiveCallToPhoneFolder({
           callSid: this.callSid,
           callerPhone: this.callerPhone,
@@ -7286,7 +7299,7 @@ Respond naturally with full executive poise, smiling warmth, and Wasatch Front r
             }
           },
           systemInstruction: {
-            parts: [{ text: dynamicInstruction }]
+            parts: [{ text: applyG2pBrandLock(dynamicInstruction) }]
           },
           tools: this.profile.tools
         },
@@ -7322,7 +7335,7 @@ Respond naturally with full executive poise, smiling warmth, and Wasatch Front r
           {
             role: 'user',
             parts: [{
-              text: 'The web audio connection has established with R-hive Construction. Speak your exact opening greeting immediately with high energy, bubbly warmth, fast conversational tempo (~115%), and an audible vocal smile: "Hi! This is Honey! R-hive\'s AI Roof Specialist, how may I assist your call today?" PRONUNCIATION LOCK: Pronounce "R-hive\'s" (/ˈɑɹˌhaɪvz/) with a crisp letter "R" (/ɑɹ/) + "hive" (/haɪv/), never "rive"!'
+              text: applyG2pBrandLock('The web audio connection has established with R-hive Construction. Speak your exact opening greeting immediately with high energy, bubbly warmth, fast conversational tempo (~115%), and an audible vocal smile: "Hi! This is Honey! R-hive\'s AI Roof Specialist, how may I assist your call today?" PRONUNCIATION LOCK: Pronounce "Ar-hive\'s" (/ˈɑɹˌhaɪvz/) crisply as the letter R + hive\'s!')
             }]
           }
         ],
@@ -10492,10 +10505,87 @@ app.post('/api/telephony/aqua-canary', async (req, res) => {
   }
 });
 
-// Phase 4: Daily 6:30 AM MT AQuA + Goldfish Continual Optimization Brief -> Executive Sync (`spaces/AAQA_y6BMAI`)
+// Phase 4 (N2): Google Drive Audit Ledger (/Audits/Daily_Quality_Index_[YYYY-MM-DD].json)
+let cachedAuditsDriveFolderId = null;
+async function archiveDailyAquaAuditToDrive(brief) {
+  if (!driveClient || !TWILIO_DRIVE_FOLDER_ID) {
+    return { archived: false, reason: 'driveClient_not_initialized' };
+  }
+  try {
+    if (!cachedAuditsDriveFolderId) {
+      const q = "'" + TWILIO_DRIVE_FOLDER_ID + "' in parents and mimeType = 'application/vnd.google-apps.folder' and name = 'Audits' and trashed = false";
+      const listRes = await driveClient.files.list({
+        q,
+        fields: 'files(id, name, webViewLink)',
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true
+      });
+      if (listRes.data.files && listRes.data.files.length > 0) {
+        cachedAuditsDriveFolderId = listRes.data.files[0].id;
+      } else {
+        const createRes = await driveClient.files.create({
+          supportsAllDrives: true,
+          requestBody: {
+            name: 'Audits',
+            mimeType: 'application/vnd.google-apps.folder',
+            parents: [TWILIO_DRIVE_FOLDER_ID]
+          },
+          fields: 'id, name, webViewLink'
+        });
+        cachedAuditsDriveFolderId = createRes.data.id;
+      }
+    }
+
+    const mtDate = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Denver' });
+    const fileName = `Daily_Quality_Index_${mtDate}.json`;
+    const payloadJson = JSON.stringify({
+      schemaVersion: '1.9.2',
+      dateMT: mtDate,
+      generatedAt: new Date().toISOString(),
+      executiveSyncSpace: EXECUTIVE_SYNC_SPACE,
+      ...brief
+    }, null, 2);
+
+    const existingRes = await driveClient.files.list({
+      q: "'" + cachedAuditsDriveFolderId + "' in parents and name = '" + fileName + "' and trashed = false",
+      fields: 'files(id, name, webViewLink)',
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true
+    });
+
+    if (existingRes.data.files && existingRes.data.files.length > 0) {
+      const fileId = existingRes.data.files[0].id;
+      const upd = await driveClient.files.update({
+        fileId,
+        supportsAllDrives: true,
+        media: { mimeType: 'application/json', body: Readable.from(Buffer.from(payloadJson, 'utf8')) },
+        fields: 'id, name, webViewLink'
+      });
+      return { archived: true, updatedExisting: true, folderId: cachedAuditsDriveFolderId, ...upd.data };
+    }
+
+    const created = await driveClient.files.create({
+      supportsAllDrives: true,
+      requestBody: {
+        name: fileName,
+        parents: [cachedAuditsDriveFolderId],
+        mimeType: 'application/json'
+      },
+      media: { mimeType: 'application/json', body: Readable.from(Buffer.from(payloadJson, 'utf8')) },
+      fields: 'id, name, webViewLink'
+    });
+    return { archived: true, updatedExisting: false, folderId: cachedAuditsDriveFolderId, ...created.data };
+  } catch (err) {
+    console.warn('[AQuA Drive Audit Ledger Warning]', err.message);
+    return { archived: false, error: err.message };
+  }
+}
+
+// Phase 4: Daily 6:30 AM MT AQuA + Goldfish Continual Optimization Brief -> Executive Sync (`spaces/AAQA_y6BMAI`) + Google Drive `/Audits`
 app.post('/api/telephony/aqua-daily-brief', async (req, res) => {
   try {
     const dispatchChat = Boolean(req.body?.dispatchChat) && process.env.NODE_ENV !== 'test';
+    const shouldArchiveDrive = (dispatchChat || Boolean(req.body?.archiveDrive)) && process.env.NODE_ENV !== 'test';
     const brief = await buildDailyAquaExecutiveBrief({
       aiClient: GEMINI_API_KEY ? ai : null,
       recentInsights: aquaTelemetryState.recentInsights,
@@ -10515,11 +10605,17 @@ app.post('/api/telephony/aqua-daily-brief', async (req, res) => {
       });
     }
 
+    let driveAuditLedger = { archived: false, skippedInPreviewMode: !shouldArchiveDrive };
+    if (shouldArchiveDrive) {
+      driveAuditLedger = await archiveDailyAquaAuditToDrive(brief);
+    }
+
     res.json({
       success: true,
       executiveSyncSpace: EXECUTIVE_SYNC_SPACE,
       brief,
       chatDispatch: chatResult,
+      driveAuditLedger,
       generatedAt: moderatorState.lastDailyBriefAt
     });
   } catch (err) {
@@ -10636,8 +10732,8 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'RHIVE Multi-Model Telephony Swarm & Speech-to-Speech Bridge',
-    version: '1.9.1',
-    revision: 'Rev 69',
+    version: '1.9.2',
+    revision: 'Rev 70',
     model: LIVE_VOICE_MODEL,
     voicePersona: AGENT_PROFILES.intake.voice,
     spokenBrandPhonetic: "R-hive (/ˈɑɹˌhaɪv/)",

@@ -124,7 +124,7 @@ async function runTests() {
   try {
     const res = await axios.get(`http://localhost:${TEST_PORT}/health`);
     assert(res.status === 200 && res.data.status === 'ok', 'GET /health returns 200 OK');
-    assert(res.data.revision === 'Rev 69' && res.data.version === '1.9.1', 'Health reports revision: Rev 69 (v1.9.1)');
+    assert(res.data.revision === 'Rev 70' && res.data.version === '1.9.2', 'Health reports revision: Rev 70 (v1.9.2)');
     assert(res.data.spokenBrandPhonetic === 'R-hive (/ˈɑɹˌhaɪv/)' && res.data.agentTitle === 'AI Roof Specialist' && res.data.sotaVoiceOptimizations === true, 'Health confirms R-hive IPA lock, AI Roof Specialist title & SOTA voice optimizations');
     assert(res.data.ambientCompositeLoaded === true, 'Health reports ambientCompositeLoaded: true');
     assert(res.data.dashboardAvailable === true, 'Health reports Executive Dashboard is available');
@@ -581,6 +581,12 @@ async function runTests() {
     assert(
       shieldRes.status === 200 && shieldRes.data.cnam?.displayName === 'RHIVE ROOFING' && shieldRes.data.shakenStir?.attestationLevel === 'A' && shieldRes.data.a2p10Dlc?.campaignStatus === 'VERIFIED',
       'GET /api/telephony/carrier-shield verifies CNAM ("RHIVE ROOFING"), SHAKEN/STIR ("A"), and 10DLC ("VERIFIED")'
+    );
+
+    const invJson = JSON.parse(fs.readFileSync(path.join(__dirname, 'aqua_invariants.json'), 'utf8'));
+    assert(
+      Array.isArray(invJson.invariants) && invJson.invariants.length === 13 && fs.existsSync(path.join(__dirname, '..', 'docs', 'canary_port_17438876637_kit.md')),
+      'Canonical tests/aqua_invariants.json (13 invariants) & docs/canary_port_17438876637_kit.md verified'
     );
   } catch (e) {
     assert(false, 'V5.0/V6.0 AQuA / Goldfish / Live Honey Audio test error: ' + e.message);

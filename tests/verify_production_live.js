@@ -26,11 +26,11 @@ async function verifyProduction() {
   console.log(' RHIVE V6.0 LIVE PRODUCTION CLOUD RUN & WSS AUDIO VERIFICATION');
   console.log('==================================================================');
 
-  // 1. Live Cloud Run /health (v1.9.1)
+  // 1. Live Cloud Run /health (v1.9.2 / Rev 70)
   const health = await axios.get(`https://${CLOUD_RUN_HOST}/health`);
   assert(
-    health.status === 200 && health.data.version === '1.9.1' && health.data.spokenBrandPhonetic === 'R-hive (/ˈɑɹˌhaɪv/)' && health.data.agentTitle === 'AI Roof Specialist',
-    `Cloud Run /health reports version: ${health.data.version} (Spoken Brand: ${health.data.spokenBrandPhonetic}, Title: ${health.data.agentTitle})`
+    health.status === 200 && health.data.version === '1.9.2' && health.data.revision === 'Rev 70' && health.data.spokenBrandPhonetic === 'R-hive (/ˈɑɹˌhaɪv/)' && health.data.agentTitle === 'AI Roof Specialist',
+    `Cloud Run /health reports version: ${health.data.version} (${health.data.revision}, Spoken Brand: ${health.data.spokenBrandPhonetic}, Title: ${health.data.agentTitle})`
   );
   assert(
     health.data.zeroDeadAirFallback === true && health.data.geminiKeyConfigured === true,
@@ -50,11 +50,11 @@ async function verifyProduction() {
     `POST /api/telephony/aqua-canary verified live Gemini 3.8 handshake in ${canary.data.handshakeLatencyMs}ms`
   );
 
-  // 3. Live Daily Brief Preview + Carrier Shield Status
-  const briefRes = await axios.post(`https://${CLOUD_RUN_HOST}/api/telephony/aqua-daily-brief`, { dispatchChat: false });
+  // 3. Live Daily Brief Preview + Google Drive `/Audits` Ledger + Carrier Shield Status
+  const briefRes = await axios.post(`https://${CLOUD_RUN_HOST}/api/telephony/aqua-daily-brief`, { dispatchChat: false, archiveDrive: true });
   assert(
-    briefRes.status === 200 && briefRes.data.success === true && briefRes.data.executiveSyncSpace === 'spaces/AAQA_y6BMAI',
-    `POST /api/telephony/aqua-daily-brief generates Executive Sync report (Quality Index: ${briefRes.data.brief?.avgQualityPct}%)`
+    briefRes.status === 200 && briefRes.data.success === true && briefRes.data.executiveSyncSpace === 'spaces/AAQA_y6BMAI' && briefRes.data.driveAuditLedger?.archived === true,
+    `POST /api/telephony/aqua-daily-brief generates Executive Sync report (${briefRes.data.brief?.avgQualityPct}%) & archives ${briefRes.data.driveAuditLedger?.name} to Google Drive /Audits (${briefRes.data.driveAuditLedger?.id})`
   );
 
   const shieldRes = await axios.get(`https://${CLOUD_RUN_HOST}/api/telephony/carrier-shield`);

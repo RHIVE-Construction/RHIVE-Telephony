@@ -1,12 +1,12 @@
 # ==============================================================================
-# RHIVE TELEPHONY V6.1 - 1-COMMAND HONEY LIVE CLOUD RUN DEPLOY & MODERATOR SYNC
+# RHIVE TELEPHONY V6.2 - 1-COMMAND HONEY LIVE CLOUD RUN DEPLOY & MODERATOR SYNC
 # Project: rhive-quantum-quoter (910835773728) | Region: us-central1
 # Service: rhive-voice-live-bridge
 # ==============================================================================
 $ErrorActionPreference = "Stop"
 
 Write-Host "`n==================================================================" -ForegroundColor Cyan
-Write-Host " RHIVE TELEPHONY V6.1 - HONEY LIVE CLOUD RUN DEPLOYMENT & CANARY" -ForegroundColor Cyan
+Write-Host " RHIVE TELEPHONY V6.2 - HONEY LIVE CLOUD RUN DEPLOYMENT & CANARY" -ForegroundColor Cyan
 Write-Host "==================================================================`n" -ForegroundColor Cyan
 
 # 1. Verify gcloud authentication
@@ -59,7 +59,7 @@ Get-Content ".env" | ForEach-Object {
 $updateEnvArg = "^@^" + ($envPairs -join "@")
 
 # 3. Deploy Cloud Run with --min-instances 1 (0ms cold start), --timeout 3600 & --session-affinity
-Write-Host "`n[2/5] Deploying rhive-voice-live-bridge (v1.9.1 / Rev 69) to Cloud Run..." -ForegroundColor Yellow
+Write-Host "`n[2/5] Deploying rhive-voice-live-bridge (v1.9.2 / Rev 70) to Cloud Run..." -ForegroundColor Yellow
 gcloud run deploy rhive-voice-live-bridge `
     --quiet --source . `
     --project rhive-quantum-quoter `
@@ -79,9 +79,10 @@ Write-Host "`n[4/5] Verifying Cloud Scheduler 24/7 Moderator & Daily Brief jobs.
 gcloud scheduler jobs list --location=us-central1 --project=rhive-quantum-quoter
 
 # 6. Live Production AQuA Health and WSS Audio Stream Verification
-Write-Host "`n[5/5] Running Live Production V6.1 AQuA, Carrier Shield & WSS Audio Verification..." -ForegroundColor Yellow
+Write-Host "`n[5/5] Running Live Production V6.2 AQuA, Carrier Shield & WSS Audio Verification..." -ForegroundColor Yellow
 node tests/verify_production_live.js
+node tests/aqua_regression_suite.js
 
 Write-Host "`n==================================================================" -ForegroundColor Green
-Write-Host " [LIVE] HONEY V6.1 IS LIVE, WARM (--min-instances 1), AND GUARDED!" -ForegroundColor Green
+Write-Host " [LIVE] HONEY V6.2 IS LIVE, WARM (--min-instances 1), AND GUARDED!" -ForegroundColor Green
 Write-Host "==================================================================`n" -ForegroundColor Green
