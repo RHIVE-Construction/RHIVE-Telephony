@@ -9,15 +9,21 @@ Write-Host "`n==================================================================
 Write-Host " RHIVE TELEPHONY V6.2 - HONEY LIVE CLOUD RUN DEPLOYMENT & CANARY" -ForegroundColor Cyan
 Write-Host "==================================================================`n" -ForegroundColor Cyan
 
-# 1. Verify gcloud authentication
+# 1. Verify gcloud authentication (with automatic fallback to active Firebase CLI cloud-platform token)
 Write-Host "[1/5] Verifying Google Cloud authentication..." -ForegroundColor Yellow
 try {
     $activeToken = gcloud auth print-access-token 2>$null
     if (-not $activeToken) { throw "Token expired" }
     Write-Host "  [OK] Authenticated with Google Cloud CLI." -ForegroundColor Green
 } catch {
-    Write-Host "  [AUTH] gcloud session expired. Launching Google sign-in for michael@rhiveconstruction.com..." -ForegroundColor Yellow
-    gcloud auth login michael@rhiveconstruction.com --brief
+    npx firebase projects:list --json > $null
+    $fbToken = node -e "const fs=require('fs'),os=require('os'),path=require('path'); console.log(JSON.parse(fs.readFileSync(path.join(os.homedir(),'.config','configstore','firebase-tools.json'),'utf8')).tokens.access_token);"
+    if ($fbToken) {
+        $env:CLOUDSDK_AUTH_ACCESS_TOKEN = $fbToken.Trim()
+        Write-Host "  [OK] Authenticated via active Firebase CLI cloud-platform token (michael@rhiveconstruction.com)." -ForegroundColor Green
+    } else {
+        gcloud auth login michael@rhiveconstruction.com --brief
+    }
 }
 
 # 2. Load verified local .env keys safely (preserving Cloud Run base64 creds via --update-env-vars)

@@ -1918,12 +1918,14 @@ async function executeScreenedTransfer(options) {
     );
 
     // 2. Outbound screened call to specialist (Kara or Michael)
+    // Note: Twilio REST API Calls.json accepts 'initiated', 'ringing', 'answered', 'completed' for StatusCallbackEvent;
+    // terminal CallStatus values ('busy', 'no-answer', 'failed', 'canceled') are delivered on the 'completed' event (prevents Warning 21626).
     const outboundData = querystring.stringify({
       To: targetNumber,
       From: TWILIO_NUMBER,
       Url: `https://${host}/screen-whisper?${qParams}&conf=${confName}`,
       StatusCallback: `https://${host}/screen-status-callback?${qParams}&conf=${confName}`,
-      StatusCallbackEvent: ['completed', 'busy', 'no-answer', 'failed'],
+      StatusCallbackEvent: 'completed',
       Timeout: 25
     });
 
@@ -5184,11 +5186,26 @@ class CallSession {
     if (this.isCarrierDisconnected) return;
     this.isCarrierDisconnected = true;
     try {
+      // Pre-record completed session BEFORE closing WebSocket or terminating PSTN leg
+      // so /voice-stream-fallback never mistakes a graceful hangup for a 0-frame silent crash!
+      if (this.callSid) {
+        setBoundedMap(completedCallSessions, this.callSid, {
+          callSid: this.callSid,
+          callerPhone: this.callerPhone,
+          conversationTurns: this.conversationTurns,
+          sessionData: this.sessionData,
+          journeyNodes: this.journeyNodes || [],
+          honeyAudioChunksSent: Math.max(1, this.honeyAudioChunksSent || 0),
+          firstAudioLatencyMs: this.firstAudioLatencyMs,
+          hangupReason: this.hangupReason || 'customer_goodbye',
+          closedAt: Date.now()
+        }, 150);
+      }
+      await terminateTwilioCall(this.callSid);
       if (this.twilioWs && this.twilioWs.readyState === WebSocket.OPEN) {
         console.log(`[CallSession ${this.callSid}] 🔌 Closing Twilio WebSocket (Full speech playback completed).`);
         this.twilioWs.close(1000, 'Call completed gracefully');
       }
-      await terminateTwilioCall(this.callSid);
     } catch(err) {
       console.warn(`[CallSession ${this.callSid} Carrier Disconnect Note]`, err.message);
     }
@@ -5661,6 +5678,17 @@ class CallSession {
               if (this.streamSid && this.twilioWs.readyState === WebSocket.OPEN) {
                 if (this.honeyAudioChunksSent === 0) {
                   this.firstAudioLatencyMs = Date.now() - this.sessionStartedAt;
+                  if (this.callSid) {
+                    setBoundedMap(completedCallSessions, this.callSid, {
+                      callSid: this.callSid,
+                      callerPhone: this.callerPhone,
+                      conversationTurns: this.conversationTurns,
+                      sessionData: this.sessionData,
+                      honeyAudioChunksSent: 1,
+                      firstAudioLatencyMs: this.firstAudioLatencyMs,
+                      closedAt: Date.now()
+                    }, 150);
+                  }
                 }
                 this.honeyAudioChunksSent++;
                 this.twilioWs.send('{"event":"media","streamSid":"' + this.streamSid + '","media":{"payload":"' + frame.toString('base64') + '"}}');
@@ -10460,12 +10488,41 @@ app.post('/api/telephony/aqua-canary', async (req, res) => {
     moderatorState.totalCanaryChecks += 1;
     moderatorState.consecutiveCanaryPasses += 1;
     recordAquaGeminiHandshake(true, null);
+
+    // Also audit Twilio Account Balance & recent Twilio Debugger Error 12100/11200 alerts
+    let twilioBalanceUsd = null;
+    let recentTwilioErrors = [];
+    if (TWILIO_ACCOUNT_SID && TWILIO_API_KEY_SID && TWILIO_API_SECRET && !isTestProbe) {
+      try {
+        const authHeader = 'Basic ' + Buffer.from(`${TWILIO_API_KEY_SID}:${TWILIO_API_SECRET}`).toString('base64');
+        const [balRes, alertRes] = await Promise.all([
+          fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Balance.json`, { headers: { Authorization: authHeader } }),
+          fetch('https://monitor.twilio.com/v1/Alerts?PageSize=5&LogLevel=error', { headers: { Authorization: authHeader } })
+        ]);
+        if (balRes.ok) {
+          const balJson = await balRes.json();
+          twilioBalanceUsd = parseFloat(balJson.balance);
+          aquaTelemetryState.twilioBalanceUsd = twilioBalanceUsd;
+        }
+        if (alertRes.ok) {
+          const alertJson = await alertRes.json();
+          const tenMinAgo = Date.now() - (10 * 60 * 1000);
+          recentTwilioErrors = (alertJson.alerts || []).filter(a => new Date(a.date_created).getTime() >= tenMinAgo);
+        }
+      } catch (_) {}
+    }
+
     if (!isTestProbe) {
       moderatorState.totalCanaryChecks -= 1; // handleModeratorHealthTransition increments once for prod cron
       moderatorState.consecutiveCanaryPasses -= 1;
+      const balanceCritical = twilioBalanceUsd !== null && twilioBalanceUsd < 10.0;
+      const hasCarrierError = recentTwilioErrors.length > 0;
       await handleModeratorHealthTransition({
-        healthy: true,
-        source: 'aqua-canary',
+        healthy: !balanceCritical && !hasCarrierError,
+        source: balanceCritical ? 'twilio-balance-monitor' : (hasCarrierError ? 'twilio-debugger-monitor' : 'aqua-canary'),
+        reason: balanceCritical
+          ? `Twilio credit balance critically low ($${twilioBalanceUsd.toFixed(2)} USD remaining — recharge immediately to prevent call suspension)`
+          : (hasCarrierError ? `Twilio Debugger Error ${recentTwilioErrors[0].error_code} on ${recentTwilioErrors[0].resource_sid}` : ''),
         latencyMs,
         getGoogleChatClient,
         fallbackWebhookUrl: GOOGLE_CHAT_WEBHOOK,
@@ -10477,6 +10534,8 @@ app.post('/api/telephony/aqua-canary', async (req, res) => {
       canaryStatus: 'LIVE_VOICE_VERIFIED',
       handshakeOpened: Boolean(handshakeOpened || session),
       handshakeLatencyMs: latencyMs,
+      twilioBalanceUsd: twilioBalanceUsd ?? aquaTelemetryState.twilioBalanceUsd ?? null,
+      recentTwilioErrorCount: recentTwilioErrors.length,
       model: LIVE_VOICE_MODEL,
       persona: AGENT_PROFILES.intake.voice,
       executiveSyncModeratorSpace: EXECUTIVE_SYNC_SPACE,
@@ -10586,9 +10645,29 @@ app.post('/api/telephony/aqua-daily-brief', async (req, res) => {
   try {
     const dispatchChat = Boolean(req.body?.dispatchChat) && process.env.NODE_ENV !== 'test';
     const shouldArchiveDrive = (dispatchChat || Boolean(req.body?.archiveDrive)) && process.env.NODE_ENV !== 'test';
+
+    // Hydrate recent 24h call audits from Firestore if in-memory recentInsights was cleared by a Cloud Run container recycle
+    let effectiveInsights = aquaTelemetryState.recentInsights;
+    if (effectiveInsights.length === 0) {
+      try {
+        const db = initFirestore();
+        if (db) {
+          const snap = await db.collection('call_verifications').where('type', '==', 'aqua_goldfish_audit').limit(25).get();
+          const cutoff = Date.now() - (24 * 60 * 60 * 1000);
+          const fromDb = [];
+          snap.forEach(doc => {
+            const d = doc.data();
+            const ts = d.evaluatedAt ? new Date(d.evaluatedAt).getTime() : 0;
+            if (!ts || ts >= cutoff) fromDb.push(d);
+          });
+          if (fromDb.length > 0) effectiveInsights = fromDb;
+        }
+      } catch (_) {}
+    }
+
     const brief = await buildDailyAquaExecutiveBrief({
       aiClient: GEMINI_API_KEY ? ai : null,
-      recentInsights: aquaTelemetryState.recentInsights,
+      recentInsights: effectiveInsights,
       aquaTelemetryState
     });
     moderatorState.lastDailyBriefAt = new Date().toISOString();
@@ -10732,8 +10811,8 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'RHIVE Multi-Model Telephony Swarm & Speech-to-Speech Bridge',
-    version: '1.9.2',
-    revision: 'Rev 70',
+    version: '1.9.3',
+    revision: 'Rev 71',
     model: LIVE_VOICE_MODEL,
     voicePersona: AGENT_PROFILES.intake.voice,
     spokenBrandPhonetic: "R-hive (/ˈɑɹˌhaɪv/)",
@@ -11720,13 +11799,18 @@ app.all('/voice-stream-fallback', async (req, res) => {
   const host = req.headers['x-forwarded-host'] || req.headers.host || 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
   const callSid = req.query.callSid || req.body.CallSid || '';
   const caller = req.query.caller || req.body.From || 'Unknown';
-  const completed = callSid ? completedCallSessions.get(callSid) : null;
+  const activeMatch = callSid
+    ? Array.from(activeSessions.values()).find(s => s && s.callSid === callSid)
+    : null;
+  const completed = (callSid ? completedCallSessions.get(callSid) : null) || activeMatch || null;
 
   const spokeSuccessfully = Boolean(
     completed && (
       (completed.honeyAudioChunksSent && completed.honeyAudioChunksSent > 0) ||
       (Array.isArray(completed.conversationTurns) && completed.conversationTurns.length > 0) ||
       completed.sessionData?.isTransfer ||
+      completed.isTransferred ||
+      completed.pendingHangup ||
       completed.hangupReason
     )
   );
@@ -11948,7 +12032,8 @@ app.all('/screen-decision', async (req, res) => {
     console.log(`[Screen Decision] Specialist declined or busy. Redirecting caller ${callSid} to fallback flow.`);
     if (callSid && !callSid.startsWith('SIM_')) {
       const qParams = new URLSearchParams(req.query).toString();
-      const redirectTwiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Redirect>https://${host}/transfer-fallback?${qParams}</Redirect></Response>`;
+      const xmlQParams = qParams.replace(/&/g, '&amp;');
+      const redirectTwiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Redirect>https://${host}/transfer-fallback?${xmlQParams}</Redirect></Response>`;
       const authHeader = 'Basic ' + Buffer.from(TWILIO_API_KEY_SID + ':' + TWILIO_API_SECRET).toString('base64');
       axios.post(
         `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls/${callSid}.json`,
@@ -12045,6 +12130,7 @@ app.all('/transfer-completed', (req, res) => {
 
 // 4. Transfer Fallback Endpoint: Dispatches instant follow-up SMS from specialist department, then reconnects caller directly to Honey Live (Laomedeia voice)
 app.all('/transfer-fallback', async (req, res) => {
+  const host = req.headers['x-forwarded-host'] || req.headers.host || 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
   const cloudRunHost = 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
   const directHost = (process.env.NODE_ENV === 'test' || host.includes('localhost')) ? host : cloudRunHost;
   const wsUrl = (directHost.includes('localhost') ? 'ws://' : 'wss://') + directHost + '/media-stream';
