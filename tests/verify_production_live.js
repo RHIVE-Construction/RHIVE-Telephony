@@ -26,10 +26,10 @@ async function verifyProduction() {
   console.log(' RHIVE V6.0 LIVE PRODUCTION CLOUD RUN & WSS AUDIO VERIFICATION');
   console.log('==================================================================');
 
-  // 1. Live Cloud Run /health (v1.9.3 / Rev 71)
+  // 1. Live Cloud Run /health (v1.9.4 / Rev 72)
   const health = await axios.get(`https://${CLOUD_RUN_HOST}/health`);
   assert(
-    health.status === 200 && health.data.version === '1.9.3' && health.data.revision === 'Rev 71' && health.data.spokenBrandPhonetic === 'R-hive (/ˈɑɹˌhaɪv/)' && health.data.agentTitle === 'AI Roof Specialist',
+    health.status === 200 && health.data.version === '1.9.4' && health.data.revision === 'Rev 72' && health.data.spokenBrandPhonetic === 'R-hive (/ˈɑɹˌhaɪv/)' && health.data.agentTitle === 'AI Roof Specialist',
     `Cloud Run /health reports version: ${health.data.version} (${health.data.revision}, Spoken Brand: ${health.data.spokenBrandPhonetic}, Title: ${health.data.agentTitle})`
   );
   assert(
@@ -78,7 +78,7 @@ async function verifyProduction() {
     `GET /api/telephony/aqua-clusters returns 6 live semantic clusters & en-US SOTA voice telemetry`
   );
 
-  // 5. Live /twiml Zero-Dead-Air Redirect Check
+  // 5. Live /twiml Zero-Dead-Air Redirect Check & Multi-Angle JustCall PBX + Interactive Transfer Screening Check
   const twiml = await axios.post(`https://${CLOUD_RUN_HOST}/twiml`, {
     CallSid: 'CA_TEST_PROD_TWIML_CHECK',
     From: '+18019284434',
@@ -87,6 +87,30 @@ async function verifyProduction() {
   assert(
     twiml.status === 200 && twiml.data.includes('/voice-stream-fallback'),
     `Production POST /twiml arms Zero-Dead-Air <Redirect> to /voice-stream-fallback`
+  );
+
+  const pbxScreen = await axios.post(
+    `https://${CLOUD_RUN_HOST}/screen-decision?target=Kara+Robinson&callerName=Joe&companyName=SRS&reason=Active+project+invoice+inquiry&conf=RHIVE_PROD_TEST&callSid=SIM_PROD_TEST`,
+    { SpeechResult: 'Connecting to Kara at our Hive construction. Please note all calls may be recorded for quality and training purposes.' }
+  );
+  const helloScreen = await axios.post(
+    `https://${CLOUD_RUN_HOST}/screen-decision?target=Kara+Robinson&callerName=Joe&companyName=SRS&reason=Active+project+invoice+inquiry&conf=RHIVE_PROD_TEST&callSid=SIM_PROD_TEST`,
+    { SpeechResult: 'Hello?' }
+  );
+  const connectScreen = await axios.post(
+    `https://${CLOUD_RUN_HOST}/screen-decision?target=Kara+Robinson&callerName=Joe&companyName=SRS&reason=Active+project+invoice+inquiry&conf=RHIVE_PROD_TEST&callSid=SIM_PROD_TEST`,
+    { SpeechResult: 'Connect' }
+  );
+  const disregardScreen = await axios.post(
+    `https://${CLOUD_RUN_HOST}/screen-decision?target=Kara+Robinson&callerName=Joe&companyName=SRS&reason=Active+project+invoice+inquiry&conf=RHIVE_PROD_TEST&callSid=SIM_PROD_TEST`,
+    { SpeechResult: 'Disregard' }
+  );
+  assert(
+    pbxScreen.data.includes('pbxPassed=true') &&
+    helloScreen.data.includes('Joe with SRS') &&
+    connectScreen.data.includes('<Conference>RHIVE_PROD_TEST</Conference>') &&
+    disregardScreen.data.includes('<Hangup/>'),
+    `Production /screen-decision passes all 4 live screening angles (JustCall PBX absorption, "Hello?" briefing, "Connect" conference bridge, "Disregard" fallback)`
   );
 
   // 6. LIVE PRODUCTION WSS /media-stream HONEY VOICE AUDIO SYNTHESIS PROOF

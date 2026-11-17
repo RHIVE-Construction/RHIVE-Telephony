@@ -124,7 +124,7 @@ async function runTests() {
   try {
     const res = await axios.get(`http://localhost:${TEST_PORT}/health`);
     assert(res.status === 200 && res.data.status === 'ok', 'GET /health returns 200 OK');
-    assert(res.data.revision === 'Rev 71' && res.data.version === '1.9.3', 'Health reports revision: Rev 71 (v1.9.3)');
+    assert(res.data.revision === 'Rev 72' && res.data.version === '1.9.4', 'Health reports revision: Rev 72 (v1.9.4)');
     assert(res.data.spokenBrandPhonetic === 'R-hive (/ˈɑɹˌhaɪv/)' && res.data.agentTitle === 'AI Roof Specialist' && res.data.sotaVoiceOptimizations === true, 'Health confirms R-hive IPA lock, AI Roof Specialist title & SOTA voice optimizations');
     assert(res.data.ambientCompositeLoaded === true, 'Health reports ambientCompositeLoaded: true');
     assert(res.data.dashboardAvailable === true, 'Health reports Executive Dashboard is available');
@@ -593,6 +593,68 @@ async function runTests() {
     assert(
       tfRes.status === 200 && tfRes.data.includes('<Connect>') && !tfRes.data.includes('&targetEntity='),
       'POST /transfer-fallback returns valid XML without ReferenceError or unescaped & entities (Error 12100 guard)'
+    );
+
+    // Multi-Angle Screen Whisper & Decision Test Matrix (7 Scenarios)
+    const swMulti = await axios.get(`http://localhost:${TEST_PORT}/screen-whisper?target=Kara+Robinson&callerName=Joe&companyName=SRS&reason=Active+project+invoice+inquiry&conf=RHIVE_JOE_1&callSid=SIM_JOE_1`);
+    const gatherMatches = (swMulti.data.match(/<Gather\b/g) || []).length;
+    assert(
+      swMulti.status === 200 && gatherMatches === 4 && swMulti.data.includes('noAnswer=true'),
+      `Scenario G: /screen-whisper provides 4 consecutive <Gather> ring cycles (${gatherMatches} blocks, ~40s ring window)`
+    );
+
+    const pbxRes = await axios.post(
+      `http://localhost:${TEST_PORT}/screen-decision?target=Kara+Robinson&callerName=Joe&companyName=SRS&reason=Active+project+invoice+inquiry&conf=RHIVE_JOE_1&callSid=SIM_JOE_1`,
+      { SpeechResult: 'Connecting to Kara at our Hive construction. Please note all calls may be recorded for quality and training purposes.' }
+    );
+    assert(
+      pbxRes.status === 200 && pbxRes.data.includes('<Redirect method="POST">/screen-whisper?') && pbxRes.data.includes('pbxPassed=true') && !pbxRes.data.includes('<Hangup/>'),
+      'Scenario A: /screen-decision absorbs JustCall 11s pre-ring PBX announcement without hanging up or triggering fallback'
+    );
+
+    const helloRes = await axios.post(
+      `http://localhost:${TEST_PORT}/screen-decision?target=Kara+Robinson&callerName=Joe&companyName=SRS&reason=Active+project+invoice+inquiry&conf=RHIVE_JOE_1&callSid=SIM_JOE_1`,
+      { SpeechResult: 'Hello?' }
+    );
+    assert(
+      helloRes.status === 200 && helloRes.data.includes('<Gather') && helloRes.data.includes('Joe with SRS') && helloRes.data.includes('Active project invoice inquiry') && !helloRes.data.includes('<Hangup/>'),
+      'Scenario B: When Kara answers saying "Hello?", agent immediately briefs her on who is calling (Joe with SRS) & why without hanging up'
+    );
+
+    const whoRes = await axios.post(
+      `http://localhost:${TEST_PORT}/screen-decision?target=Kara+Robinson&callerName=Joe&companyName=SRS&reason=Active+project+invoice+inquiry&conf=RHIVE_JOE_1&callSid=SIM_JOE_1&retry=1`,
+      { SpeechResult: "Who is it and what's going on?" }
+    );
+    assert(
+      whoRes.status === 200 && whoRes.data.includes('<Gather') && whoRes.data.includes('Joe with SRS') && !whoRes.data.includes('<Hangup/>'),
+      'Scenario C: When Kara asks "Who is it and what\'s going on?", agent repeats caller identity & reason and awaits decision'
+    );
+
+    const connectVoiceRes = await axios.post(
+      `http://localhost:${TEST_PORT}/screen-decision?target=Kara+Robinson&callerName=Joe&companyName=SRS&reason=Active+project+invoice+inquiry&conf=RHIVE_JOE_1&callSid=SIM_JOE_1&retry=2`,
+      { SpeechResult: 'Connect me' }
+    );
+    assert(
+      connectVoiceRes.status === 200 && connectVoiceRes.data.includes('<Conference>RHIVE_JOE_1</Conference>'),
+      'Scenario D: When Kara says "Connect me", agent bridges her directly into <Conference>RHIVE_JOE_1</Conference>'
+    );
+
+    const disregardRes = await axios.post(
+      `http://localhost:${TEST_PORT}/screen-decision?target=Kara+Robinson&callerName=Joe&companyName=SRS&reason=Active+project+invoice+inquiry&conf=RHIVE_JOE_1&callSid=SIM_JOE_1&retry=2`,
+      { SpeechResult: 'Disregard' }
+    );
+    assert(
+      disregardRes.status === 200 && disregardRes.data.includes('letting them know you are busy right now') && disregardRes.data.includes('<Hangup/>'),
+      'Scenario E: When Kara says "Disregard", agent hangs up screening leg and routes caller to /transfer-fallback'
+    );
+
+    const vmRes = await axios.post(
+      `http://localhost:${TEST_PORT}/screen-decision?target=Kara+Robinson&callerName=Joe&companyName=SRS&reason=Active+project+invoice+inquiry&conf=RHIVE_JOE_1&callSid=SIM_JOE_1`,
+      { SpeechResult: 'Please leave a message after the tone.' }
+    );
+    assert(
+      vmRes.status === 200 && vmRes.data.includes('<Hangup/>') && !vmRes.data.includes('<Conference>'),
+      'Scenario F: Voicemail greeting detector cleanly hangs up screening leg and triggers /transfer-fallback'
     );
   } catch (e) {
     assert(false, 'V5.0/V6.0 AQuA / Goldfish / Live Honey Audio test error: ' + e.message);

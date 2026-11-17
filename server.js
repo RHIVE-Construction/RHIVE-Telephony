@@ -1926,7 +1926,7 @@ async function executeScreenedTransfer(options) {
       Url: `https://${host}/screen-whisper?${qParams}&conf=${confName}`,
       StatusCallback: `https://${host}/screen-status-callback?${qParams}&conf=${confName}`,
       StatusCallbackEvent: 'completed',
-      Timeout: 25
+      Timeout: 45
     });
 
     const outboundRes = await axios.post(
@@ -6230,10 +6230,14 @@ class CallSession {
           callSid: this.callSid
         }).catch(e => console.warn('[Firestore Profile Save Warning]', e.message));
 
-        // Check if caller explicitly asked for a specific person by name
-        const explicitKara = args?.askedForPerson === 'kara' || /(^|\b)(kara|carrie)\b/i.test(reason);
+        // Check if caller explicitly asked for a specific person by name (in tool args, reason, or spoken transcript)
+        const callerSpokenText = (this.conversationTurns || [])
+          .filter(t => t.role === 'user' || t.role === 'caller')
+          .map(t => t.text || '')
+          .join(' ');
+        const explicitKara = args?.askedForPerson === 'kara' || /(^|\b)(kara|carrie|cara)\b/i.test(reason) || /(^|\b)(kara|carrie|cara)\b/i.test(callerSpokenText);
 
-        const explicitMichael = args?.askedForPerson === 'michael' || /(^|\b)michael\b/i.test(reason);
+        const explicitMichael = args?.askedForPerson === 'michael' || /(^|\b)(michael|mike)\b/i.test(reason) || /(^|\b)(michael|mike)\b/i.test(callerSpokenText);
         const askedForPerson = explicitKara ? 'kara' : (explicitMichael ? 'michael' : 'none');
 
         const isKara = explicitKara || args?.targetSpecialist === 'kara' || /kara|carrie|billing|payable|receivable|invoice|subcontractor|vendor|unphc|order|supplier|material/i.test(reason);
@@ -6376,7 +6380,7 @@ class CallSession {
         return {
           transferInitiated: true,
           department: spokenTarget,
-          instruction: `Say warmly and clearly to the caller: "OK ${callerName}. Thanks for letting me know! I'll now transfer you over to ${departmentLabel}. Please hold for just a moment..." Do NOT call any more tools.`
+          instruction: `Say warmly and clearly to the caller: "OK ${callerName}. Thanks for letting me know! I'll now transfer you over to ${spokenTarget}. Please hold for just a moment..." Do NOT call any more tools.`
         };
       }
 
@@ -10811,8 +10815,8 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'RHIVE Multi-Model Telephony Swarm & Speech-to-Speech Bridge',
-    version: '1.9.3',
-    revision: 'Rev 71',
+    version: '1.9.4',
+    revision: 'Rev 72',
     model: LIVE_VOICE_MODEL,
     voicePersona: AGENT_PROFILES.intake.voice,
     spokenBrandPhonetic: "R-hive (/ˈɑɹˌhaɪv/)",
@@ -11949,6 +11953,9 @@ app.post('/recording-callback', async (req, res) => {
 // WARM SCREENED INTERACTIVE TRANSFER & LIVE WHISPER ENDPOINTS
 // ============================================================================
 
+// Deduplication set so a single callSid never triggers duplicate fallback redirects or duplicate SMS
+const transferFallbackTriggeredSids = new Set();
+
 // 1. Screen Whisper Endpoint: Plays live briefing to internal recipient (Michael or Kara)
 app.all('/screen-whisper', (req, res) => {
   const callerName = req.query.callerName || req.body.callerName || 'A customer';
@@ -11968,34 +11975,47 @@ app.all('/screen-whisper', (req, res) => {
 
   res.type('text/xml');
   const companyClause = companyName ? ` with ${escapeXml(companyName)}` : '';
-  const invoiceClause = invoiceNumber ? `, regarding invoice number ${escapeXml(invoiceNumber)}` : '';
+  const invoiceClause = (invoiceNumber && invoiceNumber.toLowerCase() !== 'inquiry') ? `, regarding invoice number ${escapeXml(invoiceNumber)}` : '';
   const projectClause = (propertyAddress && propertyAddress !== 'None' && propertyAddress !== 'Property on file')
     ? `, regarding project at ${escapeXml(propertyAddress)}`
     : '';
 
   const params = new URLSearchParams();
   for (const [k, v] of Object.entries(req.query || {})) {
-    if (k !== 'conf' && k !== 'callSid') {
+    if (k !== 'conf' && k !== 'callSid' && k !== 'noAnswer') {
       params.set(k, Array.isArray(v) ? v[0] : v);
     }
   }
   params.set('conf', confName);
   params.set('callSid', callSid);
   const actionUrl = `/screen-decision?${params.toString().replace(/&/g, '&amp;')}`;
+  const fullBriefingSay = `<Say voice="Google.en-US-Neural2-F"><break time="150ms"/>Hi ${targetFirstName}! Honey here with <sub alias="R hive">R-hive</sub>. I have ${escapeXml(callerName)}${companyClause}${invoiceClause}${projectClause} on the line for you regarding ${escapeXml(reason)}. Say 1 or press 1 to take the call, or say 2 or press 2 to send to voicemail.</Say>`;
 
+  // 4 consecutive Gather loops (~42s total window) so JustCall's 11s pre-ring announcement
+  // + 30s of live mobile phone ringing complete without cutting off Kara or Michael before they answer.
   return res.send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Gather input="dtmf speech" numDigits="1" speechTimeout="auto" hints="1, 2, one, two, accept, decline, take" action="${actionUrl}" method="POST" timeout="10">
-        <Say voice="Google.en-US-Neural2-F"><break time="150ms"/>Hi ${targetFirstName}! Honey here with <sub alias="R hive">R-hive</sub>. I have ${escapeXml(callerName)}${companyClause}${invoiceClause}${projectClause} on the line for you regarding ${escapeXml(reason)}. Say 1 or press 1 to take the call, or say 2 or press 2 to send to voicemail.</Say>
+    <Gather input="dtmf speech" numDigits="1" speechTimeout="auto" hints="1, 2, one, two, accept, connect, decline, disregard, take, hello, who is it" action="${actionUrl}" method="POST" timeout="8">
+        ${fullBriefingSay}
     </Gather>
-    <Gather input="dtmf speech" numDigits="1" speechTimeout="auto" hints="1, 2, one, two, accept, decline" action="${actionUrl}" method="POST" timeout="6">
+    <Gather input="dtmf speech" numDigits="1" speechTimeout="auto" hints="1, 2, one, two, accept, connect, decline, disregard, take, hello, who is it" action="${actionUrl}" method="POST" timeout="8">
+        ${fullBriefingSay}
+    </Gather>
+    <Gather input="dtmf speech" numDigits="1" speechTimeout="auto" hints="1, 2, one, two, accept, connect, decline, disregard, take, hello, who is it" action="${actionUrl}" method="POST" timeout="8">
+        ${fullBriefingSay}
+    </Gather>
+    <Gather input="dtmf speech" numDigits="1" speechTimeout="auto" hints="1, 2, one, two, accept, connect, decline, disregard" action="${actionUrl}" method="POST" timeout="6">
         <Say voice="Google.en-US-Neural2-F"><break time="150ms"/>Say 1 or press 1 to accept the call from ${escapeXml(callerName)}, or say 2 or press 2 to send to voicemail.</Say>
     </Gather>
     <Redirect>${actionUrl}&amp;noAnswer=true</Redirect>
 </Response>`);
 });
 
-// 2. Screen Decision Endpoint: Connects or declines based on internal DTMF keypress or spoken command
+// 2. Screen Decision Endpoint: 4-Branch Intelligent Router
+//   Branch 1: JustCall Pre-Ring PBX Announcement ("Connecting to Kara... calls may be recorded") -> Absorb & continue ringing
+//   Branch 2: Specialist Accepts (1 / "connect" / "accept" / "take it" / "yes") -> Bridge into Conference
+//   Branch 3: Specialist Answered Phone ("Hello?" / "Who is it?" / "What's going on?") -> Brief her immediately & Gather decision
+//   Branch 4: Explicit Disregard (2 / "disregard" / "decline" / "busy"), Voicemail, or Timeout -> Redirect caller to /transfer-fallback
 app.all('/screen-decision', async (req, res) => {
   const digits = (req.body.Digits || req.query.Digits || '').trim();
   const speech = (req.body.SpeechResult || req.query.SpeechResult || '').toLowerCase().trim();
@@ -12003,23 +12023,60 @@ app.all('/screen-decision', async (req, res) => {
   const confName = (Array.isArray(rawConf) ? rawConf[0] : rawConf).split(',')[0].trim();
   const rawSid = req.query.callSid || req.body.callSid || '';
   const callSid = (Array.isArray(rawSid) ? rawSid[0] : rawSid).split(',')[0].trim();
+  const callerName = req.query.callerName || req.body.callerName || 'A customer';
+  const companyName = req.query.companyName || req.body.companyName || '';
+  const invoiceNumber = req.query.invoiceNumber || req.body.invoiceNumber || '';
+  const reason = req.query.reason || req.body.reason || 'General inquiry';
+  const propertyAddress = req.query.propertyAddress || req.body.propertyAddress || '';
+  const targetSpecialist = req.query.target || req.body.target || 'Specialist';
+  const isKara = targetSpecialist.toLowerCase().includes('kara');
+  const targetFirstName = isKara ? 'Kara' : 'Michael';
+  const retryCount = parseInt(req.query.retry || '0', 10) || 0;
   const host = req.headers['x-forwarded-host'] || req.headers.host || 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
 
-  console.log(`[Screen Decision] Recipient input: Digits="${digits}", Speech="${speech}", Conf="${confName}", CallSid="${callSid}"`);
+  console.log(`[Screen Decision] Recipient input: Digits="${digits}", Speech="${speech}", Retry=${retryCount}, NoAnswer=${req.query.noAnswer}, Conf="${confName}", CallSid="${callSid}"`);
 
   res.type('text/xml');
-  
-  // Carrier PBX greeting filter (e.g. JustCall "connecting to kara..." or standard voicemail greetings)
-  const isPBXGreeting = /(connecting to|welcome to|please leave a message|call has been forwarded)/i.test(speech);
-  
-  const isAccepted = !isPBXGreeting && (
-    digits === '1' || 
-    /\b(1|one|accept|take it|take call|connect me|put them through|yes|sure)\b/i.test(speech)
+
+  const params = new URLSearchParams();
+  for (const [k, v] of Object.entries(req.query || {})) {
+    if (k !== 'conf' && k !== 'callSid' && k !== 'noAnswer' && k !== 'retry') {
+      params.set(k, Array.isArray(v) ? v[0] : v);
+    }
+  }
+  params.set('conf', confName);
+  params.set('callSid', callSid);
+
+  // 1. Carrier PBX Pre-Ring Announcement Filter (e.g. JustCall "Connecting to Kara at R-Hive Construction. Please note all calls may be recorded...")
+  const isPBXGreeting = /(connecting to|calls may be recorded|quality and training|call has been forwarded|please hold while|transferring your call)/i.test(speech);
+  if (isPBXGreeting && digits !== '1' && digits !== '2' && retryCount < 3) {
+    params.set('pbxPassed', 'true');
+    params.set('retry', String(retryCount + 1));
+    const pbxRedirectUrl = `/screen-whisper?${params.toString().replace(/&/g, '&amp;')}`;
+    console.log(`[Screen Decision] 🛡️ Absorbed JustCall pre-ring PBX announcement ("${speech}"). Keeping transfer ring active for ${targetSpecialist}!`);
+    return res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Redirect method="POST">${pbxRedirectUrl}</Redirect>
+</Response>`);
+  }
+
+  // 2. Voicemail Greeting Detector (only triggers if specialist's voicemail box answers)
+  const isVoicemailGreeting = /(please leave a message|leave a message|after the tone|after the beep|reached the voicemail|mailbox is full|not available to take your call|person you are trying to reach)/i.test(speech);
+
+  // 3. Explicit Accept (Press 1 or say connect / accept / take it / put them through / yes)
+  const isAccepted = !isPBXGreeting && !isVoicemailGreeting && (
+    digits === '1' ||
+    /\b(1|one|accept|connect|connect me|take it|take call|take the call|put them through|put him through|put her through|transfer|patch|talk to|yes|yeah|sure|go ahead|send them through)\b/i.test(speech)
   );
 
+  // 4. Explicit Decline / Disregard (Press 2 or say disregard / decline / busy / voicemail / no / send a text)
+  const isExplicitDecline = (digits !== '' && digits !== '1') ||
+    /\b(2|two|decline|disregard|ignore|pass|busy|voicemail|can't|cannot|not right now|not available|no thanks|nope|don't connect|do not connect|send a text|take a message|tied up)\b/i.test(speech);
+
+  const isNoAnswerTimeout = req.query.noAnswer === 'true' || String(req.body.noAnswer || '') === 'true';
+
   if (isAccepted && confName) {
-    // Recipient accepted -> Twilio connects specialist into the conference
-    console.log(`[Screen Decision] Specialist accepted call! Joining conference: ${confName}`);
+    console.log(`[Screen Decision] ✅ Specialist accepted call! Joining conference: ${confName}`);
     return res.send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="Google.en-US-Neural2-F"><break time="150ms"/>Connecting you now!</Say>
@@ -12027,33 +12084,59 @@ app.all('/screen-decision', async (req, res) => {
         <Conference>${confName}</Conference>
     </Dial>
 </Response>`);
-  } else {
-    // Recipient declined or timed out
-    console.log(`[Screen Decision] Specialist declined or busy. Redirecting caller ${callSid} to fallback flow.`);
-    if (callSid && !callSid.startsWith('SIM_')) {
-      const qParams = new URLSearchParams(req.query).toString();
-      const xmlQParams = qParams.replace(/&/g, '&amp;');
-      const redirectTwiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Redirect>https://${host}/transfer-fallback?${xmlQParams}</Redirect></Response>`;
-      const authHeader = 'Basic ' + Buffer.from(TWILIO_API_KEY_SID + ':' + TWILIO_API_SECRET).toString('base64');
-      axios.post(
-        `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls/${callSid}.json`,
-        querystring.stringify({ Twiml: redirectTwiml }),
-        {
-          headers: {
-            'Authorization': authHeader,
-            'Content-Type': 'application/x-www-form-urlencoded'
-          },
-          timeout: 6000
-        }
-      ).catch(e => console.warn('[Screen Decision Caller Redirect Warning]', e.message));
-    }
+  }
 
+  // 5. Specialist Answered Phone ("Hello?", "Hi", "Who is it?", "What's going on?", "Repeat that")
+  // Give them a fresh, complete briefing from word 1 and wait for their connect/disregard command!
+  if (!isExplicitDecline && !isVoicemailGreeting && !isNoAnswerTimeout && speech.length > 0 && retryCount < 4) {
+    params.set('pbxPassed', 'true');
+    params.set('retry', String(retryCount + 1));
+    const retryActionUrl = `/screen-decision?${params.toString().replace(/&/g, '&amp;')}`;
+    const companyClause = companyName ? ` with ${escapeXml(companyName)}` : '';
+    const invoiceClause = (invoiceNumber && invoiceNumber.toLowerCase() !== 'inquiry') ? `, regarding invoice number ${escapeXml(invoiceNumber)}` : '';
+    const projectClause = (propertyAddress && propertyAddress !== 'None' && propertyAddress !== 'Property on file')
+      ? `, regarding project at ${escapeXml(propertyAddress)}`
+      : '';
+
+    console.log(`[Screen Decision] 🎙️ Specialist answered with "${speech}" (Retry ${retryCount + 1}). Delivering full caller briefing and awaiting connect/disregard decision.`);
     return res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Gather input="dtmf speech" numDigits="1" speechTimeout="auto" hints="1, 2, one, two, connect, accept, disregard, decline, take, busy" action="${retryActionUrl}" method="POST" timeout="10">
+        <Say voice="Google.en-US-Neural2-F"><break time="150ms"/>Hi ${targetFirstName}! Honey here with <sub alias="R hive">R-hive</sub>. I have ${escapeXml(callerName)}${companyClause}${invoiceClause}${projectClause} holding on the line for you regarding ${escapeXml(reason)}. Say connect or press 1 to take the call, or say disregard or press 2 to send them to callback options.</Say>
+    </Gather>
+    <Gather input="dtmf speech" numDigits="1" speechTimeout="auto" hints="1, 2, one, two, connect, accept, disregard, decline" action="${retryActionUrl}" method="POST" timeout="8">
+        <Say voice="Google.en-US-Neural2-F"><break time="150ms"/>Say connect or press 1 to talk to ${escapeXml(callerName)}, or say disregard or press 2 to send to voicemail.</Say>
+    </Gather>
+    <Redirect>${retryActionUrl}&amp;noAnswer=true</Redirect>
+</Response>`);
+  }
+
+  // 6. Recipient explicitly declined (2 / "disregard"), voicemail answered, or full ring window timed out
+  console.log(`[Screen Decision] Specialist declined, voicemail, or timed out (ExplicitDecline=${isExplicitDecline}, Voicemail=${isVoicemailGreeting}, NoAnswer=${isNoAnswerTimeout}). Redirecting caller ${callSid} to fallback flow.`);
+  if (callSid && !callSid.startsWith('SIM_') && !transferFallbackTriggeredSids.has(callSid)) {
+    addToBoundedSet(transferFallbackTriggeredSids, callSid, 300);
+    const qParams = new URLSearchParams(req.query).toString();
+    const xmlQParams = qParams.replace(/&/g, '&amp;');
+    const redirectTwiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Redirect>https://${host}/transfer-fallback?${xmlQParams}</Redirect></Response>`;
+    const authHeader = 'Basic ' + Buffer.from(TWILIO_API_KEY_SID + ':' + TWILIO_API_SECRET).toString('base64');
+    axios.post(
+      `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls/${callSid}.json`,
+      querystring.stringify({ Twiml: redirectTwiml }),
+      {
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        timeout: 6000
+      }
+    ).catch(e => console.warn('[Screen Decision Caller Redirect Warning]', e.message));
+  }
+
+  return res.send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="Google.en-US-Neural2-F"><break time="150ms"/>Got it, letting them know you are busy right now.</Say>
     <Hangup/>
 </Response>`);
-  }
 });
 
 // 3. Transfer Completed Endpoint: Checks if dial was completed or needs fallback
@@ -12065,7 +12148,8 @@ app.all('/screen-status-callback', async (req, res) => {
   const confName = req.query.conf || '';
   console.log(`[Screen Status Callback] Outbound screening call status: ${callStatus} for inbound call ${callSid} (Conf: ${confName})`);
 
-  if (['busy', 'no-answer', 'failed', 'canceled'].includes(callStatus) && callSid) {
+  if (['busy', 'no-answer', 'failed', 'canceled'].includes(callStatus) && callSid && !transferFallbackTriggeredSids.has(callSid)) {
+    addToBoundedSet(transferFallbackTriggeredSids, callSid, 300);
     console.log(`[Screen Status Callback] ⚠️ Specialist line unavailable (${callStatus}). Releasing conference ${confName} and redirecting caller ${callSid} to /transfer-fallback.`);
     try {
       const host = req.headers['x-forwarded-host'] || req.headers.host || 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
@@ -12198,8 +12282,11 @@ app.all('/transfer-fallback', async (req, res) => {
 
   console.log(`[Transfer Fallback] ${targetEntity} busy/declined for caller ${callerName} (${callerPhone}). Initiating proactive interactive SMS from "${senderTitle}" and reconnecting caller directly to Honey Live (Laomedeia voice).`);
 
-  // 1. INITIATE INSTANT PROACTIVE INTERACTIVE OUTBOUND SMS FROM SPECIALIST / DEPARTMENT TO CALLER
-  if (callerPhone && !callerPhone.startsWith('SIM_') && callerPhone !== 'Unknown') {
+  // 1. INITIATE INSTANT PROACTIVE INTERACTIVE OUTBOUND SMS FROM SPECIALIST / DEPARTMENT TO CALLER (Deduplicated per callSid)
+  const smsDedupKey = callSid ? `TF_SMS_${callSid}` : null;
+  const alreadySentSms = smsDedupKey ? transferFallbackTriggeredSids.has(smsDedupKey) : false;
+  if (smsDedupKey) addToBoundedSet(transferFallbackTriggeredSids, smsDedupKey, 300);
+  if (callerPhone && !callerPhone.startsWith('SIM_') && callerPhone !== 'Unknown' && !alreadySentSms) {
     const reasonDetail = invoiceNumber && !reason.toLowerCase().includes(invoiceNumber.toLowerCase())
       ? `${reason} (Invoice #${invoiceNumber})`
       : reason;
