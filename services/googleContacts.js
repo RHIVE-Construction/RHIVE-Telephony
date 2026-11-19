@@ -56,7 +56,7 @@ async function fetchGoogleContacts(forceRefresh = false) {
     let allConnections = [];
     let pageToken = undefined;
 
-    // Fetch up to 250 contacts per batch
+    // Fetch up to 1,000 contacts across pages so all commercial & residential contacts are indexed
     do {
       const res = await people.people.connections.list({
         resourceName: 'people/me',
@@ -68,7 +68,7 @@ async function fetchGoogleContacts(forceRefresh = false) {
       const list = res.data.connections || [];
       allConnections = allConnections.concat(list);
       pageToken = res.data.nextPageToken;
-    } while (pageToken && allConnections.length < 300);
+    } while (pageToken && allConnections.length < 1000);
 
     const formatted = allConnections.map(c => {
       const name = c.names?.[0]?.displayName || c.names?.[0]?.unstructuredName || 'Unknown Contact';

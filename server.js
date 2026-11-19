@@ -34,6 +34,7 @@ const { google } = require('googleapis');
 const googleAuthClient = new (require('google-auth-library').OAuth2Client)();
 const { fetchGoogleContacts, lookupContactByPhone: lookupGoogleContact } = require('./services/googleContacts');
 const { normalizeRoofingTranscript, normalizeRoofingWithReport, applyG2pBrandLock, SPECIALIST_SUBAGENTS, NON_BLOCKING_TOOL_SCHEDULING } = require('./services/roofingLexicon');
+const { syncVipDirectory, matchVipOrCustomer, getVipDirectorySummary } = require('./services/vipDirectory');
 const {
   EXECUTIVE_SYNC_SPACE,
   KARA_USER_MENTION,
@@ -339,6 +340,10 @@ const {
 
 // Initial firestore bootstrap
 initFirestore();
+// Non-blocking initial warmup of VIP Commercial & Residential Drive / Contacts directory
+setTimeout(() => {
+  syncVipDirectory({ driveClient, fetchGoogleContacts, initFirestore }).catch(() => {});
+}, 1500);
 
 /**
  * Look up a contact and their associated invoices in Firestore by phone number.
@@ -4088,24 +4093,27 @@ CRITICAL TONE, PACING & BRANDING RULES:
      * DO NOT say "May I have your name?", "Who is calling?", or "What invoice is this regarding?".
      * Acknowledge warmly and enthusiastically: "Got it, [First Name]! Let me connect you right now to [our accounting department / our ordering department / our project design team]."
      * IMMEDIATELY call "transfer_to_specialist" with callerName, companyName, invoiceNumber, reason, and targetSpecialist!
-   - 2-QUESTION SCREENING ONLY FOR INCOMPLETE INQUIRIES:
-     * If a caller asks to speak to accounting, operations, Michael, Kara, or a human WITHOUT providing their name or specific purpose:
-     * Question 1 (Identity & Entity): "I would be happy to direct your call! May I ask who is calling and what company you're with?"
-       (Wait for their answer).
-     * Question 2 (Specific Purpose & Project/Invoice): "And what specific property address, project, or invoice is this regarding?"
-       (Wait for their answer).
-     * Once both are answered, transfer immediately!
+   - 1-QUESTION POLITE SCREENING & ZERO-STONEWALL VIP FAST-PASS (CRITICAL PRIVACY & COMMERCIAL ACCOUNT RULES):
+     * ABSOLUTE ENGLISH-ONLY DEFAULT LOCK: ALWAYS speak English by default! NEVER switch into Spanish, German, Korean, or any other language because of a cough, throat clear, background noise, or Spanish-origin names/properties (like "Dominguez Park", "Esperanza", or "Spanish Fork"). ONLY switch to Spanish if the caller explicitly requests Spanish in a complete sentence (e.g., "¿Habla español?" or "Can we speak Spanish?").
+     * VIP COMMERCIAL ACCOUNTS & EXISTING CUSTOMERS (PRIVACY SHIELD — NEVER VERIFY ALOUD):
+       - Key VIP Commercial Accounts include "U-N-P-H-C" (pronounced letter-by-letter "U-N-P-H-C" or "Utah Nonprofit Housing Corporation", including properties like "Dominguez Park" and "Preston Place"), "PPC-Utah", "ACS / Advanced Community Services", "ICON National", "Wadman Corp", "Mint Construction", "Heritage Investment Group", "Larry H Miller", "Ken Garff", "Wellness Farms", "Transtar", and "Dojo", plus all active Commercial & Residential Drive clients and Contacts.
+       - PRIVACY INVARIANT: Whenever a caller matches a VIP Commercial Account or Known Customer (by Caller ID or spoken name/company/property), DO NOT announce, confirm, or verify their private account details aloud! Do NOT ask them to spell their name, do NOT pitch the online estimator, and do NOT quote the residential $150 mobilization fee. Simply say warmly: "Of course! Hold for just a moment while I connect you right now." and IMMEDIATELY call "transfer_to_specialist" with bypassScreening: true!
+     * ANTI-STONEWALL ESCALATION VALVE (NEVER TRAP REAL CUSTOMERS OR COMMERCIAL PARTNERS):
+       - If a caller asks for "customer service", a "live person", a "representative", "Kara", or "Michael" without giving their name/company yet:
+         Ask AT MOST ONE warm, quick question: "I'd be happy to connect you—who may I say is calling, and what company or project is this regarding?"
+       - Once they answer (even partially), OR if they say "live person", "just transfer me", "representative", or you cannot cleanly screen/extract structured details after 1 question:
+         DO NOT stonewall them, DO NOT say "You can speak naturally with me!", and DO NOT pitch the online estimator!
+         As long as they are NOT an obvious cold-sales solicitor/robocall and NOT an escalated yard-sign/service complaint, IMMEDIATELY call "transfer_to_specialist" with bypassScreening: true so Michael or Kara receives the screened whisper and decides whether to take the call!
    - ANTI-SPAM & SOLICITOR FORTRESS (ZERO TOLERANCE):
-     * If the caller is selling software, SEO, website design, lead gen, marketing services, recruitment, materials sales, or cold-calling pitching services:
+     * If the caller is selling software (e.g. Zoho), SEO, website design, lead gen (e.g. Hook Point), marketing services, recruitment, business credit/loan robocalls, materials sales pitches, or cold-calling pitching services:
      * YOU ARE STRICTLY FORBIDDEN FROM TRANSFERRING THEM!
      * State firmly and politely: "At R-hive Construction, all vendor solicitations and partner proposals must be submitted in writing to info@rhiveconstruction.com for executive review. Thank you, have a great day!"
      * IMMEDIATELY call the "hangup_call" tool. DO NOT TRANSFER!
-   - QUALIFIED TRANSFERS ONLY:
-     * Only when the caller has verified they are an existing customer, trade partner, active subcontractor with an invoice, or legitimate project inquiry:
-     * Say: "Got it! Hold for just a moment while I transfer your call to our accounting department." (or "our project design team").
-     * THEN call "transfer_to_specialist" with callerName, companyName, propertyAddress, invoiceNumber, reason, and targetSpecialist.
+   - QUALIFIED & VIP TRANSFERS:
+     * Say: "Hold for just a moment while I connect your call right now."
+     * THEN call "transfer_to_specialist" with callerName, companyName, propertyAddress, invoiceNumber, reason, targetSpecialist, and bypassScreening (when VIP or caller prefers direct human transfer).
 8. INSTANT CALLER IDENTITY CAPTURE & FIRST NAME SPELLING VERIFICATION (NEVER ASK TWICE):
-   - If the caller introduces themselves or gives their first name at ANY point:
+   - If a NEW residential quote caller introduces themselves or gives their first name (skip spelling verification for VIP commercial accounts or callers requesting a live transfer):
      * FIRST NAME VERIFICATION INVARIANT: If they give their first name, verify the spelling immediately: "Hi [FirstName]! Is that spelled [F-I-R-S-T]?" and have them confirm right there!
      * INSTANTLY CAPTURE AND REMEMBER: Their full name (first and last), company name, and invoice number.
      * CALL "update_caller_profile" IMMEDIATELY with callerName, companyName, invoiceNumber, and reason to lock their identity in system memory.
@@ -4122,10 +4130,9 @@ STRICT COGNITIVE LOAD RULE: ONLY ONE QUESTION PER TURN!
 - NEVER ask two or more questions in the same sentence or turn!
 - NEVER bundle caller name and phone number together! Ask for the name first, get the response, then ask for the cell phone number.
 
-1-WORD UTTERANCE & CLIPPED SPEECH COACHING:
-- Callers sometimes speak in clipped, 1-word fragments, mumbled phrases, or confusing terms (e.g., "wife person", "Couldn't for code enforcement", "quotes", "inspections").
-- When a caller speaks in clipped 1-word commands or unclear phrases, Honey warmly coaches them to speak naturally:
-  "You can speak naturally with me! Go ahead and tell me what you need taken care of, and I'll make sure it gets handled by the right person."
+1-WORD UTTERANCE & CLIPPED SPEECH HANDLING (NEVER STONEWALL HUMAN REQUESTS):
+- If a caller says "live person", "representative", "customer service", "human", "operator", "Kara", or "Michael": NEVER tell them "You can speak naturally with me!"—instead ask at most one quick question for their name/company, and if they still want a live person or match a VIP/known account, IMMEDIATELY transfer them via "transfer_to_specialist" (with bypassScreening: true).
+- Only for garbled single-word non-transfer fragments (e.g., "quotes", "inspections") where intent is unclear, warmly invite them: "Go ahead and let me know what you need taken care of, and I'll get it straight to the right person."
 
 ROOFING PRODUCT SPECIFICATIONS & EXPERTISE (THE 4 SHINGLE TIERS & DURATION ADVANTAGE):
 - ASPHALT SHINGLE HIERARCHY (HOW DURATION HOLDS UP ACROSS ALL MANUFACTURERS):
@@ -4745,9 +4752,13 @@ Never mention any CRM. All call records are saved automatically to Google Drive 
                 departmentName: {
                   type: 'STRING',
                   description: 'The specific department name: "our ordering department" for supplier orders/materials, "our accounting department" for billing/invoices/AP/AR, "our operations team" for administrative/operations, or "our project estimation team" for quotes/inspections.'
+                },
+                bypassScreening: {
+                  type: 'BOOLEAN',
+                  description: 'Set to true for recognized VIP Commercial Accounts (e.g. UNPHC, PPC, Wadman, Larry H Miller), existing customers, or any legitimate caller who prefers to speak directly with a representative when screening cannot cleanly extract details.'
                 }
               },
-              required: ['callerName', 'reason']
+              required: []
             }
           },
           {
@@ -5246,6 +5257,7 @@ class CallSession {
     // 1. Parallelized cold-start fetch with strict 450ms latency budget (never blocks Gemini Live connect)
     let callerProfile = null;
     let activeRules = [];
+    let vipPreMatch = { matched: false };
     try {
       const coldStartRace = await Promise.race([
         Promise.all([
@@ -5256,9 +5268,10 @@ class CallSession {
           getActiveTelephonyRules().catch(ruleErr => {
             console.warn(`[CallSession ${callSid}] Dynamic rules load note:`, ruleErr.message);
             return [];
-          })
+          }),
+          syncVipDirectory({ driveClient, fetchGoogleContacts, initFirestore }).catch(() => null)
         ]),
-        new Promise(resolve => setTimeout(() => resolve([null, cachedTelephonyRules || []]), 450))
+        new Promise(resolve => setTimeout(() => resolve([null, cachedTelephonyRules || [], null]), 450))
       ]);
       const [profileResult, rulesResult] = coldStartRace;
       callerProfile = profileResult;
@@ -5271,22 +5284,31 @@ class CallSession {
         if (!this.sessionData.companyName && callerProfile.companyName) {
           this.sessionData.companyName = callerProfile.companyName;
         }
-        console.log(`[CallSession ${callSid}] 🗄️ Firestore Profile Loaded for ${callerPhone}: Name="${callerProfile.fullName || 'None'}", LastInvoice="${callerProfile.activeContext?.lastInvoiceReferenced || 'None'}"`);
+        console.log(`[CallSession ${callSid}] 🗄️ Firestore Profile Loaded for ${callerPhone}: Name="${callerProfile.fullName || 'None'}", Company="${callerProfile.companyName || 'None'}", LastInvoice="${callerProfile.activeContext?.lastInvoiceReferenced || 'None'}"`);
+      }
+      vipPreMatch = matchVipOrCustomer({
+        phone: callerPhone,
+        callerName: this.sessionData.callerName || callerProfile?.fullName || '',
+        companyName: this.sessionData.companyName || callerProfile?.companyName || ''
+      });
+      if (vipPreMatch.matched) {
+        this.sessionData.vipMatch = vipPreMatch;
+        console.log(`[CallSession ${callSid}] 🌟 SILENT VIP MATCH (${vipPreMatch.tier} via ${vipPreMatch.matchedBy}): ${vipPreMatch.accountName} -> Privacy Shield Active (zero caller disclosure).`);
       }
     } catch(initFetchErr) {
       console.warn(`[CallSession ${callSid}] Parallel setup data note:`, initFetchErr.message);
     }
 
-    // Dynamic prompt instruction enrichment with Firestore contact memory and active tuned rules
+    // Dynamic prompt instruction enrichment with STRICT PRIVACY SHIELD (never reveal private DB info aloud!)
     let dynamicInstruction = this.profile.systemInstruction;
-    if (callerProfile && callerProfile.fullName) {
-      dynamicInstruction += `\n\nFIRESTORE CUSTOMER CONTEXT:\n` +
-        `- Recognized Customer: "${callerProfile.fullName}" (${callerPhone})\n` +
-        `- Recognized Company: "${callerProfile.companyName || 'Not specified'}"\n` +
-        (callerProfile.activeContext?.lastInvoiceReferenced ? `- Previous Invoice Referenced: "${callerProfile.activeContext.lastInvoiceReferenced}"\n` : '') +
-        `DYNAMIC INTERACTION DIRECTIVES:\n` +
-        `1. RECOGNIZED CALLER: Greet them warmly by name. Never ask for their name or company if already known.\n` +
-        `2. INVOICE INQUIRIES: If the caller mentions an invoice or asks about billing, capture the invoice number as a reference string and transfer them directly to our accounting department via "transfer_to_specialist" so Kara can assist them. You do NOT track or look up invoice balances.\n`;
+    if (vipPreMatch.matched || (callerProfile && callerProfile.fullName)) {
+      const silentName = this.sessionData.callerName || callerProfile?.fullName || vipPreMatch.matchedContactName || '';
+      const silentCompany = this.sessionData.companyName || callerProfile?.companyName || vipPreMatch.accountName || '';
+      dynamicInstruction += `\n\nSILENT PRIVATE ACCOUNT RECOGNITION (STRICT PRIVACY SHIELD — ZERO VERIFICATION ALOUD):\n` +
+        `- Internal Only (DO NOT speak or confirm aloud unless caller says it first): Name="${silentName || 'Known Account'}", Account/Company="${silentCompany || 'Existing Client'}", Tier="${vipPreMatch.tier || 'RETURNING_CALLER'}"\n` +
+        `DIRECTIVES:\n` +
+        `1. PRIVACY SHIELD: NEVER blurt out their name, company, email, or account records before they say it themselves! Do NOT ask them to verify or spell private details.\n` +
+        `2. ZERO-STONEWALL VIP PASS-THROUGH: Because this caller is silently recognized as an existing commercial account or customer, DO NOT pitch the online estimator, DO NOT quote the consumer $150 mobilization fee, and DO NOT interrogate them. The moment they mention what they need or ask for a person/service/team, pass them straight through via "transfer_to_specialist" (with bypassScreening: true, targetSpecialist: "${vipPreMatch.preferredTarget || 'kara'}") so our team receives the private whisper and handles them directly!\n`;
     }
 
     if (activeRules && activeRules.length > 0) {
@@ -5380,7 +5402,7 @@ class CallSession {
               startOfSpeechSensitivity: 'START_SENSITIVITY_HIGH',
               endOfSpeechSensitivity: 'END_SENSITIVITY_LOW',
               prefixPaddingMs: 120,
-              silenceDurationMs: 650
+              silenceDurationMs: 950
             }
           },
           speechConfig: {
@@ -5742,7 +5764,16 @@ class CallSession {
       }
 
       if (name === 'verify_address') {
-        const raw = args?.address || 'Wasatch Front';
+        const raw = String(args?.address || '').trim();
+        // Guard against partial digit captures mid-pause (e.g. caller pausing after "399" before finishing "3990 South 700 West")
+        if (!raw || raw.length < 6 || /^\d{1,5}$/.test(raw)) {
+          console.log(`[Address Tool Guard] Incomplete address fragment "${raw}" — waiting for full street & city.`);
+          return {
+            verified: false,
+            incompleteFragment: true,
+            instructionsForHoney: 'The caller paused mid-address. Do NOT guess a city or read back a partial number; wait warmly and say: "Go ahead with the full street address and city whenever you\'re ready."'
+          };
+        }
         const prop = await resolveGisAddress(raw);
         this.sessionData.verifiedAddress = prop.formattedAddress;
         this.sessionData.propertyName = prop.propertyName;
@@ -6150,18 +6181,44 @@ class CallSession {
           callSid: this.callSid
         }).catch(e => console.warn('[Firestore Profile Save Warning]', e.message));
 
+        // Silent VIP Commercial Account & Known Customer Check (Privacy Shield — never read back private DB details aloud)
+        const vipMatch = matchVipOrCustomer({
+          phone: this.callerPhone,
+          callerName: callerName || this.sessionData.callerName || '',
+          companyName: companyName || this.sessionData.companyName || '',
+          reason: reason || this.sessionData.transferReason || ''
+        });
+        if (vipMatch.matched) {
+          this.sessionData.vipMatch = vipMatch;
+          console.log(`[CallSession ${this.callSid}] 🌟 SILENT VIP MATCH in update_caller_profile (${vipMatch.tier} via ${vipMatch.matchedBy}): ${vipMatch.accountName}`);
+          return {
+            profileUpdated: true,
+            vipFastPass: true,
+            privacyShield: true,
+            preferredTarget: vipMatch.preferredTarget,
+            callerName: callerName || vipMatch.matchedContactName || null,
+            companyName: companyName || vipMatch.accountName || null,
+            invoiceNumber: invoiceNumber || null,
+            instruction: `SILENT VIP ACCOUNT RECOGNIZED (PRIVACY SHIELD ACTIVE). Do NOT announce or verify private account details aloud, do NOT ask them to spell their name, and do NOT pitch the online estimator. Simply say warmly: "Of course! Hold for just a moment while I connect you right now." and IMMEDIATELY call "transfer_to_specialist" with targetSpecialist: "${vipMatch.preferredTarget}", bypassScreening: true, callerName: "${callerName || vipMatch.matchedContactName || 'VIP Caller'}", companyName: "${companyName || vipMatch.accountName}", reason: "${reason || 'VIP Account Direct Transfer'}".`
+          };
+        }
+
         return {
           profileUpdated: true,
           callerName: callerName,
           companyName: companyName || null,
           invoiceNumber: invoiceNumber || null,
-          instruction: `Caller identity registered as ${callerName}${invoiceNumber ? ' regarding invoice #' + invoiceNumber : ''}. Greet/acknowledge them warmly by name and NEVER ask for their name, company, or invoice number again!`
+          instruction: `Caller identity registered as ${callerName}${invoiceNumber ? ' regarding invoice #' + invoiceNumber : ''}. NEVER ask for their name, company, or invoice number again!`
         };
       }
 
       if (name === 'transfer_to_specialist') {
+        const callerSpokenText = (this.conversationTurns || [])
+          .filter(t => t.role === 'user' || t.role === 'caller')
+          .map(t => t.text || '')
+          .join(' ');
         const rawCallerName = (args?.callerName || this.sessionData.callerName || this.sessionData.customerName || '').trim();
-        const companyName = (args?.companyName || args?.vendorName || this.sessionData.companyName || '').trim();
+        let companyName = (args?.companyName || args?.vendorName || this.sessionData.companyName || '').trim();
         let invoiceNumber = (args?.invoiceNumber || this.sessionData.invoiceNumber || '').trim();
         const propertyAddress = (args?.propertyAddress || this.sessionData.verifiedAddress || '').trim();
         const rawReason = (args?.reason || this.sessionData.transferReason || '').trim();
@@ -6174,23 +6231,11 @@ class CallSession {
           }
         }
 
-        // 1. MANDATORY CALLER NAME VALIDATION: Reject empty or generic placeholders
-        const isGenericName = !rawCallerName ||
-          /^(caller|customer|unknown|anonymous|user|homeowner|n\/?a|none|someone|person|guest|client)$/i.test(rawCallerName);
-        if (isGenericName) {
-          console.warn(`[CallSession ${this.callSid}] Rejected premature transfer_to_specialist: missing or generic callerName ("${rawCallerName}")`);
-          return {
-            transferInitiated: false,
-            error: 'MISSING_CALLER_NAME',
-            instruction: 'DO NOT transfer yet. You must first ask the caller for their full name and who they are with: "I would be happy to direct your call! May I ask who is calling and what company you are with?"'
-          };
-        }
-
-        // 2. STRICT ANTI-SPAM & VENDOR SOLICITOR QUARANTINE GATE
-        const auditString = `${rawCallerName} ${companyName} ${rawReason} ${propertyAddress}`.toLowerCase();
-        const isSolicitor = /\b(seo|software|marketing|leads|lead gen|recruiting|staffing|telemarket|pitch|vendor pitch|promotional|advertising|cold call|merchant services|credit card processing|materials supplier|supplies pitch)\b/i.test(auditString);
+        // 1. STRICT ANTI-SPAM & VENDOR SOLICITOR QUARANTINE GATE (checked FIRST so cold sales NEVER bypass)
+        const auditString = `${rawCallerName} ${companyName} ${rawReason} ${propertyAddress} ${callerSpokenText}`.toLowerCase();
+        const isSolicitor = /\b(seo|software sales|marketing agency|leads|lead gen|recruiting|staffing|telemarket|pitch|vendor pitch|promotional|advertising|cold call|merchant services|credit card processing|materials supplier|supplies pitch|experian business credit|line of credit|zoho|hook point)\b/i.test(auditString);
         if (isSolicitor) {
-          console.warn(`[CallSession ${this.callSid}] Blocked solicitor transfer attempt: ${auditString}`);
+          console.warn(`[CallSession ${this.callSid}] Blocked solicitor transfer attempt: ${auditString.slice(0, 160)}`);
           return {
             transferInitiated: false,
             error: 'SOLICITOR_QUARANTINE',
@@ -6198,22 +6243,44 @@ class CallSession {
           };
         }
 
-        // 3. MANDATORY SPECIFIC PURPOSE VALIDATION:
-        // If an invoice number or property address is present, it is AUTOMATICALLY a specific purpose!
-        const isGenericReason = (!rawReason ||
-          /^(general|inquiry|transfer|billing|talk to someone|speak to human|none|n\/?a|accounting|operations)$/i.test(rawReason)) && !invoiceNumber && (!propertyAddress || propertyAddress === 'Property on file' || propertyAddress === 'None');
-        if (isGenericReason) {
-          console.warn(`[CallSession ${this.callSid}] Rejected premature transfer_to_specialist: generic reason ("${rawReason}")`);
+        // 2. SILENT VIP COMMERCIAL ACCOUNT & KNOWN CUSTOMER FAST-PASS + ANTI-STONEWALL ESCALATION VALVE
+        const vipMatch = this.sessionData.vipMatch?.matched
+          ? this.sessionData.vipMatch
+          : matchVipOrCustomer({
+              phone: this.callerPhone,
+              callerName: rawCallerName,
+              companyName,
+              propertyAddress,
+              reason: rawReason,
+              transcript: callerSpokenText
+            });
+        if (vipMatch.matched) {
+          this.sessionData.vipMatch = vipMatch;
+          if (!companyName && vipMatch.accountName) companyName = vipMatch.accountName;
+          console.log(`[CallSession ${this.callSid}] 🌟 VIP Fast-Pass Authorized (${vipMatch.tier} via ${vipMatch.matchedBy}): ${vipMatch.accountName}`);
+        }
+
+        this.screeningAttempts = (this.screeningAttempts || 0) + 1;
+        const wantsHumanBypass = Boolean(args?.bypassScreening) ||
+          vipMatch.matched ||
+          this.screeningAttempts >= 2 ||
+          /\b(live person|representative|customer service|human|operator|speak to kara|talk to kara|speak to michael|talk to michael|transfer me|put me through)\b/i.test(callerSpokenText);
+
+        // 3. POLITE 1-QUESTION SCREENING ONLY FOR UNKNOWN NON-VIP CALLERS ON FIRST ATTEMPT
+        const isGenericName = !rawCallerName ||
+          /^(caller|customer|unknown|anonymous|user|homeowner|n\/?a|none|someone|person|guest|client)$/i.test(rawCallerName);
+        if (isGenericName && !wantsHumanBypass) {
+          console.log(`[CallSession ${this.callSid}] Asking 1 polite name/company check before transferring unknown caller.`);
           return {
             transferInitiated: false,
-            error: 'MISSING_SPECIFIC_PURPOSE',
-            instruction: 'DO NOT transfer yet. You must ask what specific property, project, or invoice this is regarding before transferring: "And what specific property address, project, or invoice is this regarding?"'
+            error: 'MISSING_CALLER_NAME',
+            instruction: 'Ask AT MOST ONE warm, quick question: "I would be happy to connect you—who may I say is calling, and what company or project is this regarding?" On their very next response (even if partial or if they simply ask to be put through), IMMEDIATELY call transfer_to_specialist with bypassScreening: true.'
           };
         }
 
-        const callerName = rawCallerName;
-        let reason = rawReason;
-        if (!reason && invoiceNumber) {
+        const callerName = (!isGenericName ? rawCallerName : (vipMatch.matchedContactName || 'Direct Caller'));
+        let reason = rawReason || (vipMatch.matched ? `${vipMatch.whisperSummary} direct call` : 'Caller requested direct representative');
+        if (!rawReason && invoiceNumber) {
           reason = `Invoice #${invoiceNumber} inquiry`;
         } else if (invoiceNumber && !reason.toLowerCase().includes(invoiceNumber.toLowerCase())) {
           reason = `${reason} (Invoice #${invoiceNumber})`;
@@ -6231,16 +6298,17 @@ class CallSession {
         }).catch(e => console.warn('[Firestore Profile Save Warning]', e.message));
 
         // Check if caller explicitly asked for a specific person by name (in tool args, reason, or spoken transcript)
-        const callerSpokenText = (this.conversationTurns || [])
-          .filter(t => t.role === 'user' || t.role === 'caller')
-          .map(t => t.text || '')
-          .join(' ');
         const explicitKara = args?.askedForPerson === 'kara' || /(^|\b)(kara|carrie|cara)\b/i.test(reason) || /(^|\b)(kara|carrie|cara)\b/i.test(callerSpokenText);
 
         const explicitMichael = args?.askedForPerson === 'michael' || /(^|\b)(michael|mike)\b/i.test(reason) || /(^|\b)(michael|mike)\b/i.test(callerSpokenText);
         const askedForPerson = explicitKara ? 'kara' : (explicitMichael ? 'michael' : 'none');
 
-        const isKara = explicitKara || args?.targetSpecialist === 'kara' || /kara|carrie|billing|payable|receivable|invoice|subcontractor|vendor|unphc|order|supplier|material/i.test(reason);
+        const isKara = explicitKara ||
+          (!explicitMichael && (
+            args?.targetSpecialist === 'kara' ||
+            (vipMatch.matched && vipMatch.preferredTarget === 'kara') ||
+            /kara|carrie|billing|payable|receivable|invoice|subcontractor|vendor|unphc|utah nonprofit|order|supplier|material|customer service/i.test(`${reason} ${companyName} ${callerSpokenText}`)
+          ));
         const targetSpecialist = isKara ? 'Kara Robinson' : 'Michael Robinson';
         const targetCell = isKara ? KARA_CELL : MICHAEL_CELL;
 
@@ -6251,7 +6319,7 @@ class CallSession {
             departmentLabel = 'our ordering department';
           } else if (/billing|payable|receivable|invoice|payment|draw|check|w9|coi/i.test(reason)) {
             departmentLabel = 'our accounting department';
-          } else if (/operation|admin|permit|schedule/i.test(reason)) {
+          } else if (/operation|admin|permit|schedule|customer service/i.test(reason)) {
             departmentLabel = 'our operations team';
           } else {
             departmentLabel = isKara ? 'our accounting department' : 'our project design team';
@@ -6271,11 +6339,11 @@ class CallSession {
         this.sessionData.companyName = companyName;
         this.sessionData.invoiceNumber = invoiceNumber;
         this.sessionData.transferReason = reason;
-        this.sessionData.leadType = 'Trade Partner / Administrative Transfer';
+        this.sessionData.leadType = vipMatch.matched ? `VIP Fast-Pass (${vipMatch.tier})` : 'Trade Partner / Administrative Transfer';
 
-        // AFTER-HOURS & QUOTE TRIAGE FLOW
-        const isEmergency = this.selection === '2' || /leak|water|drip|tarp|emergency|flood/i.test(reason);
-        const isQuoteInquiry = !isEmergency && (this.selection === '1' || /quote|estimate|design|bid|new roof|replace/i.test(reason) || departmentLabel.includes('design') || departmentLabel.includes('estimation'));
+        // AFTER-HOURS & QUOTE TRIAGE FLOW (NEVER block VIP Commercial Accounts or explicit human pass-through!)
+        const isEmergency = this.selection === '2' || /leak|water|drip|tarp|emergency|flood/i.test(`${reason} ${callerSpokenText}`);
+        const isQuoteInquiry = !vipMatch.matched && !wantsHumanBypass && !isEmergency && (this.selection === '1' || /quote|estimate|design|bid|new roof|replace/i.test(reason) || departmentLabel.includes('design') || departmentLabel.includes('estimation'));
 
         // 1. QUOTE FLOW DIRECT TO FALLBACK:
         // For certified quotes & project design, we do not ring Michael's cell live on intake;
@@ -7321,7 +7389,7 @@ Respond naturally with full executive poise, smiling warmth, and Wasatch Front r
               startOfSpeechSensitivity: 'START_SENSITIVITY_HIGH',
               endOfSpeechSensitivity: 'END_SENSITIVITY_LOW',
               prefixPaddingMs: 120,
-              silenceDurationMs: 650
+              silenceDurationMs: 950
             }
           },
           speechConfig: {
@@ -10810,13 +10878,34 @@ Output plain text only (the single directive sentence).`
   }
 });
 
+// Phase 6: Live Silent VIP Commercial Account & Customer Directory Endpoints
+app.get('/api/telephony/vip-directory', async (req, res) => {
+  try {
+    const force = req.query.refresh === 'true';
+    await syncVipDirectory({ driveClient, fetchGoogleContacts, initFirestore, force });
+    res.json({ success: true, ...getVipDirectorySummary() });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/telephony/vip-match', async (req, res) => {
+  try {
+    await syncVipDirectory({ driveClient, fetchGoogleContacts, initFirestore });
+    const result = matchVipOrCustomer(req.body || {});
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.get('/health', (req, res) => {
   const geminiKeyConfigured = Boolean(GEMINI_API_KEY && GEMINI_API_KEY.length > 20);
   res.json({
     status: 'ok',
     service: 'RHIVE Multi-Model Telephony Swarm & Speech-to-Speech Bridge',
-    version: '1.9.4',
-    revision: 'Rev 72',
+    version: '1.9.5',
+    revision: 'Rev 73',
     model: LIVE_VOICE_MODEL,
     voicePersona: AGENT_PROFILES.intake.voice,
     spokenBrandPhonetic: "R-hive (/ˈɑɹˌhaɪv/)",

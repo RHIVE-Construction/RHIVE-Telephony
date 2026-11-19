@@ -26,10 +26,10 @@ async function verifyProduction() {
   console.log(' RHIVE V6.0 LIVE PRODUCTION CLOUD RUN & WSS AUDIO VERIFICATION');
   console.log('==================================================================');
 
-  // 1. Live Cloud Run /health (v1.9.4 / Rev 72)
+  // 1. Live Cloud Run /health (v1.9.5 / Rev 73)
   const health = await axios.get(`https://${CLOUD_RUN_HOST}/health`);
   assert(
-    health.status === 200 && health.data.version === '1.9.4' && health.data.revision === 'Rev 72' && health.data.spokenBrandPhonetic === 'R-hive (/ˈɑɹˌhaɪv/)' && health.data.agentTitle === 'AI Roof Specialist',
+    health.status === 200 && health.data.version === '1.9.5' && health.data.revision === 'Rev 73' && health.data.spokenBrandPhonetic === 'R-hive (/ˈɑɹˌhaɪv/)' && health.data.agentTitle === 'AI Roof Specialist',
     `Cloud Run /health reports version: ${health.data.version} (${health.data.revision}, Spoken Brand: ${health.data.spokenBrandPhonetic}, Title: ${health.data.agentTitle})`
   );
   assert(
@@ -111,6 +111,27 @@ async function verifyProduction() {
     connectScreen.data.includes('<Conference>RHIVE_PROD_TEST</Conference>') &&
     disregardScreen.data.includes('<Hangup/>'),
     `Production /screen-decision passes all 4 live screening angles (JustCall PBX absorption, "Hello?" briefing, "Connect" conference bridge, "Disregard" fallback)`
+  );
+
+  // 5B. Live Production Silent VIP Directory (Google Drive Commercial & Residential + UNPHC Fast-Pass + Privacy Shield)
+  const prodVipDir = await axios.get(`https://${CLOUD_RUN_HOST}/api/telephony/vip-directory?refresh=true`);
+  const prodGregMatch = await axios.post(`https://${CLOUD_RUN_HOST}/api/telephony/vip-match`, {
+    callerName: 'Greg',
+    companyName: 'Utah Nonprofit Housing Corporation',
+    propertyAddress: 'Dominguez Park',
+    transcript: 'Hi this is Greg with U N P H C about a leak at Dominguez Park'
+  });
+  const prodDriveMatch = await axios.post(`https://${CLOUD_RUN_HOST}/api/telephony/vip-match`, {
+    companyName: 'Wadman Corp'
+  });
+  assert(
+    prodVipDir.status === 200 &&
+    prodVipDir.data.commercialDriveFoldersCount >= 10 &&
+    prodGregMatch.data.matched === true &&
+    prodGregMatch.data.canonicalCode === 'UNPHC' &&
+    prodGregMatch.data.privacyShield === true &&
+    prodDriveMatch.data.matched === true,
+    `Production VIP Directory synced ${prodVipDir.data.commercialDriveFoldersCount} Commercial Drive folders + ${prodVipDir.data.residentialDriveFoldersCount} Residential folders + ${prodVipDir.data.googleContactsCount} Contacts (UNPHC & Wadman Corp Silent Fast-Pass verified)`
   );
 
   // 6. LIVE PRODUCTION WSS /media-stream HONEY VOICE AUDIO SYNTHESIS PROOF

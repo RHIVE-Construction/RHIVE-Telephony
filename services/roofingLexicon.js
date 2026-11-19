@@ -39,8 +39,11 @@ const LEXICON_REPLACEMENTS = [
   { pattern: /\b(?:lee\s*high)\b/gi, replacement: 'Lehi' },
   { pattern: /\b(?:bountiful)\b/gi, replacement: 'Bountiful' },
 
-  // 4. Trade Partners & Executive Names
-  { pattern: /\bu\.?\s*n\.?\s*p\.?\s*h\.?\s*c\.?\b/gi, replacement: 'UNPHC' },
+  // 4. Trade Partners, VIP Commercial Accounts & Executive Names
+  { pattern: /\b(?:u\.?\s*n\.?\s*p\.?\s*h\.?\s*c\.?|u\s+and\s+p\s+h\s+c|un\s*phc)\b/gi, replacement: 'UNPHC' },
+  { pattern: /\butah\s+non[\s-]*profit\s+housing(?:\s+(?:corp|corporation))?\b/gi, replacement: 'UNPHC (Utah Nonprofit Housing Corporation)' },
+  { pattern: /\b(?:the\s+manges\s+park|dominguez\s+park)\b/gi, replacement: 'Dominguez Park' },
+  { pattern: /\b(?:p\.?\s*p\.?\s*c\.?\s*[\s-]*utah)\b/gi, replacement: 'PPC-Utah' },
   { pattern: /\ba\.?\s*b\.?\s*c\.?\s+supply\b/gi, replacement: 'ABC Supply' },
   { pattern: /\bs\.?\s*r\.?\s*s\.?\s+distribution\b/gi, replacement: 'SRS Distribution' }
 ];

@@ -124,7 +124,7 @@ async function runTests() {
   try {
     const res = await axios.get(`http://localhost:${TEST_PORT}/health`);
     assert(res.status === 200 && res.data.status === 'ok', 'GET /health returns 200 OK');
-    assert(res.data.revision === 'Rev 72' && res.data.version === '1.9.4', 'Health reports revision: Rev 72 (v1.9.4)');
+    assert(res.data.revision === 'Rev 73' && res.data.version === '1.9.5', 'Health reports revision: Rev 73 (v1.9.5)');
     assert(res.data.spokenBrandPhonetic === 'R-hive (/ˈɑɹˌhaɪv/)' && res.data.agentTitle === 'AI Roof Specialist' && res.data.sotaVoiceOptimizations === true, 'Health confirms R-hive IPA lock, AI Roof Specialist title & SOTA voice optimizations');
     assert(res.data.ambientCompositeLoaded === true, 'Health reports ambientCompositeLoaded: true');
     assert(res.data.dashboardAvailable === true, 'Health reports Executive Dashboard is available');
@@ -655,6 +655,65 @@ async function runTests() {
     assert(
       vmRes.status === 200 && vmRes.data.includes('<Hangup/>') && !vmRes.data.includes('<Conference>'),
       'Scenario F: Voicemail greeting detector cleanly hangs up screening leg and triggers /transfer-fallback'
+    );
+
+    // V6.5 Silent VIP Commercial Account Fast-Pass, Privacy Shield, U-N-P-H-C Phonetics & English-Only Lock Tests
+    const vipDirRes = await axios.get(`http://localhost:${TEST_PORT}/api/telephony/vip-directory`);
+    assert(
+      vipDirRes.status === 200 && vipDirRes.data.success === true && vipDirRes.data.commercialSeedsCount >= 12 && vipDirRes.data.privacyShieldMode === 'SILENT_PASS_THROUGH_ZERO_DISCLOSURE',
+      `GET /api/telephony/vip-directory indexes ${vipDirRes.data.commercialSeedsCount} commercial VIP seeds + ${vipDirRes.data.googleContactsCount} Google Contacts (Privacy Shield active)`
+    );
+
+    const gregUnphcRes = await axios.post(`http://localhost:${TEST_PORT}/api/telephony/vip-match`, {
+      callerName: 'Greg',
+      companyName: 'Utah Nonprofit Housing Corporation',
+      propertyAddress: 'Dominguez Park',
+      reason: 'Estimate for a roof leak at Dominguez LP 1'
+    });
+    assert(
+      gregUnphcRes.status === 200 && gregUnphcRes.data.matched === true && gregUnphcRes.data.tier === 'VIP_COMMERCIAL' && gregUnphcRes.data.canonicalCode === 'UNPHC' && gregUnphcRes.data.privacyShield === true,
+      `VIP Matcher silently identifies Greg / Utah Nonprofit Housing Corporation / Dominguez Park -> ${gregUnphcRes.data.accountName} (Target: ${gregUnphcRes.data.preferredTarget}, Privacy Shield ON)`
+    );
+
+    const unphcAcronymRes = await axios.post(`http://localhost:${TEST_PORT}/api/telephony/vip-match`, {
+      transcript: 'Hi this is Greg from U N P H C calling for Kara'
+    });
+    assert(
+      unphcAcronymRes.status === 200 && unphcAcronymRes.data.matched === true && unphcAcronymRes.data.canonicalCode === 'UNPHC' && unphcAcronymRes.data.preferredTarget === 'kara',
+      'VIP Matcher recognizes letter-by-letter "U N P H C" pronunciation and routes straight to Kara'
+    );
+
+    const gregPhoneRes = await axios.post(`http://localhost:${TEST_PORT}/api/telephony/vip-match`, {
+      phone: '+13852598179'
+    });
+    assert(
+      gregPhoneRes.status === 200 && gregPhoneRes.data.matched === true && gregPhoneRes.data.canonicalCode === 'UNPHC' && gregPhoneRes.data.privacyShield === true,
+      'VIP Matcher silently recognizes Greg Wright Caller ID (+13852598179) without verbal verification'
+    );
+
+    const zohoBlockRes = await axios.post(`http://localhost:${TEST_PORT}/api/telephony/vip-match`, {
+      callerName: 'Srinivas',
+      companyName: 'Zoho',
+      reason: 'software sales pitch'
+    });
+    assert(
+      zohoBlockRes.status === 200 && zohoBlockRes.data.matched === false && zohoBlockRes.data.isSolicitor === true,
+      'Solicitor Quarantine blocks Zoho cold-sales caller from VIP Fast-Pass'
+    );
+
+    const unphcLexRes = await axios.post(`http://localhost:${TEST_PORT}/api/workspace/lexicon-normalize`, {
+      text: 'Greg from u n p h c called about the manges park'
+    });
+    assert(
+      unphcLexRes.status === 200 && unphcLexRes.data.normalized.includes('UNPHC') && unphcLexRes.data.normalized.includes('Dominguez Park'),
+      `Lexicon normalizes "u n p h c" & "the manges park" -> "${unphcLexRes.data.normalized}"`
+    );
+
+    assert(
+      settingsRes.data.systemInstruction.includes('ABSOLUTE ENGLISH-ONLY DEFAULT LOCK') &&
+      settingsRes.data.systemInstruction.includes('PRIVACY INVARIANT') &&
+      settingsRes.data.systemInstruction.includes('ANTI-STONEWALL ESCALATION VALVE'),
+      'Honey systemInstruction enforces English-Only Lock, VIP Privacy Shield & Zero-Stonewall Valve'
     );
   } catch (e) {
     assert(false, 'V5.0/V6.0 AQuA / Goldfish / Live Honey Audio test error: ' + e.message);
