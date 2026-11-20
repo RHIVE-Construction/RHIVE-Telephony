@@ -1833,6 +1833,8 @@ async function executeScreenedTransfer(options) {
     companyName = '',
     invoiceNumber = '',
     reason = 'General inquiry',
+    vipNote = '',
+    afterHours = false,
     propertyAddress = 'Property on file',
     callerPhone,
     selection = '1'
@@ -1857,6 +1859,8 @@ async function executeScreenedTransfer(options) {
     companyName: companyName,
     invoiceNumber: invoiceNumber,
     reason: reason,
+    vipNote: vipNote,
+    afterHours: afterHours ? 'true' : 'false',
     propertyAddress: propertyAddress,
     callerPhone: callerPhone || '',
     option: String(opt)
@@ -2179,6 +2183,30 @@ async function findKaraAvailableSlots({ requestedDay = null, requestedTime = nul
   }
 }
 
+/**
+ * Strips internal VIP/routing telemetry tags (e.g. "VIP Commercial Account UNPHC — Susan direct call")
+ * so customer-facing SMS messages and calendar invites ALWAYS sound 100% genuine, natural, and private.
+ */
+function sanitizeCustomerFacingTopic(rawTopic = '') {
+  const s = String(rawTopic || '').trim();
+  if (!s) return 'your call';
+  if (/vip commercial account|vip fast-pass|existing residential|known contact|returning account|direct call|caller requested direct|general inquiry|accounts & operations inquiry|inquiry$/i.test(s)) {
+    return 'your call';
+  }
+  return s.replace(/^regarding\s+/i, '').trim() || 'your call';
+}
+
+/**
+ * Formats key commercial acronyms for Google Neural2-F TwiML TTS so letter-by-letter
+ * acronyms (like UNPHC -> "U N P H C") are never mispronounced as a phonetic word.
+ */
+function formatAcronymsForTts(text = '') {
+  return String(text || '')
+    .replace(/\bUNPHC\b/gi, 'U N P H C')
+    .replace(/\bPPC\b/g, 'P P C')
+    .replace(/\bACS\b/g, 'A C S');
+}
+
 async function executeSpecialistTextRequest(params) {
   const {
     callerName = 'Customer',
@@ -2192,9 +2220,10 @@ async function executeSpecialistTextRequest(params) {
     senderTitle = null
   } = params;
 
-  const safeCallerName = callerName || 'Customer';
+  const safeCallerName = (callerName && !/^(Direct Caller|VIP Caller|Customer|Caller|Unknown)$/i.test(callerName)) ? callerName : 'there';
   const safePhone = customerPhone || 'Unknown';
   const safeReason = reason || 'Inquiry';
+  const cleanCustomerTopic = sanitizeCustomerFacingTopic(safeReason);
   const safeCompany = companyName ? ` with ${companyName}` : '';
   const isKara = targetSpecialist.toLowerCase().includes('kara');
   const specialistCell = isKara ? KARA_CELL : MICHAEL_CELL;
@@ -2209,26 +2238,28 @@ async function executeSpecialistTextRequest(params) {
       } else if (/billing|payable|receivable|invoice/i.test(departmentLabel) || /billing|payable|receivable|invoice/i.test(reason)) {
         resolvedSenderTitle = 'Kara with RHIVE Construction Accounting';
       } else {
-        resolvedSenderTitle = 'Kara with RHIVE Construction Operations';
+        resolvedSenderTitle = 'Kara with RHIVE Construction';
       }
     } else {
-      resolvedSenderTitle = 'Michael with RHIVE Construction Project Design';
+      resolvedSenderTitle = 'Michael with RHIVE Construction';
     }
   }
 
   console.log(`[Request Specialist Text] Urgent text request received for ${targetSpecialist} (${departmentLabel}) from ${safeCallerName}${safeCompany} (${safePhone}) regarding "${safeReason}"${invoiceNumber ? ' (Invoice #' + invoiceNumber + ')' : ''}`);
 
-  // 1. Urgent SMS alert directly to specialist's personal mobile cell (Kara or Michael)
+  // 1. Urgent SMS alert directly to specialist's personal mobile cell (Kara or Michael — includes full internal VIP context)
   const invoiceLine = invoiceNumber ? `\n📄 Invoice: #${invoiceNumber}` : '';
-  const alertMsg = `🚨 URGENT TEXT REQUEST FOR ${specialistFirstName.toUpperCase()} (${departmentLabel}):\n👤 ${safeCallerName}${safeCompany} (${safePhone})${invoiceLine}\n📋 Topic: ${safeReason}\n⚡ Caller requested: Please text them back directly on this cell as soon as possible.`;
+  const alertMsg = `🚨 URGENT TEXT REQUEST FOR ${specialistFirstName.toUpperCase()} (${departmentLabel}):\n👤 ${callerName || 'Caller'}${safeCompany} (${safePhone})${invoiceLine}\n📋 Topic: ${safeReason}\n⚡ Caller requested: Please text them back directly on this cell as soon as possible.`;
   sendMultiChannelSms({ to: specialistCell, body: alertMsg, preferredSender: isKara ? 'kara' : 'michael' });
 
-  // 2. Instant proactive interactive confirmation SMS to caller via JustCall 10DLC
+  // 2. Clean, natural, human interactive SMS to caller via JustCall 10DLC (ZERO internal VIP metadata)
   if (safePhone && !safePhone.startsWith('SIM_') && safePhone !== 'Unknown') {
-    const topicDetails = invoiceNumber && !safeReason.toLowerCase().includes(invoiceNumber.toLowerCase())
-      ? `${safeReason} (Invoice #${invoiceNumber})`
-      : safeReason;
-    const callerConfirmMsg = `RHIVE: Hi ${safeCallerName}, this is Kara in operations. I received your note regarding ${topicDetails}. Text me right here or let me know if you'd prefer a quick call!`;
+    const topicPhrase = (invoiceNumber && !cleanCustomerTopic.toLowerCase().includes(invoiceNumber.toLowerCase()))
+      ? `${cleanCustomerTopic} (Invoice #${invoiceNumber})`
+      : cleanCustomerTopic;
+    const callerConfirmMsg = topicPhrase === 'your call'
+      ? `Hi ${safeCallerName}, this is ${resolvedSenderTitle}. Thanks for reaching out—feel free to text me back right here with what you need, or let me know when works best for a quick call!`
+      : `Hi ${safeCallerName}, this is ${resolvedSenderTitle}. Thanks for reaching out regarding ${topicPhrase}. Feel free to text me back right here or let me know when works best for a quick call!`;
     sendMultiChannelSms({ to: safePhone, body: callerConfirmMsg, preferredSender: isKara ? 'kara' : 'michael' });
     recentSmsRouting.set(normalizePhoneDigits(safePhone), {
       targetSpecialist,
@@ -2329,6 +2360,7 @@ async function executeCallbackBooking(params) {
     attendees.push({ email: validCustomerEmail, displayName: `${callerName} (Customer)` });
   }
 
+  const cleanCalendarTopic = sanitizeCustomerFacingTopic(reason);
   const calEvent = {
     summary: excitingTitle,
     location: project || 'Direct Phone Call',
@@ -2340,7 +2372,7 @@ async function executeCallbackBooking(params) {
                  `Phone:          ${customerPhone}\n` +
                  `Email:          ${validCustomerEmail || customerEmail || 'Not Provided (michael@rhiveconstruction.com fallback)'}\n` +
                  `Specialist:     ${targetSpecialist} (${specialistEmail})\n` +
-                 `Topic/Scope:    ${reason}\n` +
+                 `Topic/Scope:    ${cleanCalendarTopic}\n` +
                  `Scheduled Slot: ${slotSpoken}\n` +
                  `Booking Engine: Honey Telephony Fallback (Real-Time Availability Checked)\n`,
     start: { dateTime: chosenSlot.startISO, timeZone: 'America/Denver' },
@@ -2395,12 +2427,13 @@ async function executeCallbackBooking(params) {
     }
   }
 
-  // SMS to customer via JustCall
+  // SMS to customer via JustCall (ONLY dispatched after caller explicitly scheduled a 15-min call)
   if (customerPhone && !customerPhone.startsWith('SIM_')) {
+    const specialistFirst = isKara ? 'Kara' : 'Michael';
     sendMultiChannelSms({
       to: customerPhone,
-      body: `RHIVE: Hi ${callerName}, your 15-min call with Kara is confirmed for ${slotSpoken}. A calendar invite is in your email. Text this thread if you need anything sooner.`,
-      preferredSender: targetSpecialist || 'kara'
+      body: `RHIVE: Hi ${callerName}, your 15-min call with ${specialistFirst} is confirmed for ${slotSpoken}. A calendar invite is in your email. Text this thread if you need anything sooner.`,
+      preferredSender: isKara ? 'kara' : 'michael'
     }).catch(e => console.warn('[Callback Customer SMS Warning]', e.message));
   }
 
@@ -4094,7 +4127,7 @@ CRITICAL TONE, PACING & BRANDING RULES:
      * Acknowledge warmly and enthusiastically: "Got it, [First Name]! Let me connect you right now to [our accounting department / our ordering department / our project design team]."
      * IMMEDIATELY call "transfer_to_specialist" with callerName, companyName, invoiceNumber, reason, and targetSpecialist!
    - 1-QUESTION POLITE SCREENING & ZERO-STONEWALL VIP FAST-PASS (CRITICAL PRIVACY & COMMERCIAL ACCOUNT RULES):
-     * ABSOLUTE ENGLISH-ONLY DEFAULT LOCK: ALWAYS speak English by default! NEVER switch into Spanish, German, Korean, or any other language because of a cough, throat clear, background noise, or Spanish-origin names/properties (like "Dominguez Park", "Esperanza", or "Spanish Fork"). ONLY switch to Spanish if the caller explicitly requests Spanish in a complete sentence (e.g., "¿Habla español?" or "Can we speak Spanish?").
+     * ABSOLUTE ENGLISH-ONLY DEFAULT LOCK & INTENTIONAL BILINGUAL SPANISH SWITCHING: ALWAYS speak English by default! NEVER switch into Spanish, German, Korean, or any other language because of a cough, throat clear, background static, caller accent, or Spanish-origin names/cities/properties (like "Dominguez Park", "Esperanza", "Spanish Fork", or "Santa Clara"). ONLY switch to warm, fluent Spanish if the caller explicitly asks for Spanish (e.g., "¿Habla español?", "Español por favor", or "Can we speak Spanish?") OR clearly speaks a complete multi-word sentence in Spanish (e.g., "Hola, necesito una cotización para mi techo"). Once intentionally switched to Spanish, complete the entire call (including intake, transfers, and callback scheduling) naturally in fluent Spanish!
      * VIP COMMERCIAL ACCOUNTS & EXISTING CUSTOMERS (PRIVACY SHIELD — NEVER VERIFY ALOUD):
        - Key VIP Commercial Accounts include "U-N-P-H-C" (pronounced letter-by-letter "U-N-P-H-C" or "Utah Nonprofit Housing Corporation", including properties like "Dominguez Park" and "Preston Place"), "PPC-Utah", "ACS / Advanced Community Services", "ICON National", "Wadman Corp", "Mint Construction", "Heritage Investment Group", "Larry H Miller", "Ken Garff", "Wellness Farms", "Transtar", and "Dojo", plus all active Commercial & Residential Drive clients and Contacts.
        - PRIVACY INVARIANT: Whenever a caller matches a VIP Commercial Account or Known Customer (by Caller ID or spoken name/company/property), DO NOT announce, confirm, or verify their private account details aloud! Do NOT ask them to spell their name, do NOT pitch the online estimator, and do NOT quote the residential $150 mobilization fee. Simply say warmly: "Of course! Hold for just a moment while I connect you right now." and IMMEDIATELY call "transfer_to_specialist" with bypassScreening: true!
@@ -5475,11 +5508,12 @@ class CallSession {
         }
 
         const greetingLine = hasKnownName
-          ? `Thanks for holding, ${knownName}! It looks like ${targetEntity} is currently tied up. Would you like me to schedule a 15-minute call? Leave me a message I can send to ${targetEntity}? Or would you like me to have ${targetEntity} message you now through text and get back to you as soon as possible?`
-          : `Thanks for holding! It looks like ${targetEntity} is currently tied up. Would you like me to schedule a 15-minute call? Leave me a message I can send to ${targetEntity}? Or would you like me to have ${targetEntity} message you now through text and get back to you as soon as possible?`;
+          ? `Thanks for holding, ${knownName}! It looks like ${targetEntity} is busy right now. Would you like me to schedule a 15-minute call, leave a message for ${targetEntity}, or have ${targetEntity} reach out to you by text?`
+          : `Thanks for holding! It looks like ${targetEntity} is busy right now. Would you like me to schedule a 15-minute call, leave a message for ${targetEntity}, or have ${targetEntity} reach out to you by text?`;
 
-        triggerPrompt = `The caller was just being transferred to ${targetEntity}, but ${targetEntity} is currently tied up or unavailable.\n` +
-          (hasKnownName ? `CALLER IDENTITY PRE-VERIFIED: Full Name: "${knownName}", Phone: "${this.callerPhone}", Company: "${this.sessionData.companyName || 'N/A'}", Invoice/PO: "${this.sessionData.invoiceNumber || 'N/A'}", Reason: "${this.sessionData.transferReason || 'Inquiry'}".\nCRITICAL DIRECTIVE: DO NOT ASK FOR THEIR NAME, PHONE NUMBER, INVOICE NUMBER, OR COMPANY AGAIN! You already know who they are. Address them warmly by their name.\n` : '') +
+        triggerPrompt = `The caller was just on hold while we checked with ${targetEntity}, who is busy or unavailable right now.\n` +
+          `CRITICAL SEQUENCING RULE: NO text message has been sent yet! Present the 3 options cleanly FIRST, listen to the caller's choice, and execute ONLY the option they choose (only call "request_kara_text" if they choose text).\n` +
+          (hasKnownName ? `CALLER IDENTITY PRE-VERIFIED (PRIVATE — NEVER VERIFY OR READ BACK INTERNAL VIP TAGS): Name: "${knownName}", Phone: "${this.callerPhone}", Company: "${this.sessionData.companyName || 'N/A'}", Invoice/PO: "${this.sessionData.invoiceNumber || 'N/A'}".\nCRITICAL DIRECTIVE: DO NOT ASK FOR THEIR NAME, PHONE NUMBER, INVOICE NUMBER, OR COMPANY AGAIN! Address them warmly by their first name.\n` : '') +
           'Deliver your opening line warmly, reassuringly, and smoothly:\n' +
           '"' + greetingLine + '"\n' +
           'Then listen naturally to the caller. They have 3 distinct options:\n' +
@@ -5496,8 +5530,8 @@ class CallSession {
           '   - Confirm: "Thanks, ' + (knownName || 'Customer') + '! I\'ve sent that message directly to ' + targetEntity + ', and they\'ll review it shortly."\n' +
           '3. OPTION 3 - HAVE ' + targetEntity.toUpperCase() + ' MESSAGE THEM NOW THROUGH TEXT (GET BACK ASAP):\n' +
           '   - If caller says "have them text me", "text me", "message me now", "text", "option 3", etc.\n' +
-          '   - Execute "request_kara_text" with callerName="' + (knownName || 'Customer') + '", customerPhone="' + this.callerPhone + '", companyName="' + (this.sessionData.companyName || '') + '", invoiceNumber="' + (this.sessionData.invoiceNumber || '') + '", reason="' + (this.sessionData.transferReason || 'Inquiry') + '", targetSpecialist="' + (isKara ? 'kara' : 'michael') + '", targetEntity="' + targetEntity + '".\n' +
-          '   - Confirm warmly: "I\'ve sent an urgent text alert to ' + targetEntity + ' with your details, and they will message you directly on this cell phone as soon as possible. Thank you for calling R-hive Construction, have a wonderful day!"\n' +
+          '   - Execute "request_kara_text" with callerName="' + (knownName || 'Customer') + '", customerPhone="' + this.callerPhone + '", companyName="' + (this.sessionData.companyName || '') + '", invoiceNumber="' + (this.sessionData.invoiceNumber || '') + '", reason="' + sanitizeCustomerFacingTopic(this.sessionData.transferReason || 'your call') + '", targetSpecialist="' + (isKara ? 'kara' : 'michael') + '", targetEntity="' + targetEntity + '".\n' +
+          '   - Confirm warmly: "I\'ve alerted ' + targetEntity + ' and started a direct text thread to your cell phone right now so you can reply anytime. Thank you for calling R-hive Construction, have a wonderful day!"\n' +
           '   - Call "hangup_call".\n' +
           'STRICT RULES:\n' +
           '- DYNAMIC ENTITY RULE: Never say "Kara" or "Michael" unless the caller explicitly requested that specific person by name! Otherwise refer strictly to the department ("' + targetEntity + '").\n' +
@@ -5519,8 +5553,8 @@ class CallSession {
           '- Speak in a brisk, clean, continuous conversational flow.';
       }
 
-      // 50ms RTP frame settle after transfer_ring.wav (4.2s carrier pre-roll already opened PSTN media path; saves 900ms TTFA)
-      await new Promise(resolve => setTimeout(resolve, 50));
+      // 150ms RTP frame settle after immediate <Connect><Stream> open so the carrier media path is 100% live and "Hi!" is never clipped (~1.1s total natural pickup cadence)
+      await new Promise(resolve => setTimeout(resolve, 150));
 
       await this.geminiSession.sendClientContent({
         turns: [
@@ -6279,7 +6313,7 @@ class CallSession {
         }
 
         const callerName = (!isGenericName ? rawCallerName : (vipMatch.matchedContactName || 'Direct Caller'));
-        let reason = rawReason || (vipMatch.matched ? `${vipMatch.whisperSummary} direct call` : 'Caller requested direct representative');
+        let reason = rawReason || 'your call';
         if (!rawReason && invoiceNumber) {
           reason = `Invoice #${invoiceNumber} inquiry`;
         } else if (invoiceNumber && !reason.toLowerCase().includes(invoiceNumber.toLowerCase())) {
@@ -6319,7 +6353,7 @@ class CallSession {
             departmentLabel = 'our ordering department';
           } else if (/billing|payable|receivable|invoice|payment|draw|check|w9|coi/i.test(reason)) {
             departmentLabel = 'our accounting department';
-          } else if (/operation|admin|permit|schedule|customer service/i.test(reason)) {
+          } else if (/operation|admin|permit|schedule|customer service/i.test(reason) || (vipMatch.matched && vipMatch.tier === 'VIP_COMMERCIAL')) {
             departmentLabel = 'our operations team';
           } else {
             departmentLabel = isKara ? 'our accounting department' : 'our project design team';
@@ -6338,82 +6372,46 @@ class CallSession {
         this.sessionData.callerName = callerName;
         this.sessionData.companyName = companyName;
         this.sessionData.invoiceNumber = invoiceNumber;
-        this.sessionData.transferReason = reason;
+        this.sessionData.transferReason = sanitizeCustomerFacingTopic(reason);
         this.sessionData.leadType = vipMatch.matched ? `VIP Fast-Pass (${vipMatch.tier})` : 'Trade Partner / Administrative Transfer';
 
         // AFTER-HOURS & QUOTE TRIAGE FLOW (NEVER block VIP Commercial Accounts or explicit human pass-through!)
+        const isAfterHoursCall = !isWithinBusinessHours();
         const isEmergency = this.selection === '2' || /leak|water|drip|tarp|emergency|flood/i.test(`${reason} ${callerSpokenText}`);
         const isQuoteInquiry = !vipMatch.matched && !wantsHumanBypass && !isEmergency && (this.selection === '1' || /quote|estimate|design|bid|new roof|replace/i.test(reason) || departmentLabel.includes('design') || departmentLabel.includes('estimation'));
 
-        // 1. QUOTE FLOW DIRECT TO FALLBACK:
-        // For certified quotes & project design, we do not ring Michael's cell live on intake;
-        // it goes directly to the 3-way triage (calendar consultation, message, or instant text)
-        // with instant proactive SMS dispatched from Michael (+18014491451)!
+        // 1. QUOTE FLOW DIRECT TO FALLBACK (ONLY for non-VIP residential quote inquiries — NEVER sends premature SMS before caller chooses an option!)
         if (isQuoteInquiry) {
-          console.log(`[CallSession ${this.callSid}] 📐 Quote/Design inquiry requested for Michael. Going directly to fallback flow and sending proactive SMS from Michael.`);
-          
-          const resolvedSenderTitle = explicitMichael ? 'Michael with RHIVE Construction' : 'Michael with RHIVE Construction Project Design';
-          const quoteSms = `Hi ${callerName}, this is ${resolvedSenderTitle}. I saw that you called regarding your project design and certified quote. You can text me back right here anytime, or let me know what time works best for a quick 15-minute consultation!`;
-          
-          sendMultiChannelSms({
-            to: this.callerPhone,
-            body: quoteSms,
-            preferredSender: 'michael'
-          }).catch(e => console.warn('[Quote SMS Warning]', e.message));
+          console.log(`[CallSession ${this.callSid}] 📐 Quote/Design inquiry requested for Michael (afterHours=${isAfterHoursCall}). Offering 3-way options FIRST (zero premature SMS).`);
 
-          recentSmsRouting.set(normalizePhoneDigits(this.callerPhone), {
+          const resolvedSenderTitle = explicitMichael ? 'Michael with RHIVE Construction' : 'Michael with RHIVE Construction Project Design';
+          this.sessionData.senderTitle = resolvedSenderTitle;
+          this.sessionData.pendingFallbackOffer = {
             targetSpecialist: 'Michael Robinson',
-            specialistCell: MICHAEL_CELL,
             senderTitle: resolvedSenderTitle,
-            departmentLabel: 'our project design team',
+            isKara: false,
             callerName,
-            invoiceNumber,
-            timestamp: Date.now()
-          });
+            topic: 'your project design and certified quote'
+          };
+
+          const quoteLeadIn = isAfterHoursCall
+            ? 'Our office is currently closed, and our project design specialist is away from the desk, but I can take care of you right now!'
+            : 'Our project design specialist is currently on active roofs, but I can help you right now!';
 
           return {
             transferInitiated: false,
             status: 'QUOTE_DIRECT_TO_FALLBACK',
             department: 'our project design team',
-            instruction: `For new certified roof quotes and project design, our project design specialist handles consultations via scheduled 15-minute briefings, direct text, or detailed message. Tell the caller warmly: "Our project design specialist is dedicated on active roofs right now, but I can get you directly in touch with our team! Would you like me to schedule a 15-minute consultation on their calendar? Leave them a message? Or have them message you right now through text?"`
+            instruction: `Offer the 3 options FIRST before sending any text. Tell the caller warmly: "${quoteLeadIn} Would you like me to schedule a 15-minute consultation on their calendar, leave them a quick message, or have them reach out to you by text?" Wait for their choice and execute ONLY the option they choose.`
           };
         }
 
-        // 2. AFTER-HOURS OFFICE HOURS CHECK (EMERGENCY LEAK BYPASS)
-        // Emergency leaks (Option 2 / active leaks) bypass after-hours and CAN transfer to Michael 24/7!
-        // Non-emergency calls (Billing, Ordering, Operations) after 5pm MT or on weekends
-        // do NOT ring personal cell phones, but transition immediately into 3-way triage & proactive SMS!
-        if (!isWithinBusinessHours() && !isEmergency) {
-          console.log(`[CallSession ${this.callSid}] 🌙 After-hours transfer requested for ${targetEntity} (Office hours: Mon-Fri 8am-5pm MT). Redirecting directly to 3-way triage without ringing cell.`);
-          
-          const resolvedSenderTitle = isKara
-            ? (explicitKara ? 'Kara with RHIVE Construction' : (/order|supplier|material/i.test(departmentLabel) ? 'Kara with the RHIVE Construction Ordering Department' : 'Kara with RHIVE Construction Accounting'))
-            : (explicitMichael ? 'Michael with RHIVE Construction' : 'Michael with RHIVE Construction Project Design');
-
-          const afterHoursSms = `Hi ${callerName}, this is ${resolvedSenderTitle}. Our office is currently closed for the evening, but I saw that you called regarding ${reason}. You can text me back right here and we can take care of this, or let me know when is best for a quick callback!`;
-          sendMultiChannelSms({
-            to: this.callerPhone,
-            body: afterHoursSms,
-            preferredSender: isKara ? 'kara' : 'michael'
-          }).catch(e => console.warn('[After-Hours SMS Warning]', e.message));
-
-          recentSmsRouting.set(normalizePhoneDigits(this.callerPhone), {
-            targetSpecialist,
-            specialistCell: isKara ? KARA_CELL : MICHAEL_CELL,
-            senderTitle: resolvedSenderTitle,
-            departmentLabel,
-            callerName,
-            invoiceNumber,
-            timestamp: Date.now()
-          });
-
-          const spokenTarget = explicitKara ? 'Kara' : (explicitMichael ? 'Michael' : departmentLabel);
-          return {
-            transferInitiated: false,
-            status: 'AFTER_HOURS_OFFICE_CLOSED',
-            department: spokenTarget,
-            instruction: `Our office is currently closed for the evening or weekend (Office hours: Monday through Friday, 8:00 AM to 5:00 PM Mountain Time). Tell the caller warmly: "Thanks for calling RHIVE! Our office is currently closed for the day, but I can help you right now. Would you like me to schedule a 15-minute call on the calendar for tomorrow morning? Leave a message I can send to ${spokenTarget}? Or would you like me to have ${spokenTarget} message you now through text?"`
-          };
+        // 2. 24/7 SCREENED WHISPER TRANSFER (BUSINESS HOURS + GRACEFUL AFTER-HOURS SEQUENCE!)
+        // Even after hours, Honey gracefully announces office closure while placing the caller on hold and ringing
+        // Kara or Michael with the interactive AI screening whisper so they can converse with the AI and accept (1)
+        // or reject/deny (2) BEFORE the caller is ever taken off hold or offered scheduling/message/text options!
+        if (isAfterHoursCall) {
+          console.log(`[CallSession ${this.callSid}] 🌙 After-hours 24/7 Screened Whisper transfer initiated to ${targetSpecialist} (${targetCell}). Announcing office closure while checking live availability.`);
         }
 
         const invoiceAudit = invoiceNumber ? `\n📄 Invoice: #${invoiceNumber}` : '';
@@ -6423,6 +6421,10 @@ class CallSession {
         console.log(`[CallSession ${this.callSid}] 📞 Secretary qualified transfer registered. Will post single dossier on call completion.`);
 
         const spokenTarget = explicitKara ? 'Kara' : (explicitMichael ? 'Michael' : departmentLabel);
+        const cleanTransferReason = sanitizeCustomerFacingTopic(reason);
+        const vipWhisperNote = vipMatch.matched
+          ? (vipMatch.tier === 'VIP_COMMERCIAL' ? 'They are a VIP commercial account.' : 'They are an existing customer on file.')
+          : '';
         const transferOptions = {
           callSid: this.callSid,
           targetNumber: targetCell,
@@ -6433,22 +6435,42 @@ class CallSession {
           callerName: callerName,
           companyName: companyName,
           invoiceNumber: invoiceNumber,
-          reason: reason,
+          reason: cleanTransferReason,
+          vipNote: vipWhisperNote,
+          afterHours: isAfterHoursCall,
           propertyAddress: propertyAddress,
           callerPhone: this.callerPhone,
           selection: this.selection
         };
 
-        // Defer physical carrier redirect by 4,200ms so Honey speaks the warm handoff phrase over WebSocket before Twilio redirects to conference/hold music
-        console.log(`[CallSession ${this.callSid}] ⏳ Deferring screened PSTN transfer by 4,200ms to allow Honey's warm verbal handoff ("OK ${callerName}...") to play in full to caller.`);
+        // Graceful handoff script:
+        // - After Hours (specific person): "OK Susan, our office is currently closed. However, let me see if I can get a hold of Kara for you. Please hold for just a moment..."
+        // - After Hours (department):      "OK Susan, our office is currently closed. However, let me see if I can get a hold of someone in our operations team for you. Please hold for just a moment..."
+        // - Business Hours:                "OK Susan. Thanks for letting me know! I'll now transfer you over to Kara. Please hold for just a moment..."
+        const safeSpokenName = (callerName && !/^(Direct Caller|VIP Caller|Customer|Caller|Unknown)$/i.test(callerName)) ? ` ${callerName}` : '';
+        let handoffPhrase = '';
+        if (isAfterHoursCall) {
+          if (explicitKara || explicitMichael) {
+            handoffPhrase = `OK${safeSpokenName}, our office is currently closed. However, let me see if I can get a hold of ${spokenTarget} for you. Please hold for just a moment...`;
+          } else {
+            handoffPhrase = `OK${safeSpokenName}, our office is currently closed. However, let me see if I can get a hold of someone in ${spokenTarget} for you. Please hold for just a moment...`;
+          }
+        } else {
+          handoffPhrase = `OK${safeSpokenName}. Thanks for letting me know! I'll now transfer you over to ${spokenTarget}. Please hold for just a moment...`;
+        }
+
+        // Defer physical carrier redirect so Honey finishes speaking the entire warm handoff phrase cleanly before Twilio switches to hold music
+        const redirectDelayMs = isAfterHoursCall ? 5600 : 4200;
+        console.log(`[CallSession ${this.callSid}] ⏳ Deferring screened PSTN transfer by ${redirectDelayMs}ms to allow Honey's warm verbal handoff ("${handoffPhrase}") to play in full to caller.`);
         setTimeout(() => {
           executeScreenedTransfer(transferOptions);
-        }, 4200);
+        }, redirectDelayMs);
 
         return {
           transferInitiated: true,
+          afterHours: isAfterHoursCall,
           department: spokenTarget,
-          instruction: `Say warmly and clearly to the caller: "OK ${callerName}. Thanks for letting me know! I'll now transfer you over to ${spokenTarget}. Please hold for just a moment..." Do NOT call any more tools.`
+          instruction: `Say warmly and clearly to the caller: "${handoffPhrase}" Do NOT call any more tools.`
         };
       }
 
@@ -6549,7 +6571,7 @@ class CallSession {
           specialist: targetSpecialist,
           targetEntity,
           message: textRes.message,
-          instruction: `Tell the caller warmly: "I've sent an urgent text alert directly to ${targetEntity}, and they will message you back on this number as soon as possible. Thank you for calling R-HIVE Construction, have a wonderful day!"`
+          instruction: `Tell the caller warmly: "I've alerted ${targetEntity} and started a direct text thread to your cell phone right now so you can reply anytime. Thank you for calling R-hive Construction, have a wonderful day!"`
         };
       }
 
@@ -6570,13 +6592,13 @@ class CallSession {
           const explicitKara = this.sessionData.askedForPerson === 'kara' || /(^|\b)(kara|carrie)\b/i.test(this.sessionData.transferReason || '');
           const explicitMichael = this.sessionData.askedForPerson === 'michael' || /(^|\b)michael\b/i.test(this.sessionData.transferReason || '');
           if (isKara) {
-            if (explicitKara) senderTitle = 'Kara with R-HIVE Construction';
-            else if (/order|supplier|material/i.test(departmentLabel)) senderTitle = 'Kara with the R-HIVE Construction Ordering Department';
-            else if (/billing|payable|receivable|invoice/i.test(departmentLabel)) senderTitle = 'Kara with R-HIVE Construction Accounting';
-            else senderTitle = 'Kara with R-HIVE Construction Operations';
+            if (explicitKara) senderTitle = 'Kara with RHIVE Construction';
+            else if (/order|supplier|material/i.test(departmentLabel)) senderTitle = 'Kara with the RHIVE Construction Ordering Department';
+            else if (/billing|payable|receivable|invoice/i.test(departmentLabel)) senderTitle = 'Kara with RHIVE Construction Accounting';
+            else senderTitle = 'Kara with RHIVE Construction Operations';
           } else {
-            if (explicitMichael) senderTitle = 'Michael with R-HIVE Construction';
-            else senderTitle = 'Michael with R-HIVE Construction Project Estimation';
+            if (explicitMichael) senderTitle = 'Michael with RHIVE Construction';
+            else senderTitle = 'Michael with RHIVE Construction Project Design';
           }
         }
 
@@ -10904,8 +10926,8 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'RHIVE Multi-Model Telephony Swarm & Speech-to-Speech Bridge',
-    version: '1.9.5',
-    revision: 'Rev 73',
+    version: '1.9.6',
+    revision: 'Rev 74',
     model: LIVE_VOICE_MODEL,
     voicePersona: AGENT_PROFILES.intake.voice,
     spokenBrandPhonetic: "R-hive (/ˈɑɹˌhaɪv/)",
@@ -11861,17 +11883,17 @@ app.all(['/twiml', '/voice', '/ivr'], (req, res) => {
 
   const cloudRunHost = 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
   const directHost = (process.env.NODE_ENV === 'test' || host.includes('localhost')) ? host : cloudRunHost;
-  const ringAudioUrl = 'https://' + directHost + '/audio/transfer_ring.wav';
   const wsUrl = (directHost.includes('localhost') ? 'ws://' : 'wss://') + directHost + '/media-stream';
 
   const fallbackUrl = 'https://' + directHost + '/voice-stream-fallback?callSid=' + encodeURIComponent(callSid) + '&amp;caller=' + encodeURIComponent(caller);
 
-  console.log('[Inbound Call] Call ' + callSid + ' from ' + caller + ' to ' + called + '. Connecting directly to Honey AI Roof Specialist via ' + wsUrl);
+  console.log('[Inbound Call] Call ' + callSid + ' from ' + caller + ' to ' + called + '. Connecting immediately to Honey AI Roof Specialist via ' + wsUrl + ' (0ms pre-roll; ~1.1s natural pickup beat).');
 
+  // ZERO post-answer <Play> double-ring delay! Carrier/JustCall already handles the 1st ring;
+  // opening <Connect><Stream> immediately delivers a crisp ~1.1s human pickup beat instead of 5.5-6.5s lag.
   res.type('text/xml');
   return res.send('<?xml version="1.0" encoding="UTF-8"?>\n' +
 '<Response>\n' +
-'    <Play>' + ringAudioUrl + '</Play>\n' +
 '    <Connect>\n' +
 '        <Stream url="' + wsUrl + '">\n' +
 '            <Parameter name="caller" value="' + escapeXml(caller) + '" />\n' +
@@ -12042,15 +12064,18 @@ app.post('/recording-callback', async (req, res) => {
 // WARM SCREENED INTERACTIVE TRANSFER & LIVE WHISPER ENDPOINTS
 // ============================================================================
 
-// Deduplication set so a single callSid never triggers duplicate fallback redirects or duplicate SMS
+// Deduplication sets so a single callSid never triggers duplicate fallback redirects or false pull-offs after acceptance
 const transferFallbackTriggeredSids = new Set();
+const transferAcceptedSids = new Set();
 
 // 1. Screen Whisper Endpoint: Plays live briefing to internal recipient (Michael or Kara)
 app.all('/screen-whisper', (req, res) => {
   const callerName = req.query.callerName || req.body.callerName || 'A customer';
   const companyName = req.query.companyName || req.body.companyName || '';
   const invoiceNumber = req.query.invoiceNumber || req.body.invoiceNumber || '';
-  const reason = req.query.reason || req.body.reason || 'General inquiry';
+  const reason = req.query.reason || req.body.reason || 'their call';
+  const vipNote = req.query.vipNote || req.body.vipNote || '';
+  const isAfterHours = String(req.query.afterHours || req.body.afterHours || '') === 'true';
   const propertyAddress = req.query.propertyAddress || req.body.propertyAddress || '';
   const targetSpecialist = req.query.target || req.body.target || 'Specialist';
   const rawConf = req.query.conf || req.body.conf || '';
@@ -12060,14 +12085,18 @@ app.all('/screen-whisper', (req, res) => {
   const isKara = targetSpecialist.toLowerCase().includes('kara');
   const targetFirstName = isKara ? 'Kara' : 'Michael';
 
-  console.log(`[Screen Whisper] Whispering to ${targetSpecialist}: Caller="${callerName}", Company="${companyName}", Invoice="${invoiceNumber}", Intent="${reason}", Project="${propertyAddress}", Conf="${confName}"`);
+  console.log(`[Screen Whisper] Whispering to ${targetSpecialist}: Caller="${callerName}", Company="${companyName}", Invoice="${invoiceNumber}", Intent="${reason}", VipNote="${vipNote}", AfterHours=${isAfterHours}, Project="${propertyAddress}", Conf="${confName}"`);
 
   res.type('text/xml');
-  const companyClause = companyName ? ` with ${escapeXml(companyName)}` : '';
+  const ttsCallerName = escapeXml(formatAcronymsForTts(callerName));
+  const companyClause = companyName ? ` with ${escapeXml(formatAcronymsForTts(companyName))}` : '';
   const invoiceClause = (invoiceNumber && invoiceNumber.toLowerCase() !== 'inquiry') ? `, regarding invoice number ${escapeXml(invoiceNumber)}` : '';
   const projectClause = (propertyAddress && propertyAddress !== 'None' && propertyAddress !== 'Property on file')
-    ? `, regarding project at ${escapeXml(propertyAddress)}`
+    ? `, regarding project at ${escapeXml(formatAcronymsForTts(propertyAddress))}`
     : '';
+  const ttsReason = escapeXml(formatAcronymsForTts(reason));
+  const vipClause = vipNote ? ` ${escapeXml(formatAcronymsForTts(vipNote))}` : '';
+  const callLeadIn = isAfterHours ? 'I have an after-hours call from' : 'I have';
 
   const params = new URLSearchParams();
   for (const [k, v] of Object.entries(req.query || {})) {
@@ -12078,23 +12107,23 @@ app.all('/screen-whisper', (req, res) => {
   params.set('conf', confName);
   params.set('callSid', callSid);
   const actionUrl = `/screen-decision?${params.toString().replace(/&/g, '&amp;')}`;
-  const fullBriefingSay = `<Say voice="Google.en-US-Neural2-F"><break time="150ms"/>Hi ${targetFirstName}! Honey here with <sub alias="R hive">R-hive</sub>. I have ${escapeXml(callerName)}${companyClause}${invoiceClause}${projectClause} on the line for you regarding ${escapeXml(reason)}. Say 1 or press 1 to take the call, or say 2 or press 2 to send to voicemail.</Say>`;
+  const fullBriefingSay = `<Say voice="Google.en-US-Neural2-F"><break time="150ms"/>Hi ${targetFirstName}! Honey here with <sub alias="R hive">R-hive</sub>. ${callLeadIn} ${ttsCallerName}${companyClause}${invoiceClause}${projectClause} holding on the line regarding ${ttsReason}.${vipClause} Say connect or press 1 to take the call, or say reject, deny, or press 2 to send them to callback options.</Say>`;
 
   // 4 consecutive Gather loops (~42s total window) so JustCall's 11s pre-ring announcement
   // + 30s of live mobile phone ringing complete without cutting off Kara or Michael before they answer.
   return res.send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Gather input="dtmf speech" numDigits="1" speechTimeout="auto" hints="1, 2, one, two, accept, connect, decline, disregard, take, hello, who is it" action="${actionUrl}" method="POST" timeout="8">
+    <Gather input="dtmf speech" numDigits="1" speechTimeout="auto" hints="1, 2, one, two, accept, connect, reject, deny, decline, disregard, busy, take, hello, who is it, number" action="${actionUrl}" method="POST" timeout="8">
         ${fullBriefingSay}
     </Gather>
-    <Gather input="dtmf speech" numDigits="1" speechTimeout="auto" hints="1, 2, one, two, accept, connect, decline, disregard, take, hello, who is it" action="${actionUrl}" method="POST" timeout="8">
+    <Gather input="dtmf speech" numDigits="1" speechTimeout="auto" hints="1, 2, one, two, accept, connect, reject, deny, decline, disregard, busy, take, hello, who is it, number" action="${actionUrl}" method="POST" timeout="8">
         ${fullBriefingSay}
     </Gather>
-    <Gather input="dtmf speech" numDigits="1" speechTimeout="auto" hints="1, 2, one, two, accept, connect, decline, disregard, take, hello, who is it" action="${actionUrl}" method="POST" timeout="8">
+    <Gather input="dtmf speech" numDigits="1" speechTimeout="auto" hints="1, 2, one, two, accept, connect, reject, deny, decline, disregard, busy, take, hello, who is it, number" action="${actionUrl}" method="POST" timeout="8">
         ${fullBriefingSay}
     </Gather>
-    <Gather input="dtmf speech" numDigits="1" speechTimeout="auto" hints="1, 2, one, two, accept, connect, decline, disregard" action="${actionUrl}" method="POST" timeout="6">
-        <Say voice="Google.en-US-Neural2-F"><break time="150ms"/>Say 1 or press 1 to accept the call from ${escapeXml(callerName)}, or say 2 or press 2 to send to voicemail.</Say>
+    <Gather input="dtmf speech" numDigits="1" speechTimeout="auto" hints="1, 2, one, two, accept, connect, reject, deny, decline, disregard" action="${actionUrl}" method="POST" timeout="6">
+        <Say voice="Google.en-US-Neural2-F"><break time="150ms"/>Say connect or press 1 to accept the call from ${ttsCallerName}, or say reject, deny, or press 2 to send them to callback options.</Say>
     </Gather>
     <Redirect>${actionUrl}&amp;noAnswer=true</Redirect>
 </Response>`);
@@ -12103,8 +12132,8 @@ app.all('/screen-whisper', (req, res) => {
 // 2. Screen Decision Endpoint: 4-Branch Intelligent Router
 //   Branch 1: JustCall Pre-Ring PBX Announcement ("Connecting to Kara... calls may be recorded") -> Absorb & continue ringing
 //   Branch 2: Specialist Accepts (1 / "connect" / "accept" / "take it" / "yes") -> Bridge into Conference
-//   Branch 3: Specialist Answered Phone ("Hello?" / "Who is it?" / "What's going on?") -> Brief her immediately & Gather decision
-//   Branch 4: Explicit Disregard (2 / "disregard" / "decline" / "busy"), Voicemail, or Timeout -> Redirect caller to /transfer-fallback
+//   Branch 3: Specialist Answered Phone ("Hello?" / "Who is it?" / "What's going on?" / "What's their phone number?") -> Interactive AI briefing while caller stays on hold
+//   Branch 4: Explicit Reject / Deny / Disregard (2 / "reject" / "deny" / "disregard" / "decline" / "busy"), Voicemail, or Timeout -> Pull caller off hold immediately back to Honey (/transfer-fallback)
 app.all('/screen-decision', async (req, res) => {
   const digits = (req.body.Digits || req.query.Digits || '').trim();
   const speech = (req.body.SpeechResult || req.query.SpeechResult || '').toLowerCase().trim();
@@ -12115,7 +12144,8 @@ app.all('/screen-decision', async (req, res) => {
   const callerName = req.query.callerName || req.body.callerName || 'A customer';
   const companyName = req.query.companyName || req.body.companyName || '';
   const invoiceNumber = req.query.invoiceNumber || req.body.invoiceNumber || '';
-  const reason = req.query.reason || req.body.reason || 'General inquiry';
+  const reason = req.query.reason || req.body.reason || 'their call';
+  const vipNote = req.query.vipNote || req.body.vipNote || '';
   const propertyAddress = req.query.propertyAddress || req.body.propertyAddress || '';
   const targetSpecialist = req.query.target || req.body.target || 'Specialist';
   const isKara = targetSpecialist.toLowerCase().includes('kara');
@@ -12158,67 +12188,82 @@ app.all('/screen-decision', async (req, res) => {
     /\b(1|one|accept|connect|connect me|take it|take call|take the call|put them through|put him through|put her through|transfer|patch|talk to|yes|yeah|sure|go ahead|send them through)\b/i.test(speech)
   );
 
-  // 4. Explicit Decline / Disregard (Press 2 or say disregard / decline / busy / voicemail / no / send a text)
+  // 4. Explicit Decline / Disregard / Reject / Deny (Press 2 or say reject / deny / disregard / decline / busy / voicemail / no)
   const isExplicitDecline = (digits !== '' && digits !== '1') ||
-    /\b(2|two|decline|disregard|ignore|pass|busy|voicemail|can't|cannot|not right now|not available|no thanks|nope|don't connect|do not connect|send a text|take a message|tied up)\b/i.test(speech);
+    /\b(2|two|reject|rejected|deny|denied|refuse|decline|disregard|ignore|pass|busy|voicemail|can't|cannot|not right now|not available|no thanks|nope|don't connect|do not connect|send a text|take a message|tied up)\b/i.test(speech);
 
   const isNoAnswerTimeout = req.query.noAnswer === 'true' || String(req.body.noAnswer || '') === 'true';
 
   if (isAccepted && confName) {
+    if (callSid) addToBoundedSet(transferAcceptedSids, callSid, 300);
     console.log(`[Screen Decision] ✅ Specialist accepted call! Joining conference: ${confName}`);
     return res.send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="Google.en-US-Neural2-F"><break time="150ms"/>Connecting you now!</Say>
     <Dial>
-        <Conference>${confName}</Conference>
+        <Conference endConferenceOnExit="true">${confName}</Conference>
     </Dial>
 </Response>`);
   }
 
-  // 5. Specialist Answered Phone ("Hello?", "Hi", "Who is it?", "What's going on?", "Repeat that")
-  // Give them a fresh, complete briefing from word 1 and wait for their connect/disregard command!
-  if (!isExplicitDecline && !isVoicemailGreeting && !isNoAnswerTimeout && speech.length > 0 && retryCount < 4) {
+  // 5. Specialist Answered Phone ("Hello?", "Hi", "Who is it?", "What's going on?", "What's their number?", "Repeat that")
+  // Interactive AI Screening Conversation BEFORE taking the caller off hold!
+  if (!isExplicitDecline && !isVoicemailGreeting && !isNoAnswerTimeout && speech.length > 0 && retryCount < 6) {
     params.set('pbxPassed', 'true');
     params.set('retry', String(retryCount + 1));
     const retryActionUrl = `/screen-decision?${params.toString().replace(/&/g, '&amp;')}`;
-    const companyClause = companyName ? ` with ${escapeXml(companyName)}` : '';
+    const ttsCallerName = escapeXml(formatAcronymsForTts(callerName));
+    const companyClause = companyName ? ` with ${escapeXml(formatAcronymsForTts(companyName))}` : '';
     const invoiceClause = (invoiceNumber && invoiceNumber.toLowerCase() !== 'inquiry') ? `, regarding invoice number ${escapeXml(invoiceNumber)}` : '';
     const projectClause = (propertyAddress && propertyAddress !== 'None' && propertyAddress !== 'Property on file')
-      ? `, regarding project at ${escapeXml(propertyAddress)}`
+      ? `, regarding project at ${escapeXml(formatAcronymsForTts(propertyAddress))}`
+      : '';
+    const ttsReason = escapeXml(formatAcronymsForTts(reason));
+    const vipClause = vipNote ? ` ${escapeXml(formatAcronymsForTts(vipNote))}` : '';
+    const callerPhoneParam = req.query.callerPhone || req.body.callerPhone || '';
+    const wantsNumber = /\b(number|phone|callback|caller id)\b/i.test(speech);
+    const phoneClause = (wantsNumber && callerPhoneParam)
+      ? ` Their phone number is ${escapeXml(callerPhoneParam.replace(/^\+1/, '').split('').join(' '))}.`
       : '';
 
-    console.log(`[Screen Decision] 🎙️ Specialist answered with "${speech}" (Retry ${retryCount + 1}). Delivering full caller briefing and awaiting connect/disregard decision.`);
+    console.log(`[Screen Decision] 🎙️ Specialist conversed: "${speech}" (Turn ${retryCount + 1}). Briefing specialist while caller stays on hold.`);
     return res.send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Gather input="dtmf speech" numDigits="1" speechTimeout="auto" hints="1, 2, one, two, connect, accept, disregard, decline, take, busy" action="${retryActionUrl}" method="POST" timeout="10">
-        <Say voice="Google.en-US-Neural2-F"><break time="150ms"/>Hi ${targetFirstName}! Honey here with <sub alias="R hive">R-hive</sub>. I have ${escapeXml(callerName)}${companyClause}${invoiceClause}${projectClause} holding on the line for you regarding ${escapeXml(reason)}. Say connect or press 1 to take the call, or say disregard or press 2 to send them to callback options.</Say>
+    <Gather input="dtmf speech" numDigits="1" speechTimeout="auto" hints="1, 2, one, two, connect, accept, reject, deny, disregard, decline, take, busy, number, who is it" action="${retryActionUrl}" method="POST" timeout="10">
+        <Say voice="Google.en-US-Neural2-F"><break time="150ms"/>Hi ${targetFirstName}! Honey here with <sub alias="R hive">R-hive</sub>. I have ${ttsCallerName}${companyClause}${invoiceClause}${projectClause} holding on the line regarding ${ttsReason}.${vipClause}${phoneClause} Say connect or press 1 to take the call, or say reject, deny, or press 2 to send them to callback options.</Say>
     </Gather>
-    <Gather input="dtmf speech" numDigits="1" speechTimeout="auto" hints="1, 2, one, two, connect, accept, disregard, decline" action="${retryActionUrl}" method="POST" timeout="8">
-        <Say voice="Google.en-US-Neural2-F"><break time="150ms"/>Say connect or press 1 to talk to ${escapeXml(callerName)}, or say disregard or press 2 to send to voicemail.</Say>
+    <Gather input="dtmf speech" numDigits="1" speechTimeout="auto" hints="1, 2, one, two, connect, accept, reject, deny, disregard, decline" action="${retryActionUrl}" method="POST" timeout="8">
+        <Say voice="Google.en-US-Neural2-F"><break time="150ms"/>Say connect or press 1 to talk to ${ttsCallerName}, or say reject or press 2 to send to callback options.</Say>
     </Gather>
     <Redirect>${retryActionUrl}&amp;noAnswer=true</Redirect>
 </Response>`);
   }
 
-  // 6. Recipient explicitly declined (2 / "disregard"), voicemail answered, or full ring window timed out
-  console.log(`[Screen Decision] Specialist declined, voicemail, or timed out (ExplicitDecline=${isExplicitDecline}, Voicemail=${isVoicemailGreeting}, NoAnswer=${isNoAnswerTimeout}). Redirecting caller ${callSid} to fallback flow.`);
+  // 6. Recipient explicitly rejected/denied/declined (2 / "reject" / "deny" / "disregard"), voicemail answered, or full ring window timed out
+  // Immediately take caller off hold music and return them straight to Honey Live (/transfer-fallback) BEFORE hanging up screening leg!
+  console.log(`[Screen Decision] Specialist rejected/declined, voicemail, or timed out (ExplicitDecline=${isExplicitDecline}, Voicemail=${isVoicemailGreeting}, NoAnswer=${isNoAnswerTimeout}). Pulling caller ${callSid} off hold straight back to Honey.`);
   if (callSid && !callSid.startsWith('SIM_') && !transferFallbackTriggeredSids.has(callSid)) {
     addToBoundedSet(transferFallbackTriggeredSids, callSid, 300);
     const qParams = new URLSearchParams(req.query).toString();
     const xmlQParams = qParams.replace(/&/g, '&amp;');
     const redirectTwiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Redirect>https://${host}/transfer-fallback?${xmlQParams}</Redirect></Response>`;
     const authHeader = 'Basic ' + Buffer.from(TWILIO_API_KEY_SID + ':' + TWILIO_API_SECRET).toString('base64');
-    axios.post(
-      `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls/${callSid}.json`,
-      querystring.stringify({ Twiml: redirectTwiml }),
-      {
-        headers: {
-          'Authorization': authHeader,
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        timeout: 6000
-      }
-    ).catch(e => console.warn('[Screen Decision Caller Redirect Warning]', e.message));
+    try {
+      await axios.post(
+        `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls/${callSid}.json`,
+        querystring.stringify({ Twiml: redirectTwiml }),
+        {
+          headers: {
+            'Authorization': authHeader,
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          timeout: 5000
+        }
+      );
+      console.log(`[Screen Decision] ✅ Pulled caller ${callSid} off hold music -> returned directly to Honey Live (/transfer-fallback).`);
+    } catch (e) {
+      console.warn('[Screen Decision Caller Redirect Warning]', e.message);
+    }
   }
 
   return res.send(`<?xml version="1.0" encoding="UTF-8"?>
@@ -12230,16 +12275,23 @@ app.all('/screen-decision', async (req, res) => {
 
 // 3. Transfer Completed Endpoint: Checks if dial was completed or needs fallback
 // Outbound Screening Call Status Callback (Resilience Guard)
-// If outbound screening call to specialist is busy, unanswered (25s), or fails, immediately pull caller out of hold music
+// If outbound screening call to specialist is busy, unanswered, failed, canceled, OR completed (specialist hung up / pressed Ignore)
+// WITHOUT ever accepting the transfer, immediately pull the caller off hold music straight back to Honey Live (/transfer-fallback)!
 app.all('/screen-status-callback', async (req, res) => {
   const callStatus = (req.body.CallStatus || req.query.CallStatus || '').toLowerCase();
   const callSid = req.query.callSid || '';
   const confName = req.query.conf || '';
-  console.log(`[Screen Status Callback] Outbound screening call status: ${callStatus} for inbound call ${callSid} (Conf: ${confName})`);
+  const wasAccepted = callSid ? transferAcceptedSids.has(callSid) : false;
+  console.log(`[Screen Status Callback] Outbound screening call status: ${callStatus} for inbound call ${callSid} (Conf: ${confName}, Accepted: ${wasAccepted})`);
 
-  if (['busy', 'no-answer', 'failed', 'canceled'].includes(callStatus) && callSid && !transferFallbackTriggeredSids.has(callSid)) {
+  const shouldPullCallerOffHold = (
+    ['busy', 'no-answer', 'failed', 'canceled'].includes(callStatus) ||
+    (callStatus === 'completed' && !wasAccepted)
+  );
+
+  if (shouldPullCallerOffHold && callSid && !callSid.startsWith('SIM_') && !transferFallbackTriggeredSids.has(callSid)) {
     addToBoundedSet(transferFallbackTriggeredSids, callSid, 300);
-    console.log(`[Screen Status Callback] ⚠️ Specialist line unavailable (${callStatus}). Releasing conference ${confName} and redirecting caller ${callSid} to /transfer-fallback.`);
+    console.log(`[Screen Status Callback] ⚠️ Specialist did not accept (${callStatus}, accepted=${wasAccepted}). Pulling caller ${callSid} off hold music -> Honey Live (/transfer-fallback).`);
     try {
       const host = req.headers['x-forwarded-host'] || req.headers.host || 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
       const qParams = new URLSearchParams(req.query).toString();
@@ -12301,7 +12353,7 @@ app.all('/transfer-completed', (req, res) => {
 </Response>`);
 });
 
-// 4. Transfer Fallback Endpoint: Dispatches instant follow-up SMS from specialist department, then reconnects caller directly to Honey Live (Laomedeia voice)
+// 4. Transfer Fallback Endpoint: Reconnects caller directly to Honey Live (Laomedeia voice) with ZERO premature SMS
 app.all('/transfer-fallback', async (req, res) => {
   const host = req.headers['x-forwarded-host'] || req.headers.host || 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
   const cloudRunHost = 'rhive-voice-live-bridge-910835773728.us-central1.run.app';
@@ -12313,7 +12365,8 @@ app.all('/transfer-fallback', async (req, res) => {
   const callerPhone = req.query.callerPhone || req.body.From || req.query.From || '';
   const invoiceNumber = req.query.invoiceNumber || req.body.invoiceNumber || '';
   const propertyAddress = req.query.propertyAddress || 'Property on file';
-  const reason = req.query.reason || 'General inquiry';
+  const rawReason = req.query.reason || 'General inquiry';
+  const reason = sanitizeCustomerFacingTopic(rawReason);
   const callSid = req.query.callSid || req.body.CallSid || '';
   const isKara = targetSpecialist.toLowerCase().includes('kara');
 
@@ -12369,22 +12422,11 @@ app.all('/transfer-fallback', async (req, res) => {
   const fallbackSelection = isKara ? 'transfer_fallback_kara' : 'transfer_fallback_michael';
   const fallbackSelectionLabel = `${targetEntity} busy fallback`;
 
-  console.log(`[Transfer Fallback] ${targetEntity} busy/declined for caller ${callerName} (${callerPhone}). Initiating proactive interactive SMS from "${senderTitle}" and reconnecting caller directly to Honey Live (Laomedeia voice).`);
+  console.log(`[Transfer Fallback] ${targetEntity} rejected/unavailable for caller ${callerName} (${callerPhone}). Reconnecting caller directly to Honey Live FIRST so caller chooses scheduling, message, or text (zero premature SMS).`);
 
-  // 1. INITIATE INSTANT PROACTIVE INTERACTIVE OUTBOUND SMS FROM SPECIALIST / DEPARTMENT TO CALLER (Deduplicated per callSid)
-  const smsDedupKey = callSid ? `TF_SMS_${callSid}` : null;
-  const alreadySentSms = smsDedupKey ? transferFallbackTriggeredSids.has(smsDedupKey) : false;
-  if (smsDedupKey) addToBoundedSet(transferFallbackTriggeredSids, smsDedupKey, 300);
-  if (callerPhone && !callerPhone.startsWith('SIM_') && callerPhone !== 'Unknown' && !alreadySentSms) {
-    const reasonDetail = invoiceNumber && !reason.toLowerCase().includes(invoiceNumber.toLowerCase())
-      ? `${reason} (Invoice #${invoiceNumber})`
-      : reason;
-    const textMessage = `Hi ${callerName}, this is ${senderTitle}. I saw that we were unable to get to the phone regarding ${reasonDetail}. You can either text me back right here to move forward, or let me know and I can give you a call back as soon as possible!`;
-    sendMultiChannelSms({
-      to: callerPhone,
-      body: textMessage,
-      preferredSender: isKara ? 'kara' : 'michael'
-    }).catch(e => console.warn('[Transfer Fallback SMS Warning]', e.message));
+  // Register SMS routing metadata so if caller selects Option 3 ("text me") in Honey Live,
+  // executeSpecialistTextRequest dispatches ONE clean, authentic text ON DEMAND (never prematurely!).
+  if (callerPhone && !callerPhone.startsWith('SIM_') && callerPhone !== 'Unknown') {
     recentSmsRouting.set(normalizePhoneDigits(callerPhone), {
       targetSpecialist,
       specialistCell: isKara ? KARA_CELL : MICHAEL_CELL,
@@ -12394,10 +12436,9 @@ app.all('/transfer-fallback', async (req, res) => {
       invoiceNumber,
       timestamp: Date.now()
     });
-    console.log(`[Transfer Fallback] Sent instant proactive interactive SMS to caller ${callerPhone}: "${textMessage}"`);
   }
 
-  // 2. RECONNECT CALLER DIRECTLY TO HONEY ON GEMINI LIVE (PURE LAOMEDEIA VOICE, ZERO POLLY)
+  // 2. RECONNECT CALLER DIRECTLY TO HONEY ON GEMINI LIVE (PURE LAOMEDEIA VOICE, ZERO PREMATURE SMS)
   res.type('text/xml');
   return res.send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>

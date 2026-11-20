@@ -124,7 +124,7 @@ async function runTests() {
   try {
     const res = await axios.get(`http://localhost:${TEST_PORT}/health`);
     assert(res.status === 200 && res.data.status === 'ok', 'GET /health returns 200 OK');
-    assert(res.data.revision === 'Rev 73' && res.data.version === '1.9.5', 'Health reports revision: Rev 73 (v1.9.5)');
+    assert(res.data.revision === 'Rev 74' && res.data.version === '1.9.6', 'Health reports revision: Rev 74 (v1.9.6)');
     assert(res.data.spokenBrandPhonetic === 'R-hive (/ˈɑɹˌhaɪv/)' && res.data.agentTitle === 'AI Roof Specialist' && res.data.sotaVoiceOptimizations === true, 'Health confirms R-hive IPA lock, AI Roof Specialist title & SOTA voice optimizations');
     assert(res.data.ambientCompositeLoaded === true, 'Health reports ambientCompositeLoaded: true');
     assert(res.data.dashboardAvailable === true, 'Health reports Executive Dashboard is available');
@@ -325,7 +325,7 @@ async function runTests() {
     const res = await axios.get(`http://localhost:${TEST_PORT}/screen-whisper?target=Kara&callerName=Michael&invoiceNumber=4229&reason=Invoice&conf=RHIVE_CALL_123`);
     assert(res.status === 200, 'GET /screen-whisper returns 200 OK');
     assert(res.data.includes('input="dtmf speech"'), 'Screen whisper enables dual input="dtmf speech" (supports saying 1/2 or pressing 1/2)');
-    assert(res.data.includes('Say 1 or press 1') || res.data.includes('say 1 or press 1'), 'Screen whisper instructs recipient to say 1/2 or press 1/2');
+    assert(res.data.includes('Say connect or press 1') && res.data.includes('say reject, deny, or press 2'), 'Screen whisper instructs recipient to say connect/press 1 or say reject/deny/press 2');
     assert(res.data.includes('<break time="150ms"/>'), 'Screen whisper injects +150ms settle pause upon recipient answering');
     assert(!res.data.includes('conf=RHIVE_CALL_123&amp;conf=') && !res.data.includes('conf=RHIVE_CALL_123,RHIVE_CALL_123'), 'Screen whisper does NOT duplicate conference name in actionUrl');
   } catch(e) {
@@ -338,7 +338,7 @@ async function runTests() {
       Digits: '1'
     });
     assert(res.status === 200, 'POST /screen-decision returns 200 OK');
-    assert(res.data.includes('<Conference>RHIVE_TEST_CONF</Conference>'), 'Screen decision joins sanitized conference room without duplicate array commas');
+    assert(res.data.includes('<Conference endConferenceOnExit="true">RHIVE_TEST_CONF</Conference>'), 'Screen decision joins sanitized conference room with endConferenceOnExit without duplicate commas');
   } catch(e) {
     assert(false, 'POST /screen-decision error: ' + e.message);
   }
@@ -421,7 +421,13 @@ async function runTests() {
       From: '+18019284434',
       To: '+18398676637'
     });
-    assert(twimlRes.status === 200 && twimlRes.data.includes('/voice-stream-fallback') && twimlRes.data.includes('<Redirect method="POST">'), 'POST /twiml arms Zero-Dead-Air <Redirect> to /voice-stream-fallback after </Connect>');
+    assert(
+      twimlRes.status === 200 &&
+      twimlRes.data.includes('/voice-stream-fallback') &&
+      twimlRes.data.includes('<Redirect method="POST">') &&
+      !twimlRes.data.includes('<Play>'),
+      'POST /twiml connects immediately with ZERO 4.2s post-answer double-ring delay and arms Zero-Dead-Air <Redirect> to /voice-stream-fallback'
+    );
 
     const silentRescueRes = await axios.post(`http://localhost:${TEST_PORT}/voice-stream-fallback?callSid=CA_TEST_SILENT_RESCUE&caller=%2B18019284434`);
     assert(silentRescueRes.status === 200 && silentRescueRes.data.includes('<Gather') && silentRescueRes.data.includes('Google.en-US-Neural2-F'), 'POST /voice-stream-fallback rescues 0-audio-chunk caller immediately with Neural2-F intake (Zero Dead Air)');
@@ -635,8 +641,8 @@ async function runTests() {
       { SpeechResult: 'Connect me' }
     );
     assert(
-      connectVoiceRes.status === 200 && connectVoiceRes.data.includes('<Conference>RHIVE_JOE_1</Conference>'),
-      'Scenario D: When Kara says "Connect me", agent bridges her directly into <Conference>RHIVE_JOE_1</Conference>'
+      connectVoiceRes.status === 200 && connectVoiceRes.data.includes('<Conference endConferenceOnExit="true">RHIVE_JOE_1</Conference>'),
+      'Scenario D: When Kara says "Connect me", agent bridges her directly into <Conference endConferenceOnExit="true">RHIVE_JOE_1</Conference>'
     );
 
     const disregardRes = await axios.post(
@@ -711,9 +717,65 @@ async function runTests() {
 
     assert(
       settingsRes.data.systemInstruction.includes('ABSOLUTE ENGLISH-ONLY DEFAULT LOCK') &&
+      settingsRes.data.systemInstruction.includes('INTENTIONAL BILINGUAL SPANISH SWITCHING') &&
       settingsRes.data.systemInstruction.includes('PRIVACY INVARIANT') &&
       settingsRes.data.systemInstruction.includes('ANTI-STONEWALL ESCALATION VALVE'),
-      'Honey systemInstruction enforces English-Only Lock, VIP Privacy Shield & Zero-Stonewall Valve'
+      'Honey systemInstruction enforces English-Only Default Lock + Intentional Bilingual Spanish Switching, VIP Privacy Shield & Zero-Stonewall Valve'
+    );
+
+    // V6.6 24/7 After-Hours Screening Sequence, UNPHC TTS, Reject/Deny Pull-Off-Hold, Sanitized Fallback & Zero Premature SMS
+    const afterHoursWhisper = await axios.get(
+      `http://localhost:${TEST_PORT}/screen-whisper?target=Kara+Robinson&callerName=Susan&companyName=UNPHC&reason=your+call&vipNote=They+are+a+VIP+commercial+account.&afterHours=true&conf=RHIVE_SUSAN_1&callSid=SIM_SUSAN_1`
+    );
+    assert(
+      afterHoursWhisper.status === 200 &&
+      afterHoursWhisper.data.includes('after-hours call') &&
+      afterHoursWhisper.data.includes('U N P H C') &&
+      afterHoursWhisper.data.includes('VIP commercial account') &&
+      afterHoursWhisper.data.includes('reject, deny, or press 2 to send them to callback options'),
+      'After-hours /screen-whisper announces after-hours call, pronounces "U N P H C" letter-by-letter, shares VIP status privately, and prompts Connect/Reject'
+    );
+
+    const rejectRes = await axios.post(
+      `http://localhost:${TEST_PORT}/screen-decision?target=Kara+Robinson&callerName=Susan&companyName=UNPHC&reason=your+call&conf=RHIVE_SUSAN_1&callSid=SIM_SUSAN_1`,
+      { SpeechResult: 'Reject the call' }
+    );
+    const denyRes = await axios.post(
+      `http://localhost:${TEST_PORT}/screen-decision?target=Kara+Robinson&callerName=Susan&companyName=UNPHC&reason=your+call&conf=RHIVE_SUSAN_1&callSid=SIM_SUSAN_1`,
+      { SpeechResult: 'Deny' }
+    );
+    const phoneAskRes = await axios.post(
+      `http://localhost:${TEST_PORT}/screen-decision?target=Kara+Robinson&callerName=Susan&companyName=UNPHC&callerPhone=%2B18019284434&reason=your+call&conf=RHIVE_SUSAN_1&callSid=SIM_SUSAN_1`,
+      { SpeechResult: "What's their phone number?" }
+    );
+    assert(
+      rejectRes.data.includes('<Hangup/>') &&
+      denyRes.data.includes('<Hangup/>') &&
+      phoneAskRes.data.includes('<Gather') &&
+      phoneAskRes.data.includes('U N P H C') &&
+      phoneAskRes.data.includes('8 0 1 9 2 8 4 4 3 4') &&
+      !phoneAskRes.data.includes('<Hangup/>'),
+      '24/7 Screening AI handles "Reject"/"Deny" (immediate pull off hold to Honey) AND answers "What\'s their phone number?" with U N P H C TTS while keeping caller on hold'
+    );
+
+    const sanitizedFallbackRes = await axios.post(
+      `http://localhost:${TEST_PORT}/transfer-fallback?target=Kara+Robinson&callerName=Susan&companyName=UNPHC&callerPhone=SIM_SUSAN&callSid=SIM_SUSAN_TF&reason=VIP+Commercial+Account+UNPHC+direct+call`
+    );
+    assert(
+      sanitizedFallbackRes.status === 200 &&
+      sanitizedFallbackRes.data.includes('<Connect>') &&
+      sanitizedFallbackRes.data.includes('name="reason" value="your call"') &&
+      !sanitizedFallbackRes.data.includes('VIP Commercial Account'),
+      'POST /transfer-fallback strips internal VIP tags from customer-facing reason and reconnects directly to Honey Live with zero premature SMS'
+    );
+
+    const hangupScreenStatus = await axios.post(
+      `http://localhost:${TEST_PORT}/screen-status-callback?callSid=SIM_UNACCEPTED_1&conf=RHIVE_SIM_1`,
+      { CallStatus: 'completed' }
+    );
+    assert(
+      hangupScreenStatus.status === 200 && hangupScreenStatus.data.includes('<Response/>'),
+      'POST /screen-status-callback cleanly handles specialist hangup/decline without accepting (pulls caller off hold)'
     );
   } catch (e) {
     assert(false, 'V5.0/V6.0 AQuA / Goldfish / Live Honey Audio test error: ' + e.message);

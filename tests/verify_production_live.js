@@ -26,10 +26,10 @@ async function verifyProduction() {
   console.log(' RHIVE V6.0 LIVE PRODUCTION CLOUD RUN & WSS AUDIO VERIFICATION');
   console.log('==================================================================');
 
-  // 1. Live Cloud Run /health (v1.9.5 / Rev 73)
+  // 1. Live Cloud Run /health (v1.9.6 / Rev 74)
   const health = await axios.get(`https://${CLOUD_RUN_HOST}/health`);
   assert(
-    health.status === 200 && health.data.version === '1.9.5' && health.data.revision === 'Rev 73' && health.data.spokenBrandPhonetic === 'R-hive (/ˈɑɹˌhaɪv/)' && health.data.agentTitle === 'AI Roof Specialist',
+    health.status === 200 && health.data.version === '1.9.6' && health.data.revision === 'Rev 74' && health.data.spokenBrandPhonetic === 'R-hive (/ˈɑɹˌhaɪv/)' && health.data.agentTitle === 'AI Roof Specialist',
     `Cloud Run /health reports version: ${health.data.version} (${health.data.revision}, Spoken Brand: ${health.data.spokenBrandPhonetic}, Title: ${health.data.agentTitle})`
   );
   assert(
@@ -85,8 +85,8 @@ async function verifyProduction() {
     To: '+18398676637'
   });
   assert(
-    twiml.status === 200 && twiml.data.includes('/voice-stream-fallback'),
-    `Production POST /twiml arms Zero-Dead-Air <Redirect> to /voice-stream-fallback`
+    twiml.status === 200 && twiml.data.includes('/voice-stream-fallback') && !twiml.data.includes('<Play>'),
+    `Production POST /twiml opens <Connect><Stream> immediately (0ms post-answer double-ring lag) & arms Zero-Dead-Air /voice-stream-fallback`
   );
 
   const pbxScreen = await axios.post(
@@ -101,16 +101,31 @@ async function verifyProduction() {
     `https://${CLOUD_RUN_HOST}/screen-decision?target=Kara+Robinson&callerName=Joe&companyName=SRS&reason=Active+project+invoice+inquiry&conf=RHIVE_PROD_TEST&callSid=SIM_PROD_TEST`,
     { SpeechResult: 'Connect' }
   );
-  const disregardScreen = await axios.post(
-    `https://${CLOUD_RUN_HOST}/screen-decision?target=Kara+Robinson&callerName=Joe&companyName=SRS&reason=Active+project+invoice+inquiry&conf=RHIVE_PROD_TEST&callSid=SIM_PROD_TEST`,
-    { SpeechResult: 'Disregard' }
+  const rejectScreen = await axios.post(
+    `https://${CLOUD_RUN_HOST}/screen-decision?target=Kara+Robinson&callerName=Susan&companyName=UNPHC&reason=your+call&conf=RHIVE_PROD_TEST&callSid=SIM_PROD_TEST`,
+    { SpeechResult: 'Reject the call' }
+  );
+  const phoneAskScreen = await axios.post(
+    `https://${CLOUD_RUN_HOST}/screen-decision?target=Kara+Robinson&callerName=Susan&companyName=UNPHC&callerPhone=%2B18019284434&reason=your+call&conf=RHIVE_PROD_TEST&callSid=SIM_PROD_TEST`,
+    { SpeechResult: "What's their phone number?" }
+  );
+  const whisperAfterHours = await axios.get(
+    `https://${CLOUD_RUN_HOST}/screen-whisper?target=Kara+Robinson&callerName=Susan&companyName=UNPHC&reason=your+call&vipNote=They+are+a+VIP+commercial+account.&afterHours=true&conf=RHIVE_PROD_TEST&callSid=SIM_PROD_TEST`
+  );
+  const fallbackClean = await axios.post(
+    `https://${CLOUD_RUN_HOST}/transfer-fallback?target=Kara+Robinson&callerName=Susan&companyName=UNPHC&callerPhone=SIM_PROD_TEST&callSid=SIM_PROD_TEST&reason=VIP+Commercial+Account+UNPHC+direct+call`
   );
   assert(
     pbxScreen.data.includes('pbxPassed=true') &&
     helloScreen.data.includes('Joe with SRS') &&
-    connectScreen.data.includes('<Conference>RHIVE_PROD_TEST</Conference>') &&
-    disregardScreen.data.includes('<Hangup/>'),
-    `Production /screen-decision passes all 4 live screening angles (JustCall PBX absorption, "Hello?" briefing, "Connect" conference bridge, "Disregard" fallback)`
+    connectScreen.data.includes('<Conference endConferenceOnExit="true">RHIVE_PROD_TEST</Conference>') &&
+    rejectScreen.data.includes('<Hangup/>') &&
+    phoneAskScreen.data.includes('U N P H C') &&
+    phoneAskScreen.data.includes('8 0 1 9 2 8 4 4 3 4') &&
+    whisperAfterHours.data.includes('after-hours call') &&
+    fallbackClean.data.includes('name="reason" value="your call"') &&
+    !fallbackClean.data.includes('VIP Commercial Account'),
+    `Production 24/7 screening passes all angles (PBX absorb, "Hello?", phone readback, U N P H C TTS, Connect, Reject pull-off-hold, after-hours whisper & sanitized zero-premature-SMS fallback)`
   );
 
   // 5B. Live Production Silent VIP Directory (Google Drive Commercial & Residential + UNPHC Fast-Pass + Privacy Shield)
